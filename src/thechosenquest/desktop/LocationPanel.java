@@ -169,7 +169,7 @@ final class LocationPanel extends JPanel {
         currentHavenTile = tile;
         if (!sameHaven) activeTab = "ALL";
         applyVariant(tavern ? new Color(173, 115, 65) : new Color(76, 139, 96));
-        npcName.setText(tavern ? "Martha" : "Sylara");
+        npcName.setText(tavern ? "Bram" : "Sylara");
         npcRole.setText(tavern ? "INNKEEPER" : "ALCHEMIST");
         quote.setText(tavern
             ? "<html>“Rest your weary bones.<br>A warm meal awaits.”</html>"
@@ -251,6 +251,11 @@ final class LocationPanel extends JPanel {
             String restriction = GameEngine.equipmentRestriction(currentState.heroClass, item);
             boolean equipped = isEquipped(item);
             String description = comparisonFor(item, restriction != null);
+            if ("Weapon".equals(item.type)) {
+                description += "<br><font color='#f1c85c'><b>" +
+                    GameEngine.weaponTraitName(item) + "</b></font> · " +
+                    GameEngine.weaponTraitDescription(item);
+            }
             if (restriction != null) description +=
                 "<br><font color='#d76a62'>" + restriction + "</font>";
             addShopRow(item.name, description, item.cost + " GOLD", icon, item,

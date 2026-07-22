@@ -68,7 +68,7 @@ final class MainWindow {
     private final JTextArea story = new JTextArea();
     private final EncounterPanel encounterPanel = new EncounterPanel(new EncounterPanel.Listener() {
         public void onAttack() {
-            performPlayerAttack(false);
+            performPlayerAttack(null);
         }
 
         public void onDefend() {
@@ -80,11 +80,7 @@ final class MainWindow {
             });
         }
 
-        public void onSpell() { showSpellMenu(); }
-
-        public void onQuickSpell() {
-            performPlayerAttack(true);
-        }
+        public void onAbility(int slot) { performAbility(slot); }
 
         public void onPotion() {
             int health = engine.getState().health;
@@ -182,10 +178,23 @@ final class MainWindow {
             String before = engine.getHistory();
             engine.useMapService(service);
             boolean purchased = engine.getState().gold < gold;
-            boolean changed = !before.equals(engine.getHistory());
+            String after = engine.getHistory();
+            boolean changed = !before.equals(after);
             soundManager.play(purchased ? SoundManager.Cue.PURCHASE :
                 (changed ? SoundManager.Cue.UI_CONFIRM : SoundManager.Cue.ERROR));
             refresh();
+            if (service == GameEngine.MapService.RUMOR && changed &&
+                    engine.currentEnemy() == null) {
+                boolean tavern = engine.currentTile() == GameEngine.TileType.TAVERN;
+                settingsOverlay.showDialogue(
+                    tavern ? "/assets/encounters/npcs/innkeeper.png" :
+                        "/assets/encounters/npcs/alchemist.png",
+                    tavern ? "Bram" : "Sylara",
+                    tavern ? "INNKEEPER · LOCAL RUMOR" : "ALCHEMIST · ARCANE ADVICE",
+                    dialogueCopy(after.substring(Math.min(before.length(), after.length()))),
+                    tavern ? new Color(173, 115, 65) : new Color(76, 139, 96),
+                    new Runnable() { public void run() { refresh(); } });
+            }
         }
 
         public void onBack() { showStory(); }
@@ -233,7 +242,8 @@ final class MainWindow {
         refresh();
     }
 
-    private void performPlayerAttack(boolean magical) {
+    private void performPlayerAttack(String spell) {
+        boolean magical = spell != null;
         final GameEngine.Enemy target = engine.currentEnemy();
         if (target == null) {
             soundManager.play(SoundManager.Cue.ERROR);
@@ -243,9 +253,9 @@ final class MainWindow {
         int historyStart = engine.getHistory().length();
         int healthBefore = target.health;
         int manaBefore = engine.getState().mana;
-        String preparedSpell = magical ? engine.getState().selectedSpell : null;
+        String preparedSpell = spell;
         if (magical) {
-            engine.castSelectedSpell();
+            engine.castSpell(spell);
         } else {
             engine.attack();
         }
@@ -274,6 +284,40 @@ final class MainWindow {
             }, new Runnable() {
                 public void run() { refresh(); }
             });
+    }
+
+    private void performAbility(int slot) {
+        final GameEngine.Enemy target = engine.currentEnemy();
+        if (target == null) {
+            soundManager.play(SoundManager.Cue.ERROR);
+            refresh();
+            return;
+        }
+        GameEngine.State state = engine.getState();
+        String ability = GameEngine.abilityName(state, slot);
+        int healthBefore = target.health;
+        int playerHealthBefore = state.health;
+        int manaBefore = state.mana;
+        engine.useAbility(slot);
+        int healthAfter = target.health;
+        if (healthAfter < healthBefore) {
+            String spell = "Mage".equals(state.heroClass) ? ability : null;
+            EncounterPanel.PlayerAttackStyle style =
+                EncounterPanel.PlayerAttackStyle.forAction(state.heroClass, spell);
+            soundManager.play(spell != null && state.mana < manaBefore
+                ? SoundManager.Cue.SPELL : SoundManager.Cue.ATTACK);
+            encounterPanel.setCombatActionsEnabled(false);
+            encounterPanel.playPlayerAttack(healthBefore, healthAfter, style, false,
+                new Runnable() {
+                    public void run() { soundManager.play(SoundManager.Cue.ENEMY_HIT); }
+                }, new Runnable() {
+                    public void run() { refresh(); }
+                });
+        } else {
+            soundManager.play(state.health > playerHealthBefore ? SoundManager.Cue.HEAL :
+                SoundManager.Cue.DEFEND);
+            refresh();
+        }
     }
 
     void show() {
@@ -330,7 +374,7 @@ final class MainWindow {
         enhancedExploration = new EnhancedExplorationPanel(engine,
             new EnhancedExplorationPanel.Listener() {
                 public void onInventory() { showInventory(); }
-                public void onSpellbook() { showSpellMenu(); }
+                public void onSpellbook() { cyclePreparedSpell(); }
                 public void onShop() { showShop(); }
                 public void onHaven() { showHaven(); }
                 public void onSave() { chooseSave(); }
@@ -442,8 +486,18 @@ final class MainWindow {
         c.fill = GridBagConstraints.BOTH;
         JPanel bottomSpacer = new JPanel();
         bottomSpacer.setOpaque(false);
-        bottomSpacer.setPreferredSize(new Dimension(1, 96));
+        bottomSpacer.setPreferredSize(new Dimension(1, 64));
         root.add(bottomSpacer, c);
+
+        JLabel version = new JLabel(AppVersion.DISPLAY_NAME + "  •  PLAYTEST BUILD");
+        version.setForeground(new Color(190, 181, 160, 210));
+        version.setFont(UiTheme.body(Font.BOLD, 13));
+        version.getAccessibleContext().setAccessibleName(
+            "The Chosen Quest Enhanced " + AppVersion.DISPLAY_NAME + " playtest build");
+        c.gridy = 5;
+        c.anchor = GridBagConstraints.SOUTHEAST;
+        c.fill = GridBagConstraints.NONE;
+        root.add(version, c);
         return root;
     }
 
@@ -576,16 +630,39 @@ final class MainWindow {
     }
 
     private void installMovementKeys() {
-        bindMovementKey("UP", "moveNorth", -1, 0);
-        bindMovementKey("DOWN", "moveSouth", 1, 0);
-        bindMovementKey("LEFT", "moveWest", 0, -1);
-        bindMovementKey("RIGHT", "moveEast", 0, 1);
-        bindCombatKey('A');
-        bindCombatKey('D');
-        bindCombatKey('S');
-        bindCombatKey('P');
-        bindCombatKey('Q');
-        bindCombatKey('F');
+        bindMovementKey("W", "moveNorthW", -1, 0);
+        bindMovementKey("S", "moveSouthS", 1, 0);
+        bindMovementKey("A", "moveWestA", 0, -1);
+        bindMovementKey("D", "moveEastD", 0, 1);
+        // Arrow keys remain as an accessibility fallback while the visible
+        // map controls and primary bindings teach the standard WASD layout.
+        bindMovementKey("UP", "moveNorthArrow", -1, 0);
+        bindMovementKey("DOWN", "moveSouthArrow", 1, 0);
+        bindMovementKey("LEFT", "moveWestArrow", 0, -1);
+        bindMovementKey("RIGHT", "moveEastArrow", 0, 1);
+        bindMapZoomKey(KeyStroke.getKeyStroke('+'), "mapZoomInPlus", true);
+        bindMapZoomKey(KeyStroke.getKeyStroke('='), "mapZoomInEquals", true);
+        bindMapZoomKey(KeyStroke.getKeyStroke('-'), "mapZoomOutMinus", false);
+        bindMapZoomKey(KeyStroke.getKeyStroke("pressed ADD"), "mapZoomInNumpad", true);
+        bindMapZoomKey(KeyStroke.getKeyStroke("pressed SUBTRACT"),
+            "mapZoomOutNumpad", false);
+        for (char key = '1'; key <= '7'; key++) bindCombatKey(key);
+    }
+
+    private void bindMapZoomKey(KeyStroke keyStroke, String actionName,
+                                final boolean zoomIn) {
+        if (keyStroke == null) return;
+        JComponent root = frame.getRootPane();
+        root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+            .put(keyStroke, actionName);
+        root.getActionMap().put(actionName, new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+            public void actionPerformed(ActionEvent event) {
+                if (gameVisible && enhancedExploration != null) {
+                    enhancedExploration.triggerMapZoomShortcut(zoomIn);
+                }
+            }
+        });
     }
 
     private void bindCombatKey(final char key) {
@@ -635,13 +712,13 @@ final class MainWindow {
         GridBagConstraints c = new GridBagConstraints();
         c.insets = new Insets(2, 2, 2, 2);
         c.gridx = 1; c.gridy = 0;
-        panel.add(movementButton("↑", "North", new Runnable() { public void run() { engine.move(-1, 0); } }), c);
+        panel.add(movementButton("W", "North · W", new Runnable() { public void run() { engine.move(-1, 0); } }), c);
         c.gridx = 0; c.gridy = 1;
-        panel.add(movementButton("←", "West", new Runnable() { public void run() { engine.move(0, -1); } }), c);
+        panel.add(movementButton("A", "West · A", new Runnable() { public void run() { engine.move(0, -1); } }), c);
         c.gridx = 1;
-        panel.add(movementButton("↓", "South", new Runnable() { public void run() { engine.move(1, 0); } }), c);
+        panel.add(movementButton("S", "South · S", new Runnable() { public void run() { engine.move(1, 0); } }), c);
         c.gridx = 2;
-        panel.add(movementButton("→", "East", new Runnable() { public void run() { engine.move(0, 1); } }), c);
+        panel.add(movementButton("D", "East · D", new Runnable() { public void run() { engine.move(0, 1); } }), c);
         return panel;
     }
 
@@ -662,9 +739,9 @@ final class MainWindow {
         panel.add(defendAction);
         panel.add(fleeAction);
         panel.add(potionAction);
-        spellAction = styledButton("Select Spell", false);
+        spellAction = styledButton("Cycle Spell", false);
         spellAction.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent event) { showSpellMenu(); }
+            public void actionPerformed(ActionEvent event) { cyclePreparedSpell(); }
         });
         panel.add(spellAction);
         inventoryAction = styledButton("Inventory", false);
@@ -753,26 +830,21 @@ final class MainWindow {
     }
 
     private void showSpellMenu() {
+        cyclePreparedSpell();
+    }
+
+    /** Cycles the prepared exploration shortcut without opening a system modal. */
+    private void cyclePreparedSpell() {
         GameEngine.State state = engine.getState();
         if (state.spells.isEmpty()) {
             soundManager.play(SoundManager.Cue.ERROR);
-            JOptionPane.showMessageDialog(frame,
-                "Your class does not know any spells.", "Spellbook",
-                JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        String current = state.selectedSpell != null && state.spells.contains(state.selectedSpell)
-            ? state.selectedSpell : state.spells.get(0);
-        Object spell = JOptionPane.showInputDialog(frame,
-            "Choose the spell assigned to Quick Cast:\n" +
-            "Magic Missile: 7 mana\nFireball: 12 mana\nIce Spike: 15 mana",
-            "Select Spell — " + state.mana + "/" + state.maxMana + " mana",
-            JOptionPane.PLAIN_MESSAGE, null, state.spells.toArray(), current);
-        if (spell != null) {
-            engine.selectSpell(spell.toString());
-            soundManager.play(SoundManager.Cue.UI_CONFIRM);
-            refresh();
-        }
+        int current = state.selectedSpell == null ? -1 : state.spells.indexOf(state.selectedSpell);
+        String next = state.spells.get((current + 1) % state.spells.size());
+        engine.selectSpell(next);
+        soundManager.play(SoundManager.Cue.UI_CONFIRM);
+        refresh();
     }
 
     private void showShop() {
@@ -842,11 +914,12 @@ final class MainWindow {
 
     private void showHelp() {
         JOptionPane.showMessageDialog(frame,
-            "Explore with the arrow keys or compass buttons.\n\n" +
-            "Enemies block movement. Attack, defend, or flee to camp.\n" +
+            "Explore with WASD or the map-rail keys (arrows also work).\n\n" +
+            "In combat, use 1–7 for attack, class defense, spells, potion, and flee.\n" +
+            "Enemies block movement. Attack, defend, or flee to safety.\n" +
             "Potions restore 20 health. Shops sell them for 10 gold.\n" +
             "Equip weapons and armour from the inventory.\n" +
-            "Mage spells consume mana. Resting restores health and mana.\n" +
+            "Mage spells are direct actions and consume mana. Resting restores health and mana.\n" +
             "Defeating enemies earns experience and levels.\n\n" +
             "Defeat the dragon in the southeast corner to win.",
             "How to play", JOptionPane.INFORMATION_MESSAGE);
@@ -902,6 +975,7 @@ final class MainWindow {
             return;
         }
         final GameEngine.Relic discoveredRelic = engine.consumeRelicDiscovery();
+        final GameEngine.ProgressionNotice progression = engine.consumeProgressionNotice();
         GameEngine.State state = engine.getState();
         GameEngine.Enemy foe = engine.currentEnemy();
         if (gameVisible && frame.isShowing()) {
@@ -916,12 +990,18 @@ final class MainWindow {
                 return;
             }
             if (foe != null && previousFoe == null) {
+                final GameEngine.Enemy arrivingFoe = foe;
                 final String label = foe.tier == 2 ? "BOSS ENCOUNTER" :
                     (foe.tier == 1 ? "ELITE ENCOUNTER" : "COMBAT");
                 final Color tint = foe.tier == 2 ? new Color(78, 8, 18) :
                     (foe.tier == 1 ? new Color(72, 42, 8) : new Color(58, 12, 12));
-                transition(label, tint, foe.tier == 2 ? 780 : 420,
-                    new Runnable() { public void run() { refreshNow(); } });
+                final int duration = foe.tier == 2 ? 780 : 420;
+                transition(label, tint, duration, new Runnable() {
+                    public void run() {
+                        refreshNow();
+                        scheduleEnemyThreat(arrivingFoe, duration / 2 + 90);
+                    }
+                });
                 return;
             }
             if (foe == null && previousFoe != null) {
@@ -929,10 +1009,14 @@ final class MainWindow {
                     new Runnable() {
                         public void run() {
                             refreshNow();
-                            if (discoveredRelic != null) {
+                            if (progression != null || discoveredRelic != null) {
                                 Timer reveal = new Timer(220, new ActionListener() {
                                     public void actionPerformed(ActionEvent ignored) {
-                                        showRelicDiscovery(discoveredRelic);
+                                        if (progression != null) {
+                                            showProgression(progression, discoveredRelic);
+                                        } else {
+                                            showRelicDiscovery(discoveredRelic);
+                                        }
                                     }
                                 });
                                 reveal.setRepeats(false);
@@ -953,6 +1037,56 @@ final class MainWindow {
         }, new Runnable() {
             public void run() { refresh(); }
         });
+    }
+
+    private void showProgression(GameEngine.ProgressionNotice notice,
+                                 final GameEngine.Relic chainedRelic) {
+        soundManager.play(SoundManager.Cue.ADVENTURE_BEGIN);
+        Runnable next = new Runnable() {
+            public void run() {
+                if (chainedRelic != null) showRelicDiscovery(chainedRelic);
+                else refresh();
+            }
+        };
+        settingsOverlay.showProgression(notice, new Runnable() {
+            public void run() {
+                showInventory();
+                if (chainedRelic != null) {
+                    Timer reveal = new Timer(260, new ActionListener() {
+                        public void actionPerformed(ActionEvent ignored) {
+                            showRelicDiscovery(chainedRelic);
+                        }
+                    });
+                    reveal.setRepeats(false);
+                    reveal.start();
+                }
+            }
+        }, next);
+    }
+
+    private void scheduleEnemyThreat(final GameEngine.Enemy foe, int delay) {
+        Timer threat = new Timer(delay, new ActionListener() {
+            public void actionPerformed(ActionEvent ignored) {
+                if (!gameVisible || engine.currentEnemy() != foe || engine.getState().health <= 0) {
+                    return;
+                }
+                if (foe.tier == 2) soundManager.play(SoundManager.Cue.DRAGON_ROAR);
+                EncounterCatalog.Profile profile = EncounterCatalog.forEnemy(foe.name);
+                settingsOverlay.showDialogue(EncounterPanel.assetFor(foe.name),
+                    profile.displayName,
+                    foe.tier == 2 ? "BOSS THREAT" :
+                        (foe.tier == 1 ? "ELITE CHALLENGE" : "BATTLE CRY"),
+                    GameEngine.enemyBattleCry(foe.name), profile.accent,
+                    new Runnable() { public void run() { refresh(); } });
+            }
+        });
+        threat.setRepeats(false);
+        threat.start();
+    }
+
+    private static String dialogueCopy(String historyFragment) {
+        if (historyFragment == null) return "";
+        return historyFragment.replace("• ", "").replace('\n', ' ').trim();
     }
 
     private GameEngine.Item inventoryItem(String name) {
@@ -1185,6 +1319,9 @@ final class MainWindow {
                 ambience = SoundManager.Ambience.LAKESHORE;
                 break;
             case CRYPT:
+                ambience = SoundManager.Ambience.CRYPT;
+                break;
+            case SPIDER_NEST:
                 ambience = SoundManager.Ambience.CRYPT;
                 break;
             case TAVERN:

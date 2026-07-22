@@ -37,8 +37,7 @@ final class EncounterPanel extends JPanel {
     interface Listener {
         void onAttack();
         void onDefend();
-        void onSpell();
-        void onQuickSpell();
+        void onAbility(int slot);
         void onPotion();
         void onFlee();
     }
@@ -83,6 +82,7 @@ final class EncounterPanel extends JPanel {
     private final JLabel tactic = new JLabel();
     private final JLabel timeline = new JLabel();
     private final JLabel speedComparison = new JLabel();
+    private final JLabel statusFeedback = new JLabel();
     private final JLabel enemyIntent = new JLabel();
     private final JLabel turnBeat = new JLabel();
     private final JProgressBar health = new JProgressBar();
@@ -91,10 +91,12 @@ final class EncounterPanel extends JPanel {
     private final JPanel commandConsole;
     private final JButton attack;
     private final JButton defend;
-    private final JButton spell;
+    private final JButton spellOne;
+    private final JButton spellTwo;
+    private final JButton spellThree;
     private final JButton potion;
-    private final JButton quickSpells;
     private final JButton flee;
+    private final JPanel actionGrid = new JPanel(new GridLayout(0, 2, 10, 8));
     private final javax.swing.border.Border normalBorder =
         BorderFactory.createEmptyBorder(0, 0, 0, 0);
     private boolean reducedMotion;
@@ -117,8 +119,7 @@ final class EncounterPanel extends JPanel {
         this(new Listener() {
             public void onAttack() { }
             public void onDefend() { }
-            public void onSpell() { }
-            public void onQuickSpell() { }
+            public void onAbility(int slot) { }
             public void onPotion() { }
             public void onFlee() { }
         });
@@ -130,22 +131,25 @@ final class EncounterPanel extends JPanel {
         setBorder(normalBorder);
         setPreferredSize(new Dimension(UiTheme.CENTER_WIDTH, UiTheme.BODY_HEIGHT));
 
-        attack = actionButton("A", "Attack", new ActionListener() {
+        attack = actionButton("1", "Attack", new ActionListener() {
             public void actionPerformed(ActionEvent event) { listener.onAttack(); }
         });
-        defend = actionButton("D", "Defend", new ActionListener() {
+        defend = actionButton("2", "Defend", new ActionListener() {
             public void actionPerformed(ActionEvent event) { listener.onDefend(); }
         });
-        spell = actionButton("S", "Select Spell", new ActionListener() {
-            public void actionPerformed(ActionEvent event) { listener.onSpell(); }
+        spellOne = actionButton("3", "Magic Missile", new ActionListener() {
+            public void actionPerformed(ActionEvent event) { listener.onAbility(1); }
         });
-        potion = actionButton("P", "Use Potion", new ActionListener() {
+        spellTwo = actionButton("4", "Fireball", new ActionListener() {
+            public void actionPerformed(ActionEvent event) { listener.onAbility(2); }
+        });
+        spellThree = actionButton("5", "Ice Spike", new ActionListener() {
+            public void actionPerformed(ActionEvent event) { listener.onAbility(3); }
+        });
+        potion = actionButton("6", "Use Potion", new ActionListener() {
             public void actionPerformed(ActionEvent event) { listener.onPotion(); }
         });
-        quickSpells = actionButton("Q", "Quick Cast", new ActionListener() {
-            public void actionPerformed(ActionEvent event) { listener.onQuickSpell(); }
-        });
-        flee = actionButton("F", "Flee Battle", new ActionListener() {
+        flee = actionButton("7", "Flee Battle", new ActionListener() {
             public void actionPerformed(ActionEvent event) { listener.onFlee(); }
         });
         UiTheme.applyButtonStyle(flee, UiTheme.ButtonStyle.DANGER, 7, 10);
@@ -229,9 +233,16 @@ final class EncounterPanel extends JPanel {
         speedComparison.setForeground(UiTheme.MUTED);
         speedComparison.setFont(UiTheme.body(Font.BOLD, 8));
         speedComparison.setHorizontalAlignment(SwingConstants.RIGHT);
+        statusFeedback.setForeground(new Color(105, 190, 119));
+        statusFeedback.setFont(UiTheme.body(Font.BOLD, 8));
+        statusFeedback.setHorizontalAlignment(SwingConstants.RIGHT);
         initiative.add(turnLabel, BorderLayout.WEST);
         initiative.add(timeline, BorderLayout.CENTER);
-        initiative.add(speedComparison, BorderLayout.EAST);
+        JPanel heroReadiness = new JPanel(new GridLayout(2, 1, 0, 0));
+        heroReadiness.setOpaque(false);
+        heroReadiness.add(speedComparison);
+        heroReadiness.add(statusFeedback);
+        initiative.add(heroReadiness, BorderLayout.EAST);
         panel.add(initiative);
         panel.add(Box.createVerticalStrut(6));
 
@@ -276,18 +287,11 @@ final class EncounterPanel extends JPanel {
         actionHeading.setAlignmentX(LEFT_ALIGNMENT);
         actions.add(actionHeading);
         actions.add(Box.createVerticalStrut(10));
-        JPanel grid = new JPanel(new GridLayout(3, 2, 10, 10));
-        grid.setOpaque(false);
-        grid.setAlignmentX(LEFT_ALIGNMENT);
-        grid.setPreferredSize(new Dimension(260, 126));
-        grid.setMaximumSize(new Dimension(260, 126));
-        grid.add(attack);
-        grid.add(defend);
-        grid.add(spell);
-        grid.add(potion);
-        grid.add(quickSpells);
-        grid.add(flee);
-        actions.add(grid);
+        actionGrid.setOpaque(false);
+        actionGrid.setAlignmentX(LEFT_ALIGNMENT);
+        actionGrid.setPreferredSize(new Dimension(260, 174));
+        actionGrid.setMaximumSize(new Dimension(260, 174));
+        actions.add(actionGrid);
         actions.add(Box.createVerticalGlue());
         console.add(actions, BorderLayout.WEST);
 
@@ -379,9 +383,10 @@ final class EncounterPanel extends JPanel {
         commandConsole.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, profile.accent));
         attack.setBorder(BorderFactory.createLineBorder(profile.accent));
         defend.setBorder(BorderFactory.createLineBorder(profile.accent));
-        spell.setBorder(BorderFactory.createLineBorder(profile.accent));
+        spellOne.setBorder(BorderFactory.createLineBorder(profile.accent));
+        spellTwo.setBorder(BorderFactory.createLineBorder(profile.accent));
+        spellThree.setBorder(BorderFactory.createLineBorder(profile.accent));
         potion.setBorder(BorderFactory.createLineBorder(profile.accent));
-        quickSpells.setBorder(BorderFactory.createLineBorder(profile.accent));
 
         if (state != null) {
             String defenseLabel = "Defend";
@@ -410,18 +415,12 @@ final class EncounterPanel extends JPanel {
             ((CombatActionButton) potion).setActionLabel("Use Potion ×" + state.potions);
             ((CombatActionButton) potion).setSpeedLabel("NORMAL");
             potion.setEnabled(state.potions > 0 && state.health < state.maxHealth);
-            boolean canCast = !state.spells.isEmpty() && state.mana >= 7;
-            spell.setEnabled(canCast);
-            String selected = state.selectedSpell == null ? "Magic Missile" : state.selectedSpell;
-            String shortName = "Magic Missile".equals(selected) ? "Missile" : selected;
-            ((CombatActionButton) quickSpells).setActionLabel("Quick: " + shortName);
+            configureAbilityButton(spellOne, state, 1);
+            configureAbilityButton(spellTwo, state, 2);
+            configureAbilityButton(spellThree, state, 3);
+            rebuildActionGrid(state);
             ((CombatActionButton) attack).setSpeedLabel(GameEngine.attackTempoLabel(state));
-            ((CombatActionButton) spell).setSpeedLabel(GameEngine.spellTempoLabel(selected));
-            ((CombatActionButton) quickSpells).setSpeedLabel(GameEngine.spellTempoLabel(selected));
             ((CombatActionButton) flee).setSpeedLabel("NORMAL");
-            quickSpells.setToolTipText("Quick cast " + selected);
-            quickSpells.setEnabled(!state.spells.isEmpty() &&
-                state.mana >= GameEngine.spellCost(selected));
             timeline.setText(state.combatTimeline == null
                 ? "YOU · READY  →  " + enemy.name.toUpperCase() + "  →  YOU"
                 : state.combatTimeline);
@@ -429,9 +428,59 @@ final class EncounterPanel extends JPanel {
                 "  vs  " + (state.enemySpeed > 0 ? state.enemySpeed : enemy.speed));
             enemyIntent.setText("NEXT  " + (state.enemyIntent == null
                 ? "Attack · NORMAL" : state.enemyIntent));
+            statusFeedback.setText(state.combatStatus == null
+                ? equippedTraitStatus(state) : state.combatStatus);
         }
         setBattleLog(history);
         battleLog.setCaretPosition(battleLog.getDocument().getLength());
+    }
+
+    private void configureAbilityButton(JButton button, GameEngine.State state, int slot) {
+        String name = GameEngine.abilityName(state, slot);
+        boolean unlocked = GameEngine.abilityUnlocked(state, slot);
+        if ("Mage".equals(state.heroClass)) {
+            int cost = GameEngine.spellCost(name);
+            String compactName = "Magic Missile".equals(name) ? "Missile" : name;
+            ((CombatActionButton) button).setActionLabel(compactName + " · " + cost + " MP");
+            button.setToolTipText(unlocked ? "Cast " + name + " immediately (" + cost + " mana)" :
+                GameEngine.abilityRequirement(state, slot));
+            button.setEnabled(unlocked && state.mana >= cost);
+        } else {
+            ((CombatActionButton) button).setActionLabel(name);
+            button.setToolTipText(unlocked ? name + " class ability" :
+                GameEngine.abilityRequirement(state, slot));
+            button.setEnabled(unlocked);
+        }
+        ((CombatActionButton) button).setSpeedLabel(GameEngine.abilityTempoLabel(state, slot));
+        button.setVisible(unlocked);
+    }
+
+    private void rebuildActionGrid(GameEngine.State state) {
+        actionGrid.removeAll();
+        actionGrid.add(attack);
+        actionGrid.add(defend);
+        if (GameEngine.abilityUnlocked(state, 1)) actionGrid.add(spellOne);
+        if (GameEngine.abilityUnlocked(state, 2)) actionGrid.add(spellTwo);
+        if (GameEngine.abilityUnlocked(state, 3)) actionGrid.add(spellThree);
+        actionGrid.add(potion);
+        actionGrid.add(flee);
+        int rows = Math.max(2, (actionGrid.getComponentCount() + 1) / 2);
+        Dimension size = new Dimension(260, Math.min(174, rows * 40 + (rows - 1) * 8));
+        actionGrid.setPreferredSize(size);
+        actionGrid.setMaximumSize(size);
+        actionGrid.revalidate();
+        actionGrid.repaint();
+    }
+
+    private String equippedTraitStatus(GameEngine.State state) {
+        if (state == null || state.inventory == null) return "READY";
+        for (GameEngine.Item item : state.inventory) {
+            if (item.name.equals(state.equippedWeapon)) {
+                return GameEngine.weaponTraitName(item) + " · " +
+                    GameEngine.proficiencyLabel(GameEngine.equippedWeaponProficiency(state));
+            }
+        }
+        return "UNARMED · READY";
     }
 
     private void setBattleLog(String history) {
@@ -454,6 +503,18 @@ final class EncounterPanel extends JPanel {
         boolean emphasized = false;
         if (text.contains("critical strike")) {
             color = UiTheme.GOLD_LIGHT;
+            emphasized = true;
+        } else if (text.contains("stun") || text.contains("concussive")) {
+            color = new Color(255, 205, 92);
+            emphasized = true;
+        } else if (text.contains("bleeding edge") || text.contains("wound")) {
+            color = new Color(225, 82, 82);
+            emphasized = true;
+        } else if (text.contains("armor piercing") || text.contains("sundering")) {
+            color = new Color(239, 154, 79);
+            emphasized = true;
+        } else if (text.contains("balanced guard") || text.contains("arcane focus")) {
+            color = new Color(120, 193, 231);
             emphasized = true;
         } else if (text.contains("precision shot")) {
             color = new Color(238, 205, 105);
@@ -569,7 +630,17 @@ final class EncounterPanel extends JPanel {
     }
 
     String spellSpeedLabelForTest() {
-        return ((CombatActionButton) spell).speedLabel;
+        return ((CombatActionButton) spellOne).speedLabel;
+    }
+
+    String statusFeedbackForTest() { return statusFeedback.getText(); }
+
+    int visibleAbilityCountForTest() {
+        int count = 0;
+        if (spellOne.isVisible()) count++;
+        if (spellTwo.isVisible()) count++;
+        if (spellThree.isVisible()) count++;
+        return count;
     }
 
     String timelineForTest() {
@@ -731,9 +802,10 @@ final class EncounterPanel extends JPanel {
         defend.setEnabled(enabled);
         flee.setEnabled(enabled);
         if (!enabled) {
-            spell.setEnabled(false);
+            spellOne.setEnabled(false);
+            spellTwo.setEnabled(false);
+            spellThree.setEnabled(false);
             potion.setEnabled(false);
-            quickSpells.setEnabled(false);
         }
     }
 
@@ -752,13 +824,14 @@ final class EncounterPanel extends JPanel {
 
     boolean triggerShortcut(char key) {
         JButton target = null;
-        switch (Character.toUpperCase(key)) {
-            case 'A': target = attack; break;
-            case 'D': target = defend; break;
-            case 'S': target = spell; break;
-            case 'P': target = potion; break;
-            case 'Q': target = quickSpells; break;
-            case 'F': target = flee; break;
+        switch (key) {
+            case '1': target = attack; break;
+            case '2': target = defend; break;
+            case '3': target = spellOne; break;
+            case '4': target = spellTwo; break;
+            case '5': target = spellThree; break;
+            case '6': target = potion; break;
+            case '7': target = flee; break;
             default: return false;
         }
         if (!target.isEnabled()) return false;
@@ -776,6 +849,9 @@ final class EncounterPanel extends JPanel {
         }
         if (tile == GameEngine.TileType.CRYPT) {
             return "/assets/scenes/forgotten-crypt.png";
+        }
+        if (tile == GameEngine.TileType.SPIDER_NEST) {
+            return "/assets/scenes/ashweb-nest.png";
         }
         return "/assets/scenes/alshira-ruins.png";
     }

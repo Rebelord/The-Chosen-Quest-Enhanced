@@ -40,7 +40,7 @@ final class IconAssets {
         register("/assets/icons/items/weapon-arming-sword.png",
             "Short Sword", "Long Sword", "Steel Long Sword");
         register("/assets/icons/items/weapon-greatsword.png",
-            "Greatsword", "Moonsteel Blade", "Warlord Blade");
+            "Greatsword", "Tempered Greatsword", "Moonsteel Blade", "Warlord Blade");
         register("/assets/icons/items/weapon-battle-axe.png", "Axe");
         register("/assets/icons/items/weapon-longbow.png",
             "Long Bow", "Ranger Bow", "Moonbow", "Warlord Recurve");

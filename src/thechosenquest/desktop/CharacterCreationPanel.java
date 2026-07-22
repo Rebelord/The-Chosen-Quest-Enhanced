@@ -53,6 +53,7 @@ final class CharacterCreationPanel extends JPanel {
     private final JLabel buildSummary = new JLabel();
     private final JLabel combatStyle = new JLabel();
     private final JLabel buildTraits = new JLabel();
+    private final JLabel abilityPath = new JLabel();
     private JPanel buildGuidePanel;
     private JPanel previewPanel;
     private final JProgressBar health = meter(UiTheme.HEALTH);
@@ -257,12 +258,13 @@ final class CharacterCreationPanel extends JPanel {
         guide.add(buildSummary);
         guide.add(Box.createVerticalStrut(14));
 
-        JPanel details = new JPanel(new GridLayout(1, 2, 18, 0));
+        JPanel details = new JPanel(new GridLayout(1, 3, 18, 0));
         details.setOpaque(false);
         details.setAlignmentX(LEFT_ALIGNMENT);
-        details.setMaximumSize(new Dimension(Integer.MAX_VALUE, 76));
+        details.setMaximumSize(new Dimension(Integer.MAX_VALUE, 92));
         details.add(buildGuideColumn("COMBAT STYLE", combatStyle));
         details.add(buildGuideColumn("BUILD TRAITS", buildTraits));
+        details.add(buildGuideColumn("ABILITY PATH", abilityPath));
         guide.add(details);
         return guide;
     }
@@ -458,6 +460,8 @@ final class CharacterCreationPanel extends JPanel {
         combatStyle.setText("<html>" + combatStyleFor(selectedClass) + "</html>");
         buildTraits.setText("<html>" + raceTraitFor(selectedRace) + "<br>" +
             classTraitFor(selectedClass) + "</html>");
+        GameEngine.State preview = previewEngine.getState();
+        abilityPath.setText("<html>" + GameEngine.abilityProgressionSummary(preview) + "</html>");
     }
 
     private String buildSummaryFor(String race, String heroClass) {

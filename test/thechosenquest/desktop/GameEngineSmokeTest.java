@@ -82,7 +82,9 @@ public final class GameEngineSmokeTest {
 
         engine.newGame("Merlin", "Elf", "Mage");
         require(engine.getState().maxMana > 0, "mage mana");
-        require(engine.getState().spells.contains("Fireball"), "mage spellbook");
+        require(engine.getState().spells.size() == 1 &&
+            engine.getState().spells.contains("Magic Missile"),
+            "level one mage starts with a simple spellbook");
         moveToShop(engine, false);
         engine.getState().gold = 100;
         GameEngine.Item dagger = engine.shopItems().get(0);

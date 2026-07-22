@@ -28,10 +28,13 @@ public final class GameEngineRegressionTest {
         testFantasyNameGenerator();
         testEveryHeroCombination();
         testStarterLoadoutsAndSelling();
+        testWeaponTraits();
         testProceduralWorldGeneration();
+        testFiniteSpiderNest();
         testMapDiscoveryAndRumors();
         testDeterministicCombat();
         testClassCombatActions();
+        testProgressiveAbilities();
         testSpeedInitiativeAndActionTempo();
         testLeveling();
         testFleeingAndDefeat();
@@ -97,6 +100,26 @@ public final class GameEngineRegressionTest {
         }
     }
 
+    private static void testWeaponTraits() {
+        require("CONCUSSIVE".equals(GameEngine.weaponTraitName(
+            new GameEngine.Item("Warhammer", "Weapon", 9, 0, 24))),
+            "hammers expose their stun trait");
+        require("ARMOR PIERCING".equals(GameEngine.weaponTraitName(
+            new GameEngine.Item("Crossbow", "Weapon", 9, 0, 35))),
+            "crossbows expose armor penetration");
+        require("BLEEDING EDGE".equals(GameEngine.weaponTraitName(
+            new GameEngine.Item("Shadowsteel Dirk", "Weapon", 8, 0, 28))),
+            "daggers expose wound damage");
+        require("ARCANE FOCUS".equals(GameEngine.weaponTraitName(
+            new GameEngine.Item("Runed Wand", "Weapon", 6, 0, 22))),
+            "mage weapons expose spell amplification");
+        require(GameEngine.weaponTraitDescription(
+            new GameEngine.Item("Long Sword", "Weapon", 7, 0, 15)).contains("defensive"),
+            "inventory explains sword guard behavior");
+        require(GameEngine.enemyBattleCry("Orc Warlord").contains("crows"),
+            "elite enemies have authored battle cries");
+    }
+
     private static void testStarterLoadoutsAndSelling() {
         GameEngine engine = new GameEngine();
         engine.newGame("Breaker", "Human", "Fighter", "BREAKER");
@@ -109,6 +132,11 @@ public final class GameEngineRegressionTest {
         require(state.inventory.get(0).starterItem &&
             "COMMON".equals(GameEngine.itemQuality(state.inventory.get(0))),
             "starter equipment is protected common gear");
+        String breakerPath = GameEngine.abilityProgressionSummary(state);
+        require(breakerPath.contains("L2 Cleave") &&
+                breakerPath.contains("L3 Armor Breaker") &&
+                breakerPath.contains("Second Wind"),
+            "starter loadout previews its loadout-aware ability path");
 
         moveToShop(engine, true);
         int startingGold = state.gold;
@@ -186,7 +214,8 @@ public final class GameEngineRegressionTest {
             "starting tile is visited");
         require(explorer.discoveryAt(0, 1) == GameEngine.DiscoveryState.SCOUTED,
             "travel scouts an adjacent tile");
-        require(explorer.discoveryAt(4, 4) == GameEngine.DiscoveryState.UNKNOWN,
+        require(explorer.discoveryAt(GameEngine.SIZE - 1, GameEngine.SIZE - 1) ==
+                GameEngine.DiscoveryState.UNKNOWN,
             "distant terrain begins under fog");
 
         moveToVendor(explorer, "General Merchant");
@@ -194,8 +223,8 @@ public final class GameEngineRegressionTest {
         explorer.useMapService(GameEngine.MapService.REGIONAL_MAP);
         require(explorer.getState().regionalMapOwned && explorer.getState().gold == 8,
             "regional map is purchased once at the merchant");
-        for (int row = 0; row < 5; row++) {
-            for (int col = 0; col < 5; col++) {
+        for (int row = 0; row < GameEngine.SIZE; row++) {
+            for (int col = 0; col < GameEngine.SIZE; col++) {
                 require(explorer.discoveryAt(row, col) != GameEngine.DiscoveryState.UNKNOWN,
                     "regional map scouts the full board");
             }
@@ -210,8 +239,8 @@ public final class GameEngineRegressionTest {
             "a tavern rumor can only be requested once per game");
         boolean markedThreat = false;
         boolean markedRelicRegion = false;
-        for (int row = 0; row < 5; row++) {
-            for (int col = 0; col < 5; col++) {
+        for (int row = 0; row < GameEngine.SIZE; row++) {
+            for (int col = 0; col < GameEngine.SIZE; col++) {
                 markedThreat |= rumor.threatKnowledgeAt(row, col) == 1;
                 markedRelicRegion |= rumor.hasRelicClueAt(row, col);
             }
@@ -233,10 +262,64 @@ public final class GameEngineRegressionTest {
             "arcane advice can only be requested once per game");
     }
 
+    private static void testFiniteSpiderNest() throws Exception {
+        GameEngine engine = new GameEngine();
+        engine.setRandomSeed(515L);
+        engine.newGame("Nest Warden", "Human", "Fighter");
+        GameEngine.State state = engine.getState();
+        require(state.spiderNestRow >= 0 && state.spiderNestCol >= 0 &&
+                state.tiles[state.spiderNestRow][state.spiderNestCol] ==
+                    GameEngine.TileType.SPIDER_NEST,
+            "generated world contains one authored spider source");
+        state.row = state.spiderNestRow;
+        state.col = state.spiderNestCol;
+        int inventoryBefore = state.inventory.size();
+        int goldBefore = state.gold;
+        for (int remaining = 3; remaining > 0; remaining--) {
+            GameEngine.Enemy brood = engine.currentEnemy();
+            require(brood != null && "SPIDER_NEST".equals(brood.sourceId) &&
+                    brood.reducedRewards && brood.reward == 3,
+                "nest brood is tagged for reduced source rewards");
+            brood.health = 1;
+            engine.setRandomSeed(remaining);
+            engine.attack();
+            require(engine.spiderNestRemaining() == remaining - 1,
+                "each defeated brood consumes exactly one finite source charge");
+            if (remaining == 3) {
+                File save = File.createTempFile("chosen-quest-nest-", ".save");
+                try {
+                    engine.save(save);
+                    engine.load(save);
+                    state = engine.getState();
+                    require(engine.spiderNestRemaining() == 2 &&
+                            state.row == state.spiderNestRow && state.col == state.spiderNestCol,
+                        "partially cleared source state survives save and load");
+                } finally {
+                    save.delete();
+                }
+            }
+            if (remaining > 1) {
+                require(engine.currentEnemy() == null,
+                    "nest waits for an explicit search before the next brood");
+                engine.locationAction();
+            }
+        }
+        require(engine.spiderNestCleared() && engine.currentEnemy() == null,
+            "third brood permanently clears the spider nest");
+        require(state.inventory.size() == inventoryBefore,
+            "source enemies cannot farm standard equipment drops");
+        require(state.gold == goldBefore + 27,
+            "three small brood rewards plus one clearing reward are bounded");
+        int clearedGold = state.gold;
+        engine.locationAction();
+        require(engine.currentEnemy() == null && state.gold == clearedGold,
+            "cleared source cannot respawn enemies or repeat its reward");
+    }
+
     private static int knownThreatCount(GameEngine engine) {
         int count = 0;
-        for (int row = 0; row < 5; row++) {
-            for (int col = 0; col < 5; col++) {
+        for (int row = 0; row < GameEngine.SIZE; row++) {
+            for (int col = 0; col < GameEngine.SIZE; col++) {
                 if (engine.threatKnowledgeAt(row, col) > 0) count++;
             }
         }
@@ -251,11 +334,14 @@ public final class GameEngineRegressionTest {
         int standards = 0;
         int elites = 0;
         int bosses = 0;
+        int nests = 0;
+        int sourceSpiders = 0;
         for (int row = 0; row < state.tiles.length; row++) {
             for (int col = 0; col < state.tiles[row].length; col++) {
                 if (state.tiles[row][col] == GameEngine.TileType.SHOP) shops++;
                 if (state.tiles[row][col] == GameEngine.TileType.TAVERN) taverns++;
                 if (state.tiles[row][col] == GameEngine.TileType.ENCAMPMENT) camps++;
+                if (state.tiles[row][col] == GameEngine.TileType.SPIDER_NEST) nests++;
                 if (state.blacksmithShops[row][col]) blacksmiths++;
                 GameEngine.Enemy enemy = state.enemies[row][col];
                 if (enemy != null) {
@@ -263,7 +349,10 @@ public final class GameEngineRegressionTest {
                         state.tiles[row][col] != GameEngine.TileType.TAVERN &&
                         state.tiles[row][col] != GameEngine.TileType.ENCAMPMENT,
                         "enemies never occupy generated safe landmarks");
-                    if (enemy.tier == 0) standards++;
+                    require(GameEngine.terrainSupports(enemy.name, state.tiles[row][col]),
+                        "generated enemies occupy a compatible terrain biome");
+                    if (enemy.sourceId != null) sourceSpiders++;
+                    else if (enemy.tier == 0) standards++;
                     else if (enemy.tier == 1) elites++;
                     else if (enemy.tier == 2) bosses++;
                 }
@@ -271,10 +360,17 @@ public final class GameEngineRegressionTest {
         }
         require(state.tiles[0][0] == GameEngine.TileType.ENCAMPMENT,
             "starting tile remains a guaranteed safe camp");
+        require(state.tiles.length == 13 && state.tiles[0].length == 13,
+            "generated world uses the expanded 13x13 logical grid");
+        require(state.dragonLairRow + state.dragonLairCol >= 18,
+            "dragon lair remains a distant objective in the larger world");
         require(shops == 2 && taverns == 1 && camps == 2 && blacksmiths == 1,
             "generated world contains the complete landmark set");
         require(standards == 5 && elites == 3 && bosses == 1,
             "generated world contains tiered encounters");
+        require(nests == 1 && sourceSpiders == 1 &&
+                state.spiderNestRemaining == 3 && !state.spiderNestCleared,
+            "generated world contains one finite three-brood spider source");
     }
 
     private static String worldSignature(GameEngine.State state) {
@@ -358,6 +454,54 @@ public final class GameEngineRegressionTest {
             "fighter retains the reliable defend action");
     }
 
+    private static void testProgressiveAbilities() {
+        GameEngine fighter = new GameEngine();
+        fighter.newGame("Learner", "Human", "Fighter", "BREAKER");
+        GameEngine.State fighterState = fighter.getState();
+        require(!GameEngine.abilityUnlocked(fighterState, 1) &&
+                "UNLOCKS LEVEL 2".equals(GameEngine.abilityRequirement(fighterState, 1)),
+            "fighter combat begins with only core actions");
+        fighterState.level = 2;
+        require(GameEngine.abilityUnlocked(fighterState, 1) &&
+                "Cleave".equals(GameEngine.abilityName(fighterState, 1)),
+            "level two fighter unlock follows the equipped two-handed style");
+        moveToEnemy(fighter, 0);
+        fighter.currentEnemy().health = 100;
+        int beforeCleave = fighter.currentEnemy().health;
+        fighter.useAbility(1);
+        require(fighter.currentEnemy().health < beforeCleave &&
+                fighter.getHistory().contains("You use Cleave"),
+            "unlocked fighter tactical ability resolves through combat rules");
+        fighterState.level = 3;
+        fighterState.weaponProficiency.put("HEAVY BLADE", Integer.valueOf(3));
+        require(GameEngine.abilityUnlocked(fighterState, 2) &&
+                "Armor Breaker".equals(GameEngine.abilityName(fighterState, 2)) &&
+                "Second Wind".equals(GameEngine.abilityName(fighterState, 3)),
+            "level three fighter exposes mastery and signature abilities");
+
+        GameEngine rogue = new GameEngine();
+        rogue.newGame("Learner", "Halfling", "Rogue", "QUICK KNIVES");
+        rogue.getState().level = 2;
+        require("Offhand Strike".equals(GameEngine.abilityName(rogue.getState(), 1)),
+            "rogue level two unlock uses the dual-wield identity");
+
+        GameEngine hunter = new GameEngine();
+        hunter.newGame("Learner", "Elf", "Hunter");
+        hunter.getState().level = 3;
+        require("Pinning Shot".equals(GameEngine.abilityName(hunter.getState(), 1)) &&
+                "Hunter's Mark".equals(GameEngine.abilityName(hunter.getState(), 3)),
+            "hunter progression adds control and setup actions");
+        moveToEnemy(hunter, 0);
+        hunter.currentEnemy().health = 100;
+        hunter.useAbility(3);
+        require("MARK".equals(hunter.getState().combatPreparation),
+            "Hunter's Mark prepares the next shot rather than dealing hidden damage");
+        hunter.attack();
+        require(hunter.getState().combatPreparation == null &&
+                hunter.getHistory().contains("Hunter's Mark empowers the shot"),
+            "marked shot visibly consumes its preparation");
+    }
+
     private static void testSpeedInitiativeAndActionTempo() {
         GameEngine rogue = new GameEngine();
         rogue.newGame("Swift", "Halfling", "Rogue");
@@ -377,6 +521,8 @@ public final class GameEngineRegressionTest {
 
         GameEngine mage = new GameEngine();
         mage.newGame("Committed", "Elf", "Mage");
+        mage.getState().level = 2;
+        mage.getState().spells.add("Fireball");
         moveToEnemy(mage, 0);
         GameEngine.State mageState = mage.getState();
         mageState.enemies[mageState.row][mageState.col] =
@@ -430,6 +576,39 @@ public final class GameEngineRegressionTest {
         require(state.experience == expectedOverflow, "overflow experience retained");
         require(state.maxHealth == oldMaxHealth + 8, "level health increase");
         require(state.health == state.maxHealth, "level restores health");
+        require(GameEngine.abilityUnlocked(state, 1),
+            "level two reveals the first tactical class ability");
+        require(GameEngine.equippedWeaponProficiency(state) == 2,
+            "meaningful level-up advances the equipped weapon proficiency");
+        GameEngine.ProgressionNotice fighterNotice = engine.consumeProgressionNotice();
+        require(fighterNotice != null && fighterNotice.level == 2 &&
+                fighterNotice.abilitySummary.length() > 0,
+            "level-up creates a dedicated progression presentation event");
+
+        GameEngine mage = new GameEngine();
+        mage.newGame("Scholar", "Elf", "Mage");
+        GameEngine.State mageState = mage.getState();
+        require("UNLOCKS LEVEL 2".equals(GameEngine.abilityRequirement(mageState, 2)) &&
+                "UNLOCKS LEVEL 3".equals(GameEngine.abilityRequirement(mageState, 3)),
+            "mage spell lock labels match their actual unlock levels");
+        require(mageState.spells.size() == 1 && mageState.spells.contains("Magic Missile"),
+            "mage starts with only Magic Missile");
+        mageState.experience = 29;
+        moveToEnemy(mage, 0);
+        mage.currentEnemy().health = 1;
+        mage.castSpell("Magic Missile");
+        require(mageState.level == 2 && mageState.spells.contains("Fireball") &&
+                !mageState.spells.contains("Ice Spike"),
+            "level two unlocks Fireball without revealing the final spell");
+        require(mage.consumeProgressionNotice() != null,
+            "mage level two unlock produces progression feedback");
+        mageState.experience = 59;
+        moveToEnemy(mage, 0);
+        mage.currentEnemy().health = 1;
+        mage.castSpell("Magic Missile");
+        require(mageState.level == 3 && mageState.spells.contains("Ice Spike") &&
+                GameEngine.equippedWeaponProficiency(mageState) == 3,
+            "level three unlocks Ice Spike and weapon mastery");
     }
 
     private static void testFleeingAndDefeat() {
@@ -566,6 +745,24 @@ public final class GameEngineRegressionTest {
         require(GameEngine.vendorOffers(true, plate) &&
                 GameEngine.vendorOffers(false, cloth),
             "vendor inventory assigns heavy and light armour correctly");
+
+        GameEngine.Item ironMace = item(engine, "Iron Mace");
+        require(GameEngine.vendorOffers(true, ironMace) &&
+                !GameEngine.vendorOffers(false, ironMace),
+            "entry concussive weapons belong only to the blacksmith");
+        require(!containsShopItem(engine, "Flanged Mace") &&
+                !containsShopItem(engine, "Warhammer"),
+            "advanced blacksmith stock is gated by hero level");
+        state.level = 2;
+        GameEngine.Item tempered = item(engine, "Tempered Greatsword");
+        require(containsShopItem(engine, "Flanged Mace") &&
+                GameEngine.isTwoHanded(tempered),
+            "level two unlocks uncommon trait-focused blacksmith weapons");
+        state.level = 3;
+        GameEngine.Item warhammer = item(engine, "Warhammer");
+        require(GameEngine.vendorOffers(true, warhammer) &&
+                "CONCUSSIVE".equals(GameEngine.weaponTraitName(warhammer)),
+            "level three unlocks the rare blacksmith warhammer");
     }
 
     private static void testRelicProgression() {
@@ -645,6 +842,9 @@ public final class GameEngineRegressionTest {
 
         GameEngine mage = new GameEngine();
         mage.newGame("Mage", "Human", "Mage");
+        mage.getState().level = 3;
+        mage.getState().spells.add("Fireball");
+        mage.getState().spells.add("Ice Spike");
         moveToEnemy(mage, 0);
         mage.setRandomSeed(17L);
         int beforeSpell = mage.currentEnemy().health;
@@ -662,13 +862,13 @@ public final class GameEngineRegressionTest {
         require(spellDamage > attackDamage,
             "mage spells are meaningfully stronger than staff attacks");
         require(mage.getState().spells.contains("Ice Spike"),
-            "mage receives the complete spell progression set");
+            "level three mage receives the complete spell progression set");
 
         mage.getState().mana = mage.getState().maxMana;
         moveToEnemy(mage, 0);
         mage.selectSpell("Ice Spike");
         require("Ice Spike".equals(mage.getState().selectedSpell),
-            "selecting a spell updates Quick Cast without spending mana");
+            "spellbook state can be updated without spending mana");
         require(mage.getState().mana == mage.getState().maxMana,
             "selecting a spell does not consume a combat turn or mana");
         mage.selectSpell("Fireball");
@@ -677,7 +877,7 @@ public final class GameEngineRegressionTest {
             "spell selection remembers the most recently cast spell");
         mage.castSelectedSpell();
         require(mage.getState().mana == quickMana - GameEngine.spellCost("Fireball"),
-            "quick cast repeats the remembered spell without a selector");
+            "legacy selected-spell saves still cast the remembered spell");
 
         GameEngine difficulty = new GameEngine();
         difficulty.newGame("Difficulty", "Human", "Fighter");
@@ -700,12 +900,19 @@ public final class GameEngineRegressionTest {
         throw new AssertionError("Missing shop item: " + name);
     }
 
+    private static boolean containsShopItem(GameEngine engine, String name) {
+        for (GameEngine.Item item : engine.shopItems()) {
+            if (name.equals(item.name)) return true;
+        }
+        return false;
+    }
+
     private static void moveToEnemy(GameEngine engine, int tier) {
         GameEngine.State state = engine.getState();
         for (int row = 0; row < state.enemies.length; row++) {
             for (int col = 0; col < state.enemies[row].length; col++) {
                 GameEngine.Enemy enemy = state.enemies[row][col];
-                if (enemy != null && enemy.tier == tier) {
+                if (enemy != null && enemy.tier == tier && enemy.sourceId == null) {
                     state.row = row;
                     state.col = col;
                     return;
@@ -765,7 +972,27 @@ public final class GameEngineRegressionTest {
         state.inventory = null;
         state.relics = null;
         state.spells = null;
+        state.weaponProficiency = null;
         state.gold = 77;
+        // Simulate a schema-8 save from the original 5x5 logical world.
+        state.tiles = new GameEngine.TileType[5][5];
+        state.enemies = new GameEngine.Enemy[5][5];
+        state.blacksmithShops = new boolean[5][5];
+        state.discovery = new GameEngine.DiscoveryState[5][5];
+        state.threatKnowledge = new byte[5][5];
+        state.relicSearch = new boolean[5][5];
+        state.rumorServicesUsed = new boolean[5][5];
+        for (int row = 0; row < 5; row++) {
+            for (int col = 0; col < 5; col++) {
+                state.tiles[row][col] = GameEngine.TileType.FIELD;
+                state.discovery[row][col] = GameEngine.DiscoveryState.SCOUTED;
+            }
+        }
+        state.tiles[0][0] = GameEngine.TileType.ENCAMPMENT;
+        state.discovery[0][0] = GameEngine.DiscoveryState.VISITED;
+        state.dragonLairRow = -1;
+        state.dragonLairCol = -1;
+        state.generationVersion = 8;
         File save = File.createTempFile("chosen-quest-regression-", ".save");
         try {
             engine.save(save);
@@ -776,8 +1003,20 @@ public final class GameEngineRegressionTest {
             require(state.level == 1 && state.baseAttack == 5, "legacy stats normalized");
             require(state.inventory != null && state.spells != null && state.relics != null,
                 "legacy collections normalized");
+            require(state.weaponProficiency != null,
+                "legacy saves receive weapon proficiency state");
             require(state.discovery != null && state.threatKnowledge != null &&
                 state.relicSearch != null, "map discovery state survives save normalization");
+            require(state.tiles.length == GameEngine.SIZE &&
+                    state.tiles[0][0] == GameEngine.TileType.ENCAMPMENT &&
+                    state.discovery[GameEngine.SIZE - 1][GameEngine.SIZE - 1] ==
+                        GameEngine.DiscoveryState.UNKNOWN,
+                "legacy 5x5 saves expand without losing known tiles");
+            require(state.generationVersion == 10, "expanded saves advance to schema 10");
+            require(state.spiderNestRow >= 0 && state.spiderNestRemaining == 3 &&
+                    state.tiles[state.spiderNestRow][state.spiderNestCol] ==
+                        GameEngine.TileType.SPIDER_NEST,
+                "schema 10 adds the optional nest only in uncharted territory");
             require(state.gold == 77, "save preserves valid state");
         } finally {
             save.delete();

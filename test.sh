@@ -15,5 +15,9 @@ java -cp "$ROOT/build/classes:$ROOT/build/test-classes" \
   thechosenquest.desktop.GameEngineSmokeTest
 java -cp "$ROOT/build/classes:$ROOT/build/test-classes" \
   thechosenquest.desktop.GameEngineRegressionTest
+java -cp "$ROOT/build/classes:$ROOT/build/test-classes" \
+  thechosenquest.desktop.BalanceSimulationTest "$ROOT/build/reports/balance-report.md"
+java -cp "$ROOT/build/classes:$ROOT/build/test-classes" \
+  thechosenquest.desktop.ExplorationSimulationTest "$ROOT/build/reports/exploration-report.md"
 java -Djava.awt.headless=true -cp "$ROOT/build/classes:$ROOT/build/test-classes" \
   thechosenquest.desktop.EnhancedUiSmokeTest "$ROOT/build/character-creation-preview.png"

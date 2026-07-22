@@ -19,6 +19,10 @@ import javax.swing.JPanel;
 public final class EnhancedUiSmokeTest {
     public static void main(String[] args) throws Exception {
         System.setProperty("java.awt.headless", "true");
+        if (!"0.5.0-beta.1".equals(AppVersion.VERSION) ||
+                !"v0.5.0-beta.1".equals(AppVersion.TAG)) {
+            throw new AssertionError("Public beta version and release tag must stay aligned");
+        }
         if (EnhancedUiSmokeTest.class.getResource("/assets/fonts/Cinzel.ttf") == null ||
                 EnhancedUiSmokeTest.class.getResource("/assets/fonts/CormorantGaramond.ttf") == null) {
             throw new AssertionError("Bundled UI fonts are missing");
@@ -112,7 +116,10 @@ public final class EnhancedUiSmokeTest {
                     "Innkeeper")) ||
                 !"/assets/scenes/alchemist-waycamp-exterior.png".equals(
                 EnhancedExplorationPanel.sceneResourceFor(GameEngine.TileType.ENCAMPMENT,
-                    "Alchemist"))) {
+                    "Alchemist")) ||
+                !"/assets/scenes/ashweb-nest.png".equals(
+                EnhancedExplorationPanel.sceneResourceFor(GameEngine.TileType.SPIDER_NEST,
+                    null))) {
             throw new AssertionError(
                 "Pre-entry safe locations must use location art rather than NPC portraits");
         }
@@ -120,13 +127,73 @@ public final class EnhancedUiSmokeTest {
             "/assets/scenes/blacksmith-forge-exterior.png",
             "/assets/scenes/frontier-market-exterior.png",
             "/assets/scenes/wanderers-rest-exterior.png",
-            "/assets/scenes/alchemist-waycamp-exterior.png"
+            "/assets/scenes/alchemist-waycamp-exterior.png",
+            "/assets/scenes/ashweb-nest.png"
         };
         for (String resource : exteriorScenes) {
             BufferedImage exterior = ImageIO.read(EnhancedUiSmokeTest.class.getResource(resource));
             if (exterior == null || exterior.getWidth() != 1536 || exterior.getHeight() != 672) {
                 throw new AssertionError("Exterior scene must match the 1536x672 layout: " + resource);
             }
+        }
+
+        GameEngine mapEngine = new GameEngine();
+        mapEngine.setRandomSeed(404L);
+        mapEngine.newGame("Map Scout", "Human", "Hunter");
+        GameEngine.State mapState = mapEngine.getState();
+        mapState.discovery[mapState.dragonLairRow][mapState.dragonLairCol] =
+            GameEngine.DiscoveryState.SCOUTED;
+        mapState.threatKnowledge[mapState.dragonLairRow][mapState.dragonLairCol] = 2;
+        GameMapPanel scrollingMap = new GameMapPanel(mapEngine);
+        if (scrollingMap.viewSizeForTest() != GameMapPanel.OVERVIEW_VIEW_SIZE) {
+            throw new AssertionError("Map must open in the 9x9 exploration view");
+        }
+        if (GameMapPanel.heroMarkerSize(25) > 15 ||
+                GameMapPanel.enemyMarkerSize(25) >= GameMapPanel.heroMarkerSize(25) ||
+                GameMapPanel.warningMarkerSize(25) >= GameMapPanel.heroMarkerSize(25) ||
+                GameMapPanel.heroMarkerSize(16) > 10) {
+            throw new AssertionError(
+                "Map markers must scale proportionally and simplify at overview density");
+        }
+        File mapViewportOutput = render(scrollingMap, 288, 280,
+            output.getParentFile(), "map-viewport-preview.png", 8000L);
+        if (!scrollingMap.offscreenHintSummaryForTest().contains("Dragon") ||
+                scrollingMap.viewRowForTest() != 0 || scrollingMap.viewColForTest() != 0) {
+            throw new AssertionError(
+                "Known off-screen boss must appear as a knowledge-aware edge hint");
+        }
+        scrollingMap.pan(2, 2);
+        if (scrollingMap.viewRowForTest() != 2 || scrollingMap.viewColForTest() != 2) {
+            throw new AssertionError("Map camera must pan independently from hero movement");
+        }
+        scrollingMap.centerOnHero();
+        if (scrollingMap.viewRowForTest() != 0 || scrollingMap.viewColForTest() != 0) {
+            throw new AssertionError("Map camera must return to the hero");
+        }
+        mapState.row = 6;
+        mapState.col = 6;
+        scrollingMap.centerOnHero();
+        scrollingMap.zoomIn();
+        if (scrollingMap.viewSizeForTest() != GameMapPanel.DETAIL_VIEW_SIZE ||
+                scrollingMap.viewRowForTest() != 3 || scrollingMap.viewColForTest() != 3) {
+            throw new AssertionError("7x7 detail zoom must remain centered on the hero");
+        }
+        File mapDetailOutput = render(scrollingMap, 288, 280,
+            output.getParentFile(), "map-detail-preview.png", 8000L);
+        scrollingMap.pan(1, 1);
+        scrollingMap.zoomOut();
+        if (scrollingMap.viewSizeForTest() != GameMapPanel.OVERVIEW_VIEW_SIZE ||
+                scrollingMap.viewRowForTest() != 3 || scrollingMap.viewColForTest() != 3) {
+            throw new AssertionError("Zooming a panned map must preserve its inspected center");
+        }
+        mapState.row = GameEngine.SIZE - 1;
+        mapState.col = GameEngine.SIZE - 1;
+        scrollingMap.centerOnHero();
+        if (scrollingMap.viewRowForTest() !=
+                GameEngine.SIZE - GameMapPanel.OVERVIEW_VIEW_SIZE ||
+                scrollingMap.viewColForTest() !=
+                    GameEngine.SIZE - GameMapPanel.OVERVIEW_VIEW_SIZE) {
+            throw new AssertionError("Map viewport must clamp cleanly at world edges");
         }
 
         JPanel titleScreen = MainWindow.buildTitleScreen(new ActionListener() {
@@ -173,7 +240,9 @@ public final class EnhancedUiSmokeTest {
                 !"/assets/scenes/moonwater-crossing.png".equals(
                 EncounterPanel.sceneFor(GameEngine.TileType.LAKE)) ||
                 !"/assets/scenes/forgotten-crypt.png".equals(
-                EncounterPanel.sceneFor(GameEngine.TileType.CRYPT))) {
+                EncounterPanel.sceneFor(GameEngine.TileType.CRYPT)) ||
+                !"/assets/scenes/ashweb-nest.png".equals(
+                EncounterPanel.sceneFor(GameEngine.TileType.SPIDER_NEST))) {
             throw new AssertionError("Combat tile scenes are not mapped correctly");
         }
         GameEngine.State previewState = new GameEngine().getState();
@@ -204,20 +273,31 @@ public final class EnhancedUiSmokeTest {
             throw new AssertionError("Encounter UI render was not produced correctly");
         }
 
-        final int[] shortcuts = new int[6];
+        final int[] shortcuts = new int[7];
         EncounterPanel shortcutPanel = new EncounterPanel(new EncounterPanel.Listener() {
             public void onAttack() { shortcuts[0]++; }
             public void onDefend() { shortcuts[1]++; }
-            public void onSpell() { shortcuts[2]++; }
-            public void onQuickSpell() { shortcuts[3]++; }
-            public void onPotion() { shortcuts[4]++; }
-            public void onFlee() { shortcuts[5]++; }
+            public void onAbility(int slot) { shortcuts[slot + 1]++; }
+            public void onPotion() { shortcuts[5]++; }
+            public void onFlee() { shortcuts[6]++; }
         });
         GameEngine shortcutEngine = new GameEngine();
         shortcutEngine.newGame("Shortcut Mage", "Elf", "Mage");
         shortcutEngine.getState().health--;
         shortcutPanel.setEncounter(new GameEngine.Enemy("Skeleton", 24, 9, 10), "",
             shortcutEngine.getState());
+        if (shortcutPanel.visibleAbilityCountForTest() != 1 ||
+                shortcutPanel.triggerShortcut('4') || shortcutPanel.triggerShortcut('5')) {
+            throw new AssertionError("Level one combat must reveal only the starter ability");
+        }
+        shortcutEngine.getState().level = 3;
+        shortcutEngine.getState().spells.add("Fireball");
+        shortcutEngine.getState().spells.add("Ice Spike");
+        shortcutPanel.setEncounter(new GameEngine.Enemy("Skeleton", 24, 9, 10), "",
+            shortcutEngine.getState());
+        if (shortcutPanel.visibleAbilityCountForTest() != 3) {
+            throw new AssertionError("Level three combat must reveal the complete ability set");
+        }
         if (!"Channel Ward".equals(shortcutPanel.defenseActionLabelForTest())) {
             throw new AssertionError("Mage combat action must be labeled Channel Ward");
         }
@@ -226,7 +306,7 @@ public final class EnhancedUiSmokeTest {
                 shortcutPanel.timelineForTest().length() == 0) {
             throw new AssertionError("Combat action tempo and turn timeline must be visible");
         }
-        char[] keys = {'A', 'D', 'S', 'Q', 'P', 'F'};
+        char[] keys = {'1', '2', '3', '4', '5', '6', '7'};
         for (char key : keys) {
             if (!shortcutPanel.triggerShortcut(key)) {
                 throw new AssertionError("Combat shortcut was not routed: " + key);
@@ -238,15 +318,44 @@ public final class EnhancedUiSmokeTest {
         if (shortcutPanel.triggerShortcut('X')) {
             throw new AssertionError("Unknown combat shortcut should be ignored");
         }
+        if (!shortcutPanel.statusFeedbackForTest().contains("ARCANE FOCUS")) {
+            throw new AssertionError("Equipped weapon trait must be visible in combat status");
+        }
+
+        SoundManager dialogueSound = new SoundManager();
+        GameSettingsOverlay dialogueOverlay = new GameSettingsOverlay(dialogueSound,
+            new GamePreferences(), null);
+        dialogueOverlay.showDialogue("/assets/encounters/npcs/innkeeper.png", "Bram",
+            "INNKEEPER · LOCAL RUMOR", "A shadow waits beyond the eastern road.",
+            UiTheme.GOLD, null);
+        if (!dialogueOverlay.dialogueVisibleForTest()) {
+            throw new AssertionError("NPC dialogue must use the custom in-game overlay");
+        }
+        dialogueOverlay.completeDialogueForTest();
+        if (!dialogueOverlay.dialogueTextForTest().contains("eastern road")) {
+            throw new AssertionError("Typewriter dialogue must reveal the complete message");
+        }
+        dialogueOverlay.setSize(1100, 720);
+        layoutTree(dialogueOverlay);
+        File dialogueOutput = render(dialogueOverlay, 1100, 720,
+            output.getParentFile(), "dialogue-preview.png", 30000L);
+        dialogueOverlay.hideSettings();
+        dialogueOverlay.showProgression(new GameEngine.ProgressionNotice(
+            2, "Cleave", "HEAVY BLADE", 2), null, null);
+        dialogueOverlay.setSize(1100, 720);
+        layoutTree(dialogueOverlay);
+        File progressionOutput = render(dialogueOverlay, 1100, 720,
+            output.getParentFile(), "progression-preview.png", 12000L);
+        dialogueSound.shutdown();
 
         // A killing blow disables controls during its animation. The reused
         // combat panel must restore them when the next encounter is loaded.
         shortcutPanel.setCombatActionsEnabled(false);
         shortcutPanel.setEncounter(new GameEngine.Enemy("Bandit Marauder", 28, 8, 12),
             "A second enemy approaches.\n", shortcutEngine.getState());
-        if (!shortcutPanel.triggerShortcut('A') || !shortcutPanel.triggerShortcut('D') ||
-                !shortcutPanel.triggerShortcut('F') || shortcuts[0] != 2 ||
-                shortcuts[1] != 2 || shortcuts[5] != 2) {
+        if (!shortcutPanel.triggerShortcut('1') || !shortcutPanel.triggerShortcut('2') ||
+                !shortcutPanel.triggerShortcut('7') || shortcuts[0] != 2 ||
+                shortcuts[1] != 2 || shortcuts[6] != 2) {
             throw new AssertionError("A later encounter did not restore combat controls");
         }
 
@@ -339,6 +448,13 @@ public final class EnhancedUiSmokeTest {
                 !inventory.relicSummaryForTest().contains("Alchemist")) {
             throw new AssertionError("Inventory must preserve relic identity and vendor hint");
         }
+        String progression = inventory.abilitySummaryForTest();
+        if (!progression.contains("Core Training:LEVEL 1 · READY") ||
+                !progression.contains("UNLOCKS LEVEL 2") ||
+                !progression.contains("UNLOCKS LEVEL 3")) {
+            throw new AssertionError(
+                "Character sheet must communicate ready and upcoming abilities");
+        }
         File inventoryOutput = render(inventory, 760, 720, output.getParentFile(),
             "inventory-preview.png");
         engine.getState().relics.remove(previewRelic);
@@ -409,6 +525,14 @@ public final class EnhancedUiSmokeTest {
                 public void onSound(SoundManager.Cue cue) { }
                 public void onStateChanged() { }
             });
+        shell.triggerMapZoomShortcut(true);
+        if (shell.mapForTest().viewSizeForTest() != GameMapPanel.DETAIL_VIEW_SIZE) {
+            throw new AssertionError("Visible map zoom control must enter the 7x7 detail view");
+        }
+        shell.triggerMapZoomShortcut(false);
+        if (shell.mapForTest().viewSizeForTest() != GameMapPanel.OVERVIEW_VIEW_SIZE) {
+            throw new AssertionError("Visible map zoom control must restore the 9x9 view");
+        }
         EncounterPanel shellEncounter = new EncounterPanel();
         InventoryPanel shellInventory = new InventoryPanel(new InventoryPanel.Listener() {
             public void onEquip(GameEngine.Item item) { }
@@ -467,6 +591,25 @@ public final class EnhancedUiSmokeTest {
         File shellTavern = render(shell, 1440, 900, output.getParentFile(),
             "figma-tavern-shell-preview.png");
 
+        shellState.row = shellState.spiderNestRow;
+        shellState.col = shellState.spiderNestCol;
+        shellState.enemies[shellState.row][shellState.col] = null;
+        shellState.spiderNestRemaining = 2;
+        shellState.spiderNestCleared = false;
+        shellState.discovery[shellState.row][shellState.col] =
+            GameEngine.DiscoveryState.VISITED;
+        shellEngine.locationAction();
+        shellEngine.currentEnemy().health = 1;
+        shellEngine.setRandomSeed(1L);
+        shellEngine.attack();
+        shell.refresh();
+        shell.showStory();
+        if (!"SEARCH NEST".equals(shell.primaryActionLabelForTest())) {
+            throw new AssertionError("Uncleared source must expose its finite search action");
+        }
+        File shellSpiderNest = render(shell, 1440, 900, output.getParentFile(),
+            "figma-spider-nest-shell-preview.png");
+
         final SoundManager soundManager = new SoundManager();
         if (soundManager.cachedCueCount() != SoundManager.Cue.values().length) {
             throw new AssertionError("Every sound cue must be prepared in the cache");
@@ -510,6 +653,7 @@ public final class EnhancedUiSmokeTest {
 
         System.out.println("Enhanced UI smoke tests passed: " + titleOutput.getPath() + ", " +
             output.getPath() + ", " + frameIdentifiersOutput.getPath() + ", " +
+            mapViewportOutput.getPath() + ", " + mapDetailOutput.getPath() + ", " +
             explorationOutput.getPath() + ", " + encounterOutput.getPath() + ", " +
             inventoryOutput.getPath() + " and " +
             locationOutput.getPath() + ", " + tavernOutput.getPath() + ", " +
@@ -517,6 +661,7 @@ public final class EnhancedUiSmokeTest {
             shellCombat.getPath() + ", " + shellInventoryOutput.getPath() + ", " +
             shellShop.getPath() + ", " + shellBlacksmith.getPath() + ", " +
             shellAlchemist.getPath() + ", " + shellTavern.getPath() + ", " +
+            shellSpiderNest.getPath() + ", " +
             settingsOutput.getPath() + ", " + buttonStatesOutput.getPath());
     }
 
@@ -574,6 +719,7 @@ public final class EnhancedUiSmokeTest {
                                File directory, String name, long minimumBytes) throws Exception {
         component.setSize(width, height);
         layoutTree(component);
+        awaitAssetImages(component);
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics = image.createGraphics();
         component.printAll(graphics);
@@ -584,6 +730,18 @@ public final class EnhancedUiSmokeTest {
             throw new AssertionError(name + " was not produced correctly");
         }
         return output;
+    }
+
+    /** Ensures asynchronous production artwork is present in deterministic UI snapshots. */
+    private static void awaitAssetImages(Container container) {
+        for (Component component : container.getComponents()) {
+            if (component instanceof AssetImagePanel) {
+                ((AssetImagePanel) component).awaitResource();
+            }
+            if (component instanceof Container) {
+                awaitAssetImages((Container) component);
+            }
+        }
     }
 
     private static void layoutTree(Container container) {

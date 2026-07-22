@@ -5,8 +5,10 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridBagLayout;
 import java.awt.GridBagConstraints;
+import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import javax.swing.AbstractAction;
@@ -18,6 +20,7 @@ import javax.swing.KeyStroke;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
+import javax.swing.JTextArea;
 
 /** Modal in-game settings layer that keeps the game visible beneath a dim scrim. */
 final class GameSettingsOverlay extends JPanel {
@@ -28,6 +31,9 @@ final class GameSettingsOverlay extends JPanel {
     private final JLabel transitionLabel = new JLabel("", SwingConstants.CENTER);
     private Runnable modalDismiss;
     private Timer transitionTimer;
+    private Timer dialogueTimer;
+    private JTextArea dialogueCopy;
+    private String fullDialogueText;
     private Color transitionColor = Color.BLACK;
     private float transitionOpacity;
 
@@ -79,9 +85,106 @@ final class GameSettingsOverlay extends JPanel {
     }
 
     void hideSettings() {
+        stopDialogueTimer();
         settings.setVisible(false);
         modalHost.setVisible(false);
         setVisible(false);
+    }
+
+    /**
+     * Presents story dialogue inside the game shell. The portrait, speaker
+     * identity, speech bubble, and typewriter pacing are shared by friendly
+     * NPC consultations and enemy encounter threats.
+     */
+    void showDialogue(String artworkResource, String speaker, String role,
+                      String message, Color accent, final Runnable afterClose) {
+        if (transitionTimer != null && transitionTimer.isRunning()) transitionTimer.stop();
+        stopDialogueTimer();
+        settings.setVisible(false);
+        transitionLabel.setVisible(false);
+        modalHost.removeAll();
+
+        JPanel card = new JPanel(new BorderLayout(22, 0));
+        card.setPreferredSize(new Dimension(760, 390));
+        card.setBackground(new Color(22, 20, 24));
+        card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(accent, 3),
+            BorderFactory.createEmptyBorder(24, 24, 24, 24)));
+
+        AssetImagePanel portrait = new AssetImagePanel(artworkResource, true);
+        portrait.setPreferredSize(new Dimension(250, 330));
+        portrait.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(accent, 2),
+            BorderFactory.createEmptyBorder(3, 3, 3, 3)));
+        card.add(portrait, BorderLayout.WEST);
+
+        JPanel conversation = new JPanel(new BorderLayout(0, 14));
+        conversation.setOpaque(false);
+        JLabel identity = new JLabel("<html><font color='#fff9e5' size='+2'><b>" +
+            speaker + "</b></font><br><font color='#d4af37'>" + role + "</font></html>");
+        identity.setFont(UiTheme.display(15));
+        conversation.add(identity, BorderLayout.NORTH);
+
+        SpeechBubble bubble = new SpeechBubble(accent);
+        bubble.setLayout(new BorderLayout());
+        dialogueCopy = new JTextArea();
+        dialogueCopy.setEditable(false);
+        dialogueCopy.setLineWrap(true);
+        dialogueCopy.setWrapStyleWord(true);
+        dialogueCopy.setOpaque(false);
+        dialogueCopy.setForeground(UiTheme.TEXT);
+        dialogueCopy.setFont(UiTheme.body(Font.PLAIN, 18));
+        dialogueCopy.setBorder(BorderFactory.createEmptyBorder(24, 30, 24, 24));
+        bubble.add(dialogueCopy, BorderLayout.CENTER);
+        conversation.add(bubble, BorderLayout.CENTER);
+
+        JButton confirm = UiTheme.button("CONTINUE", true);
+        confirm.addActionListener(new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+            public void actionPerformed(ActionEvent event) {
+                if (dialogueTimer != null && dialogueTimer.isRunning()) {
+                    completeDialogue();
+                } else {
+                    closeModal(afterClose);
+                }
+            }
+        });
+        confirm.setToolTipText("Finish the message, then close the conversation");
+        conversation.add(confirm, BorderLayout.SOUTH);
+        card.add(conversation, BorderLayout.CENTER);
+
+        fullDialogueText = message == null ? "" : message;
+        dialogueCopy.setText("");
+        final int[] character = {0};
+        dialogueTimer = new Timer(preferences.isReducedMotion() ? 4 : 22,
+            new AbstractAction() {
+                private static final long serialVersionUID = 1L;
+                public void actionPerformed(ActionEvent event) {
+                    int step = preferences.isReducedMotion() ? 5 : 1;
+                    character[0] = Math.min(fullDialogueText.length(), character[0] + step);
+                    dialogueCopy.setText(fullDialogueText.substring(0, character[0]));
+                    if (character[0] >= fullDialogueText.length()) {
+                        ((Timer) event.getSource()).stop();
+                    }
+                }
+            });
+        modalDismiss = afterClose;
+        modalHost.add(card, BorderLayout.CENTER);
+        modalHost.setVisible(true);
+        setVisible(true);
+        revalidate();
+        repaint();
+        dialogueTimer.start();
+        confirm.requestFocusInWindow();
+    }
+
+    private void completeDialogue() {
+        if (dialogueCopy != null) dialogueCopy.setText(fullDialogueText == null ? "" : fullDialogueText);
+        stopDialogueTimer();
+    }
+
+    private void stopDialogueTimer() {
+        if (dialogueTimer != null && dialogueTimer.isRunning()) dialogueTimer.stop();
     }
 
     void showRelicDiscovery(GameEngine.Relic relic, Runnable inspectInventory,
@@ -117,6 +220,21 @@ final class GameSettingsOverlay extends JPanel {
             "VIEW IN INVENTORY", inspectInventory, "CONTINUE QUEST", continueQuest);
     }
 
+    void showProgression(GameEngine.ProgressionNotice notice, Runnable inspectCharacter,
+                         Runnable continueQuest) {
+        String family = notice.weaponFamily == null ? "Current weapon" : notice.weaponFamily;
+        String copy = "<html><div style='text-align:center'>" +
+            "<font color='#f1c85c' size='+1'><b>LEVEL " + notice.level + " REACHED</b></font><br><br>" +
+            "<font color='#fff9e5' size='+2'><b>NEW ABILITY</b></font><br>" +
+            "<font color='#c795ff' size='+2'><b>" + notice.abilitySummary + "</b></font><br><br>" +
+            "<font color='#d4af37'><b>" + family + " · " +
+            GameEngine.proficiencyLabel(notice.proficiencyRank) + "</b></font><br>" +
+            "<font color='#bdaed0'>New actions now appear automatically in numbered combat slots.</font>" +
+            "</div></html>";
+        showGameModal(IconAssets.WEAPON_SWORD, copy, UiTheme.GOLD,
+            "VIEW CHARACTER", inspectCharacter, "CONTINUE QUEST", continueQuest);
+    }
+
     private void showGameModal(String artworkResource, String copy, Color accent,
                                String primaryLabel, final Runnable primary,
                                String secondaryLabel, final Runnable secondary) {
@@ -126,7 +244,9 @@ final class GameSettingsOverlay extends JPanel {
         modalHost.removeAll();
 
         JPanel card = new JPanel(new BorderLayout(18, 18));
-        card.setPreferredSize(new Dimension(610, 370));
+        // Leave enough vertical room for multi-line progression and relic copy
+        // so the message never competes with the fixed action row.
+        card.setPreferredSize(new Dimension(610, 410));
         card.setBackground(UiTheme.RELIC_SURFACE);
         card.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(accent, 3),
@@ -167,11 +287,48 @@ final class GameSettingsOverlay extends JPanel {
     }
 
     private void closeModal(Runnable afterClose) {
+        stopDialogueTimer();
         modalHost.setVisible(false);
         modalHost.removeAll();
         modalDismiss = null;
         setVisible(false);
         if (afterClose != null) afterClose.run();
+    }
+
+    boolean dialogueVisibleForTest() { return modalHost.isVisible() && dialogueCopy != null; }
+    String dialogueTextForTest() { return dialogueCopy == null ? "" : dialogueCopy.getText(); }
+    void completeDialogueForTest() { completeDialogue(); }
+
+    /** Painterly rounded speech bubble with a small portrait-facing tail. */
+    private static final class SpeechBubble extends JPanel {
+        private static final long serialVersionUID = 1L;
+        private final Color accent;
+
+        SpeechBubble(Color accent) {
+            this.accent = accent;
+            setOpaque(false);
+            setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 0));
+        }
+
+        @Override
+        protected void paintComponent(Graphics graphics) {
+            Graphics2D g = (Graphics2D) graphics.create();
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                RenderingHints.VALUE_ANTIALIAS_ON);
+            int x = 13;
+            int width = Math.max(0, getWidth() - x - 1);
+            g.setColor(new Color(46, 39, 37));
+            g.fillRoundRect(x, 1, width, Math.max(0, getHeight() - 3), 24, 24);
+            int middle = Math.max(28, getHeight() / 3);
+            int[] xs = {x, 0, x};
+            int[] ys = {middle - 12, middle, middle + 12};
+            g.fillPolygon(xs, ys, 3);
+            g.setColor(accent);
+            g.drawRoundRect(x, 1, Math.max(0, width - 1),
+                Math.max(0, getHeight() - 4), 24, 24);
+            g.dispose();
+            super.paintComponent(graphics);
+        }
     }
 
     void playTransition(String label, Color color, int duration, final Runnable midpoint) {

@@ -44,6 +44,8 @@ final class InventoryPanel extends JPanel {
     private JLabel offhandTag;
     private final JLabel slots = new JLabel();
     private final JLabel relics = new JLabel();
+    private final JLabel[] abilityNames = new JLabel[4];
+    private final JLabel[] abilityStates = new JLabel[4];
     private final JLabel[] statValues = new JLabel[6];
     private final DefaultListModel<GameEngine.Item> items = new DefaultListModel<GameEngine.Item>();
     private final JList<GameEngine.Item> itemList = new JList<GameEngine.Item>(items);
@@ -86,7 +88,11 @@ final class InventoryPanel extends JPanel {
 
         JPanel body = new JPanel(new BorderLayout(0, 16));
         body.setOpaque(false);
-        body.add(buildEquipped(), BorderLayout.NORTH);
+        JPanel characterOverview = new JPanel(new BorderLayout(0, 12));
+        characterOverview.setOpaque(false);
+        characterOverview.add(buildEquipped(), BorderLayout.NORTH);
+        characterOverview.add(buildAbilities(), BorderLayout.CENTER);
+        body.add(characterOverview, BorderLayout.NORTH);
         body.add(buildInventoryList(), BorderLayout.CENTER);
         add(body, BorderLayout.CENTER);
 
@@ -225,6 +231,36 @@ final class InventoryPanel extends JPanel {
         return block;
     }
 
+    private JPanel buildAbilities() {
+        JPanel block = new JPanel(new BorderLayout(0, 7));
+        block.setOpaque(false);
+        JLabel heading = new JLabel("Ability Progression");
+        heading.setForeground(UiTheme.GOLD);
+        heading.setFont(UiTheme.display(18));
+        block.add(heading, BorderLayout.NORTH);
+
+        JPanel cards = new JPanel(new GridLayout(1, 4, 8, 0));
+        cards.setOpaque(false);
+        for (int i = 0; i < abilityNames.length; i++) {
+            JPanel card = new JPanel(new BorderLayout(0, 3));
+            card.setBackground(new Color(34, 26, 31));
+            card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(UiTheme.BORDER),
+                BorderFactory.createEmptyBorder(7, 9, 7, 9)));
+            abilityNames[i] = new JLabel("—");
+            abilityNames[i].setForeground(UiTheme.TEXT);
+            abilityNames[i].setFont(UiTheme.body(Font.BOLD, 11));
+            abilityStates[i] = new JLabel("LOCKED");
+            abilityStates[i].setForeground(UiTheme.MUTED);
+            abilityStates[i].setFont(UiTheme.body(Font.BOLD, 9));
+            card.add(abilityNames[i], BorderLayout.CENTER);
+            card.add(abilityStates[i], BorderLayout.SOUTH);
+            cards.add(card);
+        }
+        block.add(cards, BorderLayout.CENTER);
+        return block;
+    }
+
     private JPanel buildInventoryControls() {
         JPanel controls = new JPanel(new BorderLayout(12, 0));
         controls.setOpaque(false);
@@ -270,13 +306,20 @@ final class InventoryPanel extends JPanel {
             state.health + "/" + state.maxHealth, state.mana + "/" + state.maxMana,
             String.valueOf(state.gold), String.valueOf(state.potions)};
         for (int i = 0; i < values.length; i++) statValues[i].setText(values[i]);
+        GameEngine.Item equippedWeapon = GameEngine.equippedWeapon(state);
+        String proficiency = equippedWeapon == null ? "UNARMED" :
+            GameEngine.proficiencyLabel(GameEngine.equippedWeaponProficiency(state));
+        String trait = equippedWeapon == null ? "No weapon trait" :
+            GameEngine.weaponTraitName(equippedWeapon);
         weapon.setText("<html><b>" + safe(state.equippedWeapon, "No weapon") +
-            "</b><br><font color='#d4af37'>Current weapon</font></html>");
+            "</b><br><font color='#d4af37'>" + trait + " · " + proficiency +
+            "</font></html>");
         armour.setText("<html><b>" + safe(state.equippedArmour, "No armour") +
             "</b><br><font color='#d4af37'>Current armour</font></html>");
         offhand.setText("<html><b>" + safe(state.equippedOffhand, "Empty offhand") +
             "</b><br><font color='#d4af37'>Current offhand</font></html>");
         if (offhandTag != null) offhandTag.setText(state.equippedOffhand == null ? "EMPTY" : "EQUIPPED");
+        refreshAbilities(state);
         updateEquippedArtwork(weaponArtwork, state.equippedWeapon, "Weapon", "W");
         updateEquippedArtwork(armourArtwork, state.equippedArmour, "Armour", "A");
         updateEquippedArtwork(offhandArtwork, state.equippedOffhand, "Offhand", "O");
@@ -301,6 +344,21 @@ final class InventoryPanel extends JPanel {
         relics.setText(relicCopy.toString());
 
         rebuildItems();
+    }
+
+    private void refreshAbilities(GameEngine.State state) {
+        abilityNames[0].setText("Core Training");
+        abilityStates[0].setText("LEVEL 1 · READY");
+        abilityStates[0].setForeground(new Color(111, 206, 120));
+        for (int slot = 1; slot <= 3; slot++) {
+            boolean unlocked = GameEngine.abilityUnlocked(state, slot);
+            abilityNames[slot].setText(GameEngine.abilityName(state, slot));
+            abilityStates[slot].setText(unlocked ? "READY · " +
+                GameEngine.abilityTempoLabel(state, slot) :
+                GameEngine.abilityRequirement(state, slot));
+            abilityStates[slot].setForeground(unlocked
+                ? new Color(111, 206, 120) : UiTheme.MUTED);
+        }
     }
 
     private void updateEquippedArtwork(JLabel target, String name, String type,
@@ -374,6 +432,16 @@ final class InventoryPanel extends JPanel {
         return relics.getText();
     }
 
+    String abilitySummaryForTest() {
+        StringBuilder summary = new StringBuilder();
+        for (int i = 0; i < abilityNames.length; i++) {
+            if (i > 0) summary.append(" | ");
+            summary.append(abilityNames[i].getText()).append(":")
+                .append(abilityStates[i].getText());
+        }
+        return summary.toString();
+    }
+
     static String heroAsset(String race, String heroClass) {
         return "/assets/avatars/full-body/" + race.toLowerCase() + "-" +
             heroClass.toLowerCase() + ".png";
@@ -412,7 +480,10 @@ final class InventoryPanel extends JPanel {
             String tag = equipped ? "EQUIPPED" : (restricted ? "CLASS LOCKED" : "EQUIP");
             String description = restricted
                 ? GameEngine.equipmentRestriction(currentState.heroClass, item)
-                : "Adventure equipment";
+                : ("Weapon".equals(item.type)
+                    ? "<font color='#f1c85c'><b>" + GameEngine.weaponTraitName(item) +
+                        "</b></font> · " + GameEngine.weaponTraitDescription(item)
+                    : "Adventure equipment");
             int delta = comparisonDelta(item);
             String comparison = equipped
                 ? "<font color='#d4af37'><b>CURRENTLY EQUIPPED</b></font>"

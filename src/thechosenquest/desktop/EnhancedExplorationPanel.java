@@ -70,6 +70,7 @@ final class EnhancedExplorationPanel extends JPanel {
     private final JTextArea eventLog = new JTextArea();
     private final JLabel mapLocation = new JLabel();
     private final JLabel mapTerritory = new JLabel();
+    private final JLabel mapHeading = new JLabel();
     private final JTextArea mapDescription = new JTextArea();
     private final JButton primaryAction = UiTheme.button("INVESTIGATE", true);
     private final JButton secondaryAction = UiTheme.button("CONTINUE JOURNEY", false);
@@ -85,6 +86,8 @@ final class EnhancedExplorationPanel extends JPanel {
     private JButton southTravelButton;
     private JButton westTravelButton;
     private JButton eastTravelButton;
+    private JButton zoomOutButton;
+    private JButton zoomInButton;
 
     private static final String STORY = "story";
     private static final String ENCOUNTER = "encounter";
@@ -431,19 +434,19 @@ final class EnhancedExplorationPanel extends JPanel {
         travel.add(title);
         travel.add(Box.createVerticalStrut(8));
 
-        // Arrow keys mirror a physical keyboard so the on-screen affordance
-        // teaches the global movement shortcuts without additional copy.
+        // WASD mirrors the primary keyboard controls so the on-screen
+        // affordance teaches movement without a separate instruction panel.
         JPanel directions = new JPanel(new GridLayout(2, 3, 6, 6));
         directions.setOpaque(false);
         directions.setAlignmentX(CENTER_ALIGNMENT);
         directions.setPreferredSize(new Dimension(180, 82));
         directions.setMaximumSize(new Dimension(180, 82));
         directions.add(Box.createGlue());
-        northTravelButton = addDirection(directions, "↑", "Move north", -1, 0);
+        northTravelButton = addDirection(directions, "W", "Move north · W", -1, 0);
         directions.add(Box.createGlue());
-        westTravelButton = addDirection(directions, "←", "Move west", 0, -1);
-        southTravelButton = addDirection(directions, "↓", "Move south", 1, 0);
-        eastTravelButton = addDirection(directions, "→", "Move east", 0, 1);
+        westTravelButton = addDirection(directions, "A", "Move west · A", 0, -1);
+        southTravelButton = addDirection(directions, "S", "Move south · S", 1, 0);
+        eastTravelButton = addDirection(directions, "D", "Move east · D", 0, 1);
         travel.add(directions);
         return travel;
     }
@@ -473,7 +476,7 @@ final class EnhancedExplorationPanel extends JPanel {
         return button;
     }
 
-    /** Gives physical arrow-key input the same pressed feedback as a mouse click. */
+    /** Gives physical WASD/arrow input the same pressed feedback as a mouse click. */
     void triggerMovementShortcut(int rowDelta, int colDelta) {
         final JButton button = rowDelta < 0 ? northTravelButton :
             (rowDelta > 0 ? southTravelButton :
@@ -500,19 +503,32 @@ final class EnhancedExplorationPanel extends JPanel {
             BorderFactory.createMatteBorder(0, 1, 0, 0, UiTheme.BORDER),
             BorderFactory.createEmptyBorder(18, 16, 18, 16)));
 
-        JLabel heading = new JLabel("◉  WORLD MAP");
-        heading.setForeground(UiTheme.GOLD);
-        heading.setFont(UiTheme.body(Font.BOLD, 11));
+        JPanel heading = new JPanel(new BorderLayout(6, 0));
+        heading.setOpaque(false);
         heading.setAlignmentX(LEFT_ALIGNMENT);
+        heading.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+        mapHeading.setForeground(UiTheme.GOLD);
+        mapHeading.setFont(UiTheme.body(Font.BOLD, 11));
+        heading.add(mapHeading, BorderLayout.CENTER);
+        JPanel zoom = new JPanel(new GridLayout(1, 2, 4, 0));
+        zoom.setOpaque(false);
+        zoomOutButton = mapZoomButton("−", "Zoom map out · 9×9 · Minus key", false);
+        zoomInButton = mapZoomButton("+", "Zoom map in · 7×7 · Plus key", true);
+        zoom.add(zoomOutButton);
+        zoom.add(zoomInButton);
+        heading.add(zoom, BorderLayout.EAST);
+        updateMapZoomControls();
         rail.add(heading);
         rail.add(Box.createVerticalStrut(14));
 
-        map.setPreferredSize(new Dimension(UiTheme.MAP_RAIL_WIDTH - 32, 300));
-        map.setMaximumSize(new Dimension(UiTheme.MAP_RAIL_WIDTH - 32, 300));
+        map.setPreferredSize(new Dimension(UiTheme.MAP_RAIL_WIDTH - 32, 280));
+        map.setMaximumSize(new Dimension(UiTheme.MAP_RAIL_WIDTH - 32, 280));
         map.setAlignmentX(LEFT_ALIGNMENT);
         map.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
         rail.add(map);
-        rail.add(Box.createVerticalStrut(14));
+        rail.add(Box.createVerticalStrut(7));
+        rail.add(buildMapCameraControls());
+        rail.add(Box.createVerticalStrut(10));
 
         mapLocation.setForeground(new Color(227, 213, 191));
         mapLocation.setFont(UiTheme.body(Font.BOLD, 12));
@@ -543,6 +559,79 @@ final class EnhancedExplorationPanel extends JPanel {
         return rail;
     }
 
+    private JPanel buildMapCameraControls() {
+        JPanel controls = new JPanel(new GridLayout(1, 5, 5, 0));
+        controls.setOpaque(false);
+        controls.setAlignmentX(LEFT_ALIGNMENT);
+        controls.setPreferredSize(new Dimension(UiTheme.MAP_RAIL_WIDTH - 32, 32));
+        controls.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+        controls.add(mapCameraButton("←", "Pan map west", 0, -2, false));
+        controls.add(mapCameraButton("↑", "Pan map north", -2, 0, false));
+        controls.add(mapCameraButton("◎", "Center map on hero", 0, 0, true));
+        controls.add(mapCameraButton("↓", "Pan map south", 2, 0, false));
+        controls.add(mapCameraButton("→", "Pan map east", 0, 2, false));
+        return controls;
+    }
+
+    private JButton mapZoomButton(String label, String accessibleName,
+                                  final boolean zoomIn) {
+        JButton button = new JButton(label);
+        button.setFont(UiTheme.body(Font.BOLD, 13));
+        button.setToolTipText(accessibleName);
+        button.getAccessibleContext().setAccessibleName(accessibleName);
+        button.setPreferredSize(new Dimension(29, 26));
+        UiTheme.applyButtonStyle(button, UiTheme.ButtonStyle.SECONDARY, 1, 3);
+        button.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                setMapZoom(zoomIn);
+                listener.onSound(SoundManager.Cue.UI_CONFIRM);
+            }
+        });
+        return button;
+    }
+
+    private void setMapZoom(boolean zoomIn) {
+        if (zoomIn) map.zoomIn();
+        else map.zoomOut();
+        updateMapZoomControls();
+    }
+
+    private void updateMapZoomControls() {
+        int size = map.viewSizeForTest();
+        mapHeading.setText("◉  WORLD MAP  ·  " + size + "×" + size);
+        if (zoomOutButton != null) {
+            zoomOutButton.setEnabled(size != GameMapPanel.OVERVIEW_VIEW_SIZE);
+        }
+        if (zoomInButton != null) {
+            zoomInButton.setEnabled(size != GameMapPanel.DETAIL_VIEW_SIZE);
+        }
+    }
+
+    /** Mirrors the visible zoom controls for the global plus/minus bindings. */
+    void triggerMapZoomShortcut(boolean zoomIn) {
+        JButton button = zoomIn ? zoomInButton : zoomOutButton;
+        if (button == null || !button.isEnabled()) return;
+        button.doClick();
+    }
+
+    private JButton mapCameraButton(String label, String accessibleName,
+                                    final int rowDelta, final int colDelta,
+                                    final boolean center) {
+        JButton button = new JButton(label);
+        button.setFont(UiTheme.body(Font.BOLD, 13));
+        button.setToolTipText(accessibleName);
+        button.getAccessibleContext().setAccessibleName(accessibleName);
+        UiTheme.applyButtonStyle(button, UiTheme.ButtonStyle.SECONDARY, 2, 4);
+        button.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                if (center) map.centerOnHero();
+                else map.pan(rowDelta, colDelta);
+                listener.onSound(SoundManager.Cue.UI_CONFIRM);
+            }
+        });
+        return button;
+    }
+
     private JPanel newLegend() {
         JPanel legend = new JPanel(new BorderLayout(0, 9));
         legend.setOpaque(false);
@@ -564,10 +653,10 @@ final class EnhancedExplorationPanel extends JPanel {
         entries.add(legendRow("●", new Color(190, 85, 60), "Known enemy"));
         entries.add(legendRow("!", new Color(224, 79, 60), "Rumored threat"));
         entries.add(legendRow("◆", UiTheme.QUALITY_RELIC, "Relic region"));
-        entries.add(legendRow("?", new Color(107, 111, 123), "Unknown"));
+        entries.add(legendRow("░", new Color(107, 111, 123), "Unknown fog"));
         entries.add(legendRow("◐", new Color(141, 151, 159), "Scouted"));
         entries.add(legendRow("◉", UiTheme.GOLD_LIGHT, "Visited"));
-        entries.add(legendRow("⌖", new Color(177, 136, 71), "Landmark"));
+        entries.add(legendRow("⌖", new Color(177, 136, 71), "POI / source"));
         legend.add(entries, BorderLayout.CENTER);
         return legend;
     }
@@ -674,6 +763,7 @@ final class EnhancedExplorationPanel extends JPanel {
         mapLocation.setText(titleFor(engine.currentTile()) + " — " + coordinate);
         mapTerritory.setText(territoryFor(engine.currentTile()));
         mapDescription.setText(descriptionFor(engine.currentTile()));
+        map.followHero();
         map.repaint();
 
         GameEngine.Enemy enemy = engine.currentEnemy();
@@ -691,6 +781,10 @@ final class EnhancedExplorationPanel extends JPanel {
                 "ENTER TAVERN" : "VISIT WAYCAMP");
             secondaryAction.setText("CONTINUE JOURNEY");
             tertiaryAction.setText("REST");
+        } else if (engine.currentTile() == GameEngine.TileType.SPIDER_NEST) {
+            primaryAction.setText(engine.spiderNestCleared() ? "NEST CLEARED" : "SEARCH NEST");
+            secondaryAction.setText("CONTINUE JOURNEY");
+            tertiaryAction.setText("USE POTION");
         } else {
             primaryAction.setText("INVESTIGATE");
             secondaryAction.setText("CONTINUE JOURNEY");
@@ -699,7 +793,9 @@ final class EnhancedExplorationPanel extends JPanel {
         normalizeActionButton(primaryAction);
         normalizeActionButton(tertiaryAction);
         normalizeActionButton(secondaryAction);
-        normalizeActionButton(spellbookAction);
+        // Spells now live directly on numbered combat actions; keeping a
+        // separate spellbook selector would imply an unnecessary modal step.
+        spellbookAction.setVisible(false);
         revalidate();
         repaint();
     }
@@ -759,6 +855,8 @@ final class EnhancedExplorationPanel extends JPanel {
         primaryAction.doClick();
     }
 
+    GameMapPanel mapForTest() { return map; }
+
     private String titleFor(GameEngine.TileType tile) {
         switch (tile) {
             case CRYPT: return "Forgotten Crypt";
@@ -766,6 +864,7 @@ final class EnhancedExplorationPanel extends JPanel {
             case SHOP: return "Frontier Market";
             case TAVERN: return "Wanderer's Rest";
             case ENCAMPMENT: return "Traveler's Encampment";
+            case SPIDER_NEST: return "The Ashweb Nest";
             default: return "Ancient Ruins — Alshira Forest";
         }
     }
@@ -781,6 +880,8 @@ final class EnhancedExplorationPanel extends JPanel {
             return "/assets/scenes/wanderers-rest-exterior.png";
         if (tile == GameEngine.TileType.ENCAMPMENT)
             return "/assets/scenes/alchemist-waycamp-exterior.png";
+        if (tile == GameEngine.TileType.SPIDER_NEST)
+            return "/assets/scenes/ashweb-nest.png";
         if (tile == GameEngine.TileType.SHOP) {
             return "Blacksmith".equals(vendor)
                 ? "/assets/scenes/blacksmith-forge-exterior.png"
@@ -796,6 +897,7 @@ final class EnhancedExplorationPanel extends JPanel {
             case SHOP: return "The Golden Road";
             case TAVERN: return "Stonecrest Frontier";
             case ENCAMPMENT: return "Alshira Waycamp";
+            case SPIDER_NEST: return "The Webbed Hollow";
             default: return "Alshira Forest";
         }
     }
@@ -812,6 +914,8 @@ final class EnhancedExplorationPanel extends JPanel {
                 return "Firelight and the smell of a hot meal offer a welcome pause from the dangerous road.";
             case ENCAMPMENT:
                 return "A guarded camp provides shelter, supplies, and a safe place to recover before traveling on.";
+            case SPIDER_NEST:
+                return "Silver webs choke a hollow beneath the roots. Its finite brood can be cleared permanently, but repeated spiders carry only meager field rewards.";
             default:
                 return "Crumbling stone pillars rise from the mossy ground. The air is thick with damp earth and old magic.";
         }
