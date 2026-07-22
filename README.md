@@ -3,6 +3,13 @@
 Current public build: **0.5.0-beta.1**. See [CHANGELOG.md](CHANGELOG.md) for
 tester-facing release notes.
 
+## Download the beta
+
+Testers can download the cross-platform package from the
+[Beta 0.5.0 release page](https://github.com/Rebelord/The-Chosen-Quest-Enhanced/releases/tag/v0.5.0-beta.1).
+The ZIP includes macOS, Windows, Linux, and Chromebook Linux launchers plus a
+plain-language setup guide. Java 8 or newer is required.
+
 A standalone enhanced desktop adaptation of the original CIT 260 console RPG.
 This repository contains only the Enhanced Edition; the original source project
 and frozen Classic desktop snapshot remain separate and are not modified by

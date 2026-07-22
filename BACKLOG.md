@@ -34,7 +34,7 @@ this file records why an item matters and how difficult it is expected to be.
 | CHAR-002 | Rebuild portrait frames with masked artwork viewports | High | Medium | Ready | Check every frame size for edge bleed and crop quality |
 | CHAR-001 | Add a cosmetic character-presentation choice and counterpart art | Medium–High | Large | Planned | Approve counterpart portraits and presentation wording |
 | TECH-001 | Establish public versioning, changelog, and in-game version label | High | Small | Completed | Review version naming at the next milestone |
-| REL-001 | Commit, push, and tag the current stable checkpoint | High | Small | In Progress | Test the published archive on a second computer |
+| REL-001 | Commit, push, tag, and publish the stable beta checkpoint | High | Small | Completed | Test the published archive on a second computer |
 | REL-002 | Refresh the shareable Dropbox/test build | Medium | Small | Planned | Test installation on a second computer |
 | TECH-002 | Profile image loading, rendering, audio, and save hot paths | Medium | Medium | Planned | Report reproducible lag sequences and machine details |
 | MAP-001 | Make enemy and landmark generation biome-aware | High | Medium | Completed | Review creature/terrain pairings during playtests |

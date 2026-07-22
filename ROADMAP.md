@@ -52,7 +52,7 @@ Goal: keep the playable build and presentation file aligned and easy to review.
 - `CHAR-002` make portrait cropping reliable through masked frame viewports
 - `CHAR-001` add cosmetic character-presentation variants after frame stabilization
 - `TECH-001` formal versioning, changelog, and in-game version placement — completed
-- `REL-001` commit and tag the next stable GitHub checkpoint
+- `REL-001` commit, tag, and publish the stable GitHub beta checkpoint — completed
 - `REL-002` refresh the shareable test build
 
 ## Milestone 4 — A more variable world
