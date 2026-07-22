@@ -1,0 +1,826 @@
+package thechosenquest.desktop;
+
+import java.io.File;
+import java.util.List;
+import java.util.Random;
+
+public final class GameEngineRegressionTest {
+    private static final HeroExpectation[] HEROES = {
+        hero("Human", "Fighter", 70, 0, 13, 6, 20),
+        hero("Human", "Mage", 55, 30, 11, 1, 20),
+        hero("Human", "Rogue", 55, 0, 15, 3, 40),
+        hero("Human", "Hunter", 63, 0, 15, 2, 20),
+        hero("Dwarf", "Fighter", 80, 0, 12, 8, 20),
+        hero("Dwarf", "Mage", 65, 30, 10, 3, 20),
+        hero("Dwarf", "Rogue", 65, 0, 14, 5, 40),
+        hero("Dwarf", "Hunter", 73, 0, 14, 4, 20),
+        hero("Elf", "Fighter", 65, 8, 13, 6, 20),
+        hero("Elf", "Mage", 50, 38, 11, 1, 20),
+        hero("Elf", "Rogue", 50, 8, 15, 3, 40),
+        hero("Elf", "Hunter", 58, 8, 15, 2, 20),
+        hero("Halfling", "Fighter", 63, 0, 12, 7, 30),
+        hero("Halfling", "Mage", 48, 30, 10, 2, 30),
+        hero("Halfling", "Rogue", 48, 0, 14, 4, 50),
+        hero("Halfling", "Hunter", 56, 0, 14, 3, 30)
+    };
+
+    public static void main(String[] args) throws Exception {
+        testFantasyNameGenerator();
+        testEveryHeroCombination();
+        testStarterLoadoutsAndSelling();
+        testProceduralWorldGeneration();
+        testMapDiscoveryAndRumors();
+        testDeterministicCombat();
+        testClassCombatActions();
+        testSpeedInitiativeAndActionTempo();
+        testLeveling();
+        testFleeingAndDefeat();
+        testDragonVictory();
+        testEquipmentRules();
+        testVendorInventoryRules();
+        testRelicProgression();
+        testShopProgressionForEveryClass();
+        testClassRestrictions();
+        testSpellIdentityAndCombatCurve();
+        testSaveRoundTripAndNormalization();
+        System.out.println("Game engine regression tests passed (16 hero builds, combat, progression, " +
+            "fleeing, defeat, victory, equipment, and saves).");
+    }
+
+    private static void testFantasyNameGenerator() {
+        java.util.HashSet<String> generated = new java.util.HashSet<String>();
+        for (String race : GameEngine.RACES) {
+            for (String heroClass : GameEngine.CLASSES) {
+                String name = FantasyNameGenerator.generate(race, heroClass,
+                    new Random(31L + generated.size()));
+                require(name.matches("[A-Za-z]+ [A-Za-z]+"),
+                    race + " " + heroClass + " generated name is readable");
+                generated.add(name);
+            }
+        }
+        require(generated.size() >= 12, "hero builds produce varied offline names");
+        String fighter = FantasyNameGenerator.generate("Elf", "Fighter", new Random(9L));
+        String mage = FantasyNameGenerator.generate("Elf", "Mage", new Random(9L));
+        require(fighter.split(" ")[0].equals(mage.split(" ")[0]),
+            "race consistently controls the first-name style");
+        require(!fighter.split(" ")[1].equals(mage.split(" ")[1]),
+            "class quietly changes the surname style");
+    }
+
+    private static void testEveryHeroCombination() {
+        GameEngine engine = new GameEngine();
+        for (HeroExpectation expected : HEROES) {
+            engine.newGame("Hero", expected.race, expected.heroClass);
+            GameEngine.State state = engine.getState();
+            String label = expected.race + " " + expected.heroClass;
+            require(state.maxHealth == expected.health, label + " health");
+            require(state.health == expected.health, label + " starts healed");
+            require(state.maxMana == expected.mana, label + " mana");
+            require(state.mana == expected.mana, label + " starts with full mana");
+            require(engine.getAttack() == expected.attack, label + " attack");
+            require(engine.getDefense() == expected.defense, label + " defense");
+            require(state.gold == expected.gold, label + " gold");
+            require(state.inventory.size() == 2, label + " starting equipment");
+            require(state.equippedWeapon != null && state.equippedArmour != null,
+                label + " equipped loadout");
+            require(state.spells.isEmpty() == !"Mage".equals(expected.heroClass),
+                label + " spell access");
+
+            engine.configureHeroPreview(expected.race, expected.heroClass);
+            GameEngine.State preview = engine.getState();
+            require(preview.maxHealth == expected.health &&
+                    preview.maxMana == expected.mana &&
+                    engine.getAttack() == expected.attack &&
+                    engine.getDefense() == expected.defense &&
+                    preview.gold == expected.gold && preview.inventory.size() == 2,
+                label + " lightweight character-creation preview");
+        }
+    }
+
+    private static void testStarterLoadoutsAndSelling() {
+        GameEngine engine = new GameEngine();
+        engine.newGame("Breaker", "Human", "Fighter", "BREAKER");
+        GameEngine.State state = engine.getState();
+        require("Greatsword".equals(state.equippedWeapon) &&
+            "Leather Armour".equals(state.equippedArmour),
+            "fighter alternate starter loadout is applied");
+        require("SLOW".equals(GameEngine.attackTempoLabel(state)),
+            "heavy starter weapon communicates its slower tempo");
+        require(state.inventory.get(0).starterItem &&
+            "COMMON".equals(GameEngine.itemQuality(state.inventory.get(0))),
+            "starter equipment is protected common gear");
+
+        moveToShop(engine, true);
+        int startingGold = state.gold;
+        engine.sellItem(state.inventory.get(0));
+        require(state.gold == startingGold && state.inventory.size() == 2,
+            "starter gear cannot be sold");
+
+        GameEngine.Item dagger = engine.shopItems().get(0);
+        state.gold = 20;
+        engine.buyItem(dagger);
+        int afterPurchase = state.gold;
+        int expectedSale = GameEngine.salePrice(dagger, true);
+        engine.sellItem(dagger);
+        require(state.gold == afterPurchase + expectedSale && !state.inventory.contains(dagger),
+            "purchased gear can be sold using vendor pricing");
+
+        engine.newGame("Spellblade", "Elf", "Mage", "SPELLBLADE");
+        require("Apprentice Wand".equals(engine.getState().equippedWeapon) &&
+            "Apprentice Tome".equals(engine.getState().equippedOffhand),
+            "mage alternate starter loadout is applied");
+        engine.newGame("Knives", "Halfling", "Rogue", "QUICK KNIVES");
+        require("FAST".equals(GameEngine.attackTempoLabel(engine.getState())) &&
+            "Offhand Dagger".equals(engine.getState().equippedOffhand),
+            "quick-knives starter loadout attacks quickly");
+
+        engine.newGame("Shield", "Human", "Fighter");
+        state = engine.getState();
+        GameEngine.Item shield = item(engine, "Iron Shield");
+        state.inventory.add(shield);
+        int defense = engine.getDefense();
+        engine.equipItem(shield);
+        require("Iron Shield".equals(state.equippedOffhand) &&
+            engine.getDefense() == defense + 2,
+            "fighter shields occupy the offhand and improve defense");
+        GameEngine.Item greatsword = new GameEngine.Item("Greatsword", "Weapon", 9, 0, 15,
+            "Fighter", false);
+        state.inventory.add(greatsword);
+        engine.equipItem(greatsword);
+        require(state.equippedOffhand == null,
+            "equipping a two-handed weapon clears the offhand slot");
+        moveToEnemy(engine, 0);
+        engine.defend();
+        require(engine.getHistory().contains("gather rage"),
+            "two-handed fighter defense action becomes rage");
+    }
+
+    private static void testProceduralWorldGeneration() {
+        GameEngine first = new GameEngine();
+        first.setRandomSeed(101L);
+        first.newGame("Seed One", "Human", "Fighter");
+        GameEngine second = new GameEngine();
+        second.setRandomSeed(202L);
+        second.newGame("Seed Two", "Human", "Fighter");
+        require(!worldSignature(first.getState()).equals(worldSignature(second.getState())),
+            "different seeds create different worlds");
+        validateGeneratedWorld(first.getState());
+        validateGeneratedWorld(second.getState());
+        java.util.HashSet<String> dragons = new java.util.HashSet<String>();
+        for (long seed = 0; seed < 64; seed++) {
+            GameEngine generated = new GameEngine();
+            generated.setRandomSeed(seed);
+            generated.newGame("Generated", "Human", "Fighter");
+            validateGeneratedWorld(generated.getState());
+            moveToEnemy(generated, 2);
+            dragons.add(generated.currentEnemy().name);
+        }
+        require(dragons.size() == 4, "all four dragon variants can be selected");
+    }
+
+    private static void testMapDiscoveryAndRumors() {
+        GameEngine explorer = new GameEngine();
+        explorer.setRandomSeed(77L);
+        explorer.newGame("Cartographer", "Human", "Fighter");
+        require(explorer.discoveryAt(0, 0) == GameEngine.DiscoveryState.VISITED,
+            "starting tile is visited");
+        require(explorer.discoveryAt(0, 1) == GameEngine.DiscoveryState.SCOUTED,
+            "travel scouts an adjacent tile");
+        require(explorer.discoveryAt(4, 4) == GameEngine.DiscoveryState.UNKNOWN,
+            "distant terrain begins under fog");
+
+        moveToVendor(explorer, "General Merchant");
+        explorer.getState().gold = 20;
+        explorer.useMapService(GameEngine.MapService.REGIONAL_MAP);
+        require(explorer.getState().regionalMapOwned && explorer.getState().gold == 8,
+            "regional map is purchased once at the merchant");
+        for (int row = 0; row < 5; row++) {
+            for (int col = 0; col < 5; col++) {
+                require(explorer.discoveryAt(row, col) != GameEngine.DiscoveryState.UNKNOWN,
+                    "regional map scouts the full board");
+            }
+        }
+
+        GameEngine rumor = new GameEngine();
+        rumor.setRandomSeed(91L);
+        rumor.newGame("Listener", "Elf", "Hunter");
+        moveToVendor(rumor, "Innkeeper");
+        rumor.useMapService(GameEngine.MapService.RUMOR);
+        require(!rumor.rumorServiceAvailableHere(),
+            "a tavern rumor can only be requested once per game");
+        boolean markedThreat = false;
+        boolean markedRelicRegion = false;
+        for (int row = 0; row < 5; row++) {
+            for (int col = 0; col < 5; col++) {
+                markedThreat |= rumor.threatKnowledgeAt(row, col) == 1;
+                markedRelicRegion |= rumor.hasRelicClueAt(row, col);
+            }
+        }
+        require(markedThreat, "a rumor marks an unknown threat");
+        require(markedRelicRegion, "an elite rumor marks a relic search region");
+        int knownAfterFirstRumor = knownThreatCount(rumor);
+        rumor.useMapService(GameEngine.MapService.RUMOR);
+        require(knownThreatCount(rumor) == knownAfterFirstRumor,
+            "repeated tavern requests do not reveal another threat");
+        require(rumor.getHistory().contains("already heard the useful rumors"),
+            "repeated tavern requests explain the one-use rule");
+
+        moveToVendor(rumor, "Alchemist");
+        require(rumor.rumorServiceAvailableHere(),
+            "the alchemist consultation remains independent from the tavern");
+        rumor.useMapService(GameEngine.MapService.RUMOR);
+        require(!rumor.rumorServiceAvailableHere(),
+            "arcane advice can only be requested once per game");
+    }
+
+    private static int knownThreatCount(GameEngine engine) {
+        int count = 0;
+        for (int row = 0; row < 5; row++) {
+            for (int col = 0; col < 5; col++) {
+                if (engine.threatKnowledgeAt(row, col) > 0) count++;
+            }
+        }
+        return count;
+    }
+
+    private static void validateGeneratedWorld(GameEngine.State state) {
+        int shops = 0;
+        int taverns = 0;
+        int camps = 0;
+        int blacksmiths = 0;
+        int standards = 0;
+        int elites = 0;
+        int bosses = 0;
+        for (int row = 0; row < state.tiles.length; row++) {
+            for (int col = 0; col < state.tiles[row].length; col++) {
+                if (state.tiles[row][col] == GameEngine.TileType.SHOP) shops++;
+                if (state.tiles[row][col] == GameEngine.TileType.TAVERN) taverns++;
+                if (state.tiles[row][col] == GameEngine.TileType.ENCAMPMENT) camps++;
+                if (state.blacksmithShops[row][col]) blacksmiths++;
+                GameEngine.Enemy enemy = state.enemies[row][col];
+                if (enemy != null) {
+                    require(state.tiles[row][col] != GameEngine.TileType.SHOP &&
+                        state.tiles[row][col] != GameEngine.TileType.TAVERN &&
+                        state.tiles[row][col] != GameEngine.TileType.ENCAMPMENT,
+                        "enemies never occupy generated safe landmarks");
+                    if (enemy.tier == 0) standards++;
+                    else if (enemy.tier == 1) elites++;
+                    else if (enemy.tier == 2) bosses++;
+                }
+            }
+        }
+        require(state.tiles[0][0] == GameEngine.TileType.ENCAMPMENT,
+            "starting tile remains a guaranteed safe camp");
+        require(shops == 2 && taverns == 1 && camps == 2 && blacksmiths == 1,
+            "generated world contains the complete landmark set");
+        require(standards == 5 && elites == 3 && bosses == 1,
+            "generated world contains tiered encounters");
+    }
+
+    private static String worldSignature(GameEngine.State state) {
+        StringBuilder result = new StringBuilder();
+        for (int row = 0; row < state.tiles.length; row++) {
+            for (int col = 0; col < state.tiles[row].length; col++) {
+                result.append(state.tiles[row][col].symbol);
+                GameEngine.Enemy enemy = state.enemies[row][col];
+                if (enemy != null) result.append(enemy.name);
+                result.append('|');
+            }
+        }
+        return result.toString();
+    }
+
+    private static void testDeterministicCombat() {
+        GameEngine engine = new GameEngine();
+        engine.newGame("Fighter", "Human", "Fighter");
+        moveToEnemy(engine, 0);
+        int attack = engine.getAttack();
+        int enemyHealth = engine.currentEnemy().health;
+        long seed = 8675309L;
+        int rawDamage = attack - 3 + new Random(seed).nextInt(5);
+        int expectedDamage = Math.max(1, rawDamage - engine.currentEnemy().defense);
+        engine.setRandomSeed(seed);
+        engine.attack();
+        require(engine.currentEnemy().health == enemyHealth - expectedDamage,
+            "seeded attack damage");
+    }
+
+    private static void testClassCombatActions() {
+        GameEngine mage = new GameEngine();
+        mage.setRandomSeed(44L);
+        mage.newGame("Channeler", "Dwarf", "Mage");
+        moveToEnemy(mage, 0);
+        mage.getState().mana -= 10;
+        int manaBefore = mage.getState().mana;
+        mage.setRandomSeed(3L);
+        mage.defend();
+        require(mage.getState().mana > manaBefore,
+            "mage channel ward restores mana in combat");
+        require(mage.getHistory().contains("channel a ward"),
+            "mage ward is explained in the combat log");
+
+        GameEngine rogue = new GameEngine();
+        rogue.setRandomSeed(45L);
+        rogue.newGame("Shadow", "Halfling", "Rogue");
+        moveToEnemy(rogue, 0);
+        rogue.setRandomSeed(1L);
+        rogue.defend();
+        require("STEALTH".equals(rogue.getState().combatPreparation),
+            "rogue defend enters stealth");
+        rogue.setRandomSeed(9L);
+        rogue.attack();
+        require(rogue.getState().combatPreparation == null &&
+                rogue.getHistory().contains("Stealth attack! Critical strike!"),
+            "rogue stealth guarantees and consumes a prepared critical");
+
+        GameEngine hunter = new GameEngine();
+        hunter.setRandomSeed(46L);
+        hunter.newGame("Archer", "Elf", "Hunter");
+        moveToEnemy(hunter, 0);
+        hunter.setRandomSeed(2L);
+        hunter.defend();
+        require("AIM".equals(hunter.getState().combatPreparation),
+            "hunter defend prepares an aimed shot");
+        hunter.setRandomSeed(11L);
+        hunter.attack();
+        require(hunter.getState().combatPreparation == null &&
+                hunter.getHistory().contains("Precision shot!"),
+            "hunter aim guarantees and consumes a precision shot");
+
+        GameEngine fighter = new GameEngine();
+        fighter.setRandomSeed(47L);
+        fighter.newGame("Guardian", "Human", "Fighter");
+        moveToEnemy(fighter, 0);
+        fighter.setRandomSeed(4L);
+        fighter.defend();
+        require(fighter.getState().combatPreparation == null &&
+                fighter.getHistory().contains("You brace for"),
+            "fighter retains the reliable defend action");
+    }
+
+    private static void testSpeedInitiativeAndActionTempo() {
+        GameEngine rogue = new GameEngine();
+        rogue.newGame("Swift", "Halfling", "Rogue");
+        moveToEnemy(rogue, 0);
+        GameEngine.State rogueState = rogue.getState();
+        rogueState.enemies[rogueState.row][rogueState.col] =
+            new GameEngine.Enemy("Cave Troll", 200, 8, 10, 0);
+        int rogueHealth = rogueState.health;
+        rogue.setRandomSeed(12L);
+        rogue.defend();
+        require(rogueState.health == rogueHealth,
+            "a fast preparation can preserve a bonus player action");
+        rogue.attack();
+        require(rogueState.health < rogueHealth &&
+                occurrences(rogue.getHistory(), "hits you") == 1,
+            "two-action safeguard gives a slow enemy a response");
+
+        GameEngine mage = new GameEngine();
+        mage.newGame("Committed", "Elf", "Mage");
+        moveToEnemy(mage, 0);
+        GameEngine.State mageState = mage.getState();
+        mageState.enemies[mageState.row][mageState.col] =
+            new GameEngine.Enemy("Dire Wolf", 200, 5, 10, 0);
+        mage.setRandomSeed(21L);
+        mage.castSpell("Fireball");
+        require(occurrences(mage.getHistory(), "hits you") == 2,
+            "a slow spell can expose the hero to two fast enemy attacks");
+        List<GameEngine.EnemyTurnEvent> enemyTurns = mage.consumeEnemyTurnEvents();
+        require(enemyTurns.size() == 2,
+            "two resolved attacks are exposed as two presentation events");
+        require(enemyTurns.get(0).healthBefore > enemyTurns.get(0).healthAfter &&
+                enemyTurns.get(0).healthAfter == enemyTurns.get(1).healthBefore &&
+                enemyTurns.get(1).historyEnd > enemyTurns.get(0).historyEnd,
+            "enemy attack events preserve sequential health and combat-log states");
+        require(mage.consumeEnemyTurnEvents().isEmpty(),
+            "enemy attack presentation events are consumed only once");
+
+        require("FAST".equals(GameEngine.attackTempoLabel(rogueState)),
+            "short swords are fast attacks");
+        require("NORMAL".equals(GameEngine.attackTempoLabel(mageState)),
+            "staff attacks use normal recovery");
+        require("SLOW".equals(GameEngine.spellTempoLabel("Fireball")) &&
+                "NORMAL".equals(GameEngine.spellTempoLabel("Magic Missile")),
+            "spell recovery communicates committed and normal casts");
+
+        int lowerLevelSpeed = mage.getHeroSpeed();
+        mageState.level += 5;
+        mageState.combatTimelineRow = -1;
+        int higherLevelSpeed = mage.getHeroSpeed();
+        require(higherLevelSpeed > lowerLevelSpeed &&
+                higherLevelSpeed - lowerLevelSpeed <= 10,
+            "level advantage improves speed within the capped modifier");
+        require(mage.getEnemySpeed() >= mage.currentEnemy().speed,
+            "enemy tier modifiers never reduce base speed");
+    }
+
+    private static void testLeveling() {
+        GameEngine engine = new GameEngine();
+        engine.newGame("Almost Ready", "Human", "Fighter");
+        GameEngine.State state = engine.getState();
+        state.experience = 29;
+        state.health = 1;
+        moveToEnemy(engine, 0);
+        int expectedOverflow = engine.currentEnemy().maxHealth / 2 - 1;
+        engine.currentEnemy().health = 1;
+        int oldMaxHealth = state.maxHealth;
+        engine.setRandomSeed(1L);
+        engine.attack();
+        require(state.level == 2, "level gained after crossing threshold");
+        require(state.experience == expectedOverflow, "overflow experience retained");
+        require(state.maxHealth == oldMaxHealth + 8, "level health increase");
+        require(state.health == state.maxHealth, "level restores health");
+    }
+
+    private static void testFleeingAndDefeat() {
+        GameEngine engine = new GameEngine();
+        engine.newGame("Runner", "Human", "Fighter");
+        GameEngine.State state = engine.getState();
+        moveToEnemy(engine, 0);
+        GameEngine.Enemy wolf = engine.currentEnemy();
+        state.previousRow = 0;
+        state.previousCol = 0;
+        int enemyRow = state.row;
+        int enemyCol = state.col;
+        engine.flee();
+        require(state.row == 0 && state.col == 0, "flee returns to previous safe tile");
+        require(state.enemies[enemyRow][enemyCol] == wolf, "flee leaves enemy alive");
+
+        state.row = enemyRow;
+        state.col = enemyCol;
+        state.health = 1;
+        wolf.speed = 200;
+        wolf.combatLevel = 1;
+        engine.setRandomSeed(2L);
+        engine.defend();
+        require(state.health == 0, "enemy can defeat player");
+        engine.move(0, -1);
+        require(state.row == enemyRow && state.col == enemyCol, "defeated player cannot move");
+    }
+
+    private static void testDragonVictory() {
+        GameEngine engine = new GameEngine();
+        engine.newGame("Chosen", "Elf", "Mage");
+        GameEngine.State state = engine.getState();
+        moveToEnemy(engine, 2);
+        engine.currentEnemy().health = 1;
+        engine.setRandomSeed(3L);
+        engine.castSpell("Magic Missile");
+        require(state.won, "dragon defeat wins quest");
+        require(engine.currentEnemy() == null, "dragon removed after victory");
+        int row = state.row;
+        engine.move(-1, 0);
+        require(state.row == row, "victorious quest no longer accepts actions");
+    }
+
+    private static void testEquipmentRules() {
+        GameEngine engine = new GameEngine();
+        engine.newGame("Buyer", "Dwarf", "Fighter");
+        GameEngine.State state = engine.getState();
+        GameEngine.Item plate = engine.shopItems().get(6);
+        int inventorySize = state.inventory.size();
+        engine.buyItem(plate);
+        require(state.inventory.size() == inventorySize, "cannot buy equipment away from shop");
+
+        moveToShop(engine, true);
+        state.gold = plate.cost;
+        engine.buyItem(plate);
+        require(state.inventory.contains(plate), "shop equipment purchase");
+        require(state.gold == 0, "purchase deducts exact cost");
+        engine.equipItem(plate);
+        require("Plate Armour".equals(state.equippedArmour), "purchased armour equips");
+        require(engine.getDefense() == state.baseDefense + plate.defense,
+            "equipped armour changes defense");
+    }
+
+    private static void testClassRestrictions() {
+        GameEngine engine = new GameEngine();
+        String[][] allowed = {
+            {"Fighter", "Axe", "Plate Armour"},
+            {"Mage", "Dagger", "Cloth Armour"},
+            {"Rogue", "Short Sword", "Leather Armour"},
+            {"Hunter", "Crossbow", "Scale Armour"}
+        };
+        String[][] blocked = {
+            {"Fighter", "Long Bow", "Crossbow"},
+            {"Mage", "Axe", "Plate Armour"},
+            {"Rogue", "Long Sword", "Long Bow", "Scale Armour"},
+            {"Hunter", "Axe", "Plate Armour"}
+        };
+        for (String[] rule : allowed) {
+            engine.newGame("Allowed", "Human", rule[0]);
+            for (int i = 1; i < rule.length; i++) {
+                GameEngine.Item item = item(engine, rule[i]);
+                require(GameEngine.equipmentRestriction(rule[0], item) == null,
+                    rule[0] + " may equip " + rule[i]);
+            }
+        }
+        for (String[] rule : blocked) {
+            engine.newGame("Blocked", "Human", rule[0]);
+            for (int i = 1; i < rule.length; i++) {
+                GameEngine.Item item = item(engine, rule[i]);
+                require(GameEngine.equipmentRestriction(rule[0], item) != null,
+                    rule[0] + " is blocked from " + rule[i]);
+            }
+        }
+
+        engine.newGame("Mage", "Human", "Mage");
+        GameEngine.State state = engine.getState();
+        moveToShop(engine, true);
+        state.gold = 100;
+        GameEngine.Item axe = item(engine, "Axe");
+        int inventorySize = state.inventory.size();
+        engine.buyItem(axe);
+        require(state.inventory.size() == inventorySize && state.gold == 100,
+            "shop prevents incompatible purchases");
+        state.inventory.add(axe);
+        String weapon = state.equippedWeapon;
+        engine.equipItem(axe);
+        require(weapon.equals(state.equippedWeapon),
+            "inventory prevents incompatible equipment");
+        require(engine.getHistory().contains("Mage cannot equip Axe"),
+            "class restriction gives clear feedback");
+    }
+
+    private static void testVendorInventoryRules() {
+        GameEngine engine = new GameEngine();
+        engine.newGame("Vendor Check", "Human", "Fighter");
+        GameEngine.State state = engine.getState();
+        GameEngine.Item plate = item(engine, "Plate Armour");
+        GameEngine.Item cloth = item(engine, "Cloth Armour");
+
+        moveToShop(engine, false);
+        state.gold = 100;
+        int inventorySize = state.inventory.size();
+        engine.buyItem(plate);
+        require(state.inventory.size() == inventorySize && state.gold == 100,
+            "general merchant does not sell plate armour");
+
+        moveToShop(engine, true);
+        engine.buyItem(cloth);
+        require(state.inventory.size() == inventorySize && state.gold == 100,
+            "blacksmith does not sell cloth armour");
+        engine.buyPotion();
+        require(state.gold == 100 && state.potions == 2,
+            "blacksmith does not sell potions");
+        require(GameEngine.vendorOffers(true, plate) &&
+                GameEngine.vendorOffers(false, cloth),
+            "vendor inventory assigns heavy and light armour correctly");
+    }
+
+    private static void testRelicProgression() {
+        String[][] drops = {
+            {"Orc Warlord", "Battered War Crest", "Blacksmith"},
+            {"Necromancer", "Sealed Soulglass", "Alchemist"},
+            {"Dark Elf Assassin", "Moonmarked Coffer", "General Merchant"},
+            {"Fallen Knight", "Tarnished Oath Signet", "Innkeeper"}
+        };
+        for (String[] drop : drops) {
+            GameEngine engine = new GameEngine();
+            engine.newGame("Relic Seeker", "Human", "Fighter");
+            moveToEnemy(engine, 1);
+            GameEngine.State state = engine.getState();
+            state.enemies[state.row][state.col] =
+                new GameEngine.Enemy(drop[0], 1, 1, 1, 1);
+            engine.setRandomSeed(1L);
+            engine.attack();
+            require(state.relics.size() == 1, drop[0] + " drops one relic");
+            GameEngine.Relic relic = state.relics.get(0);
+            require(drop[1].equals(relic.name) && drop[2].equals(relic.vendor),
+                drop[0] + " maps to its intended relic and vendor");
+            require(engine.consumeRelicDiscovery() == relic,
+                "new relic is exposed for the discovery presentation");
+
+            moveToVendor(engine, "Blacksmith".equals(relic.vendor)
+                ? "General Merchant" : "Blacksmith");
+            engine.identifyRelic(relic);
+            require(!relic.identified, "wrong vendor cannot identify " + relic.name);
+
+            moveToVendor(engine, relic.vendor);
+            int gold = state.gold;
+            int equipment = state.inventory.size();
+            engine.identifyRelic(relic);
+            require(relic.identified && engine.identifiedRelicCount() == 1,
+                "correct vendor identifies " + relic.name);
+            require(state.gold == gold, "relic identification is free");
+            require(state.inventory.size() == equipment + 1 && relic.rewardName != null,
+                "identified relic grants class-compatible equipment");
+            GameEngine.Item reward = state.inventory.get(state.inventory.size() - 1);
+            require(GameEngine.equipmentRestriction(state.heroClass, reward) == null &&
+                    reward.relicReward, "relic reward is usable and marked as special");
+        }
+    }
+
+    private static void testShopProgressionForEveryClass() {
+        String[][] upgrades = {
+            {"Fighter", "Steel Long Sword"},
+            {"Mage", "Ashwood Staff"},
+            {"Rogue", "Shadowsteel Dirk"},
+            {"Hunter", "Ranger Bow"}
+        };
+        GameEngine engine = new GameEngine();
+        for (String[] upgrade : upgrades) {
+            engine.newGame("Shopper", "Human", upgrade[0]);
+            int startingAttack = engine.getAttack();
+            GameEngine.Item candidate = item(engine, upgrade[1]);
+            require(candidate.attack > 0 &&
+                    GameEngine.equipmentRestriction(upgrade[0], candidate) == null,
+                upgrade[0] + " has a class-compatible shop weapon upgrade");
+            engine.getState().inventory.add(candidate);
+            engine.equipItem(candidate);
+            require(engine.getAttack() > startingAttack,
+                upgrade[0] + " shop weapon is a meaningful minor upgrade");
+        }
+    }
+
+    private static void testSpellIdentityAndCombatCurve() {
+        GameEngine fighter = new GameEngine();
+        fighter.newGame("Fighter", "Human", "Fighter");
+        moveToEnemy(fighter, 0);
+        int mana = fighter.getState().mana;
+        int health = fighter.currentEnemy().health;
+        fighter.castSpell("Magic Missile");
+        require(fighter.getState().mana == mana && fighter.currentEnemy().health == health,
+            "non-mage cannot invoke spells through the engine");
+
+        GameEngine mage = new GameEngine();
+        mage.newGame("Mage", "Human", "Mage");
+        moveToEnemy(mage, 0);
+        mage.setRandomSeed(17L);
+        int beforeSpell = mage.currentEnemy().health;
+        mage.castSpell("Fireball");
+        int spellDamage = beforeSpell -
+            (mage.currentEnemy() == null ? 0 : mage.currentEnemy().health);
+
+        GameEngine physicalMage = new GameEngine();
+        physicalMage.newGame("Mage", "Human", "Mage");
+        moveToEnemy(physicalMage, 0);
+        physicalMage.setRandomSeed(17L);
+        int beforeAttack = physicalMage.currentEnemy().health;
+        physicalMage.attack();
+        int attackDamage = beforeAttack - physicalMage.currentEnemy().health;
+        require(spellDamage > attackDamage,
+            "mage spells are meaningfully stronger than staff attacks");
+        require(mage.getState().spells.contains("Ice Spike"),
+            "mage receives the complete spell progression set");
+
+        mage.getState().mana = mage.getState().maxMana;
+        moveToEnemy(mage, 0);
+        mage.selectSpell("Ice Spike");
+        require("Ice Spike".equals(mage.getState().selectedSpell),
+            "selecting a spell updates Quick Cast without spending mana");
+        require(mage.getState().mana == mage.getState().maxMana,
+            "selecting a spell does not consume a combat turn or mana");
+        mage.selectSpell("Fireball");
+        int quickMana = mage.getState().mana;
+        require("Fireball".equals(mage.getState().selectedSpell),
+            "spell selection remembers the most recently cast spell");
+        mage.castSelectedSpell();
+        require(mage.getState().mana == quickMana - GameEngine.spellCost("Fireball"),
+            "quick cast repeats the remembered spell without a selector");
+
+        GameEngine difficulty = new GameEngine();
+        difficulty.newGame("Difficulty", "Human", "Fighter");
+        moveToEnemy(difficulty, 0);
+        require(difficulty.currentEnemy().maxHealth >= 22 &&
+            difficulty.currentEnemy().attack >= 8,
+            "standard encounters use the raised difficulty curve");
+        moveToEnemy(difficulty, 2);
+        require(difficulty.currentEnemy().maxHealth >= 110 &&
+                difficulty.currentEnemy().attack >= 16 &&
+                difficulty.currentEnemy().defense <= 11 &&
+                difficulty.currentEnemy().combatLevel <= 7,
+            "boss curve targets prepared level three to four heroes");
+    }
+
+    private static GameEngine.Item item(GameEngine engine, String name) {
+        for (GameEngine.Item item : engine.shopItems()) {
+            if (name.equals(item.name)) return item;
+        }
+        throw new AssertionError("Missing shop item: " + name);
+    }
+
+    private static void moveToEnemy(GameEngine engine, int tier) {
+        GameEngine.State state = engine.getState();
+        for (int row = 0; row < state.enemies.length; row++) {
+            for (int col = 0; col < state.enemies[row].length; col++) {
+                GameEngine.Enemy enemy = state.enemies[row][col];
+                if (enemy != null && enemy.tier == tier) {
+                    state.row = row;
+                    state.col = col;
+                    return;
+                }
+            }
+        }
+        throw new AssertionError("Missing generated enemy tier " + tier);
+    }
+
+    private static void moveToShop(GameEngine engine, boolean blacksmith) {
+        GameEngine.State state = engine.getState();
+        for (int row = 0; row < state.tiles.length; row++) {
+            for (int col = 0; col < state.tiles[row].length; col++) {
+                if (state.tiles[row][col] == GameEngine.TileType.SHOP &&
+                        state.blacksmithShops[row][col] == blacksmith) {
+                    state.row = row;
+                    state.col = col;
+                    return;
+                }
+            }
+        }
+        throw new AssertionError("Missing generated shop");
+    }
+
+    private static void moveToVendor(GameEngine engine, String vendor) {
+        if ("Blacksmith".equals(vendor)) {
+            moveToShop(engine, true);
+            return;
+        }
+        if ("General Merchant".equals(vendor)) {
+            moveToShop(engine, false);
+            return;
+        }
+        GameEngine.TileType wanted = "Innkeeper".equals(vendor)
+            ? GameEngine.TileType.TAVERN : GameEngine.TileType.ENCAMPMENT;
+        GameEngine.State state = engine.getState();
+        for (int row = 0; row < state.tiles.length; row++) {
+            for (int col = 0; col < state.tiles[row].length; col++) {
+                if (state.tiles[row][col] == wanted) {
+                    state.row = row;
+                    state.col = col;
+                    return;
+                }
+            }
+        }
+        throw new AssertionError("Missing vendor: " + vendor);
+    }
+
+    private static void testSaveRoundTripAndNormalization() throws Exception {
+        GameEngine engine = new GameEngine();
+        engine.newGame("Legacy Hero", "Halfling", "Rogue");
+        GameEngine.State state = engine.getState();
+        state.race = null;
+        state.heroClass = null;
+        state.level = 0;
+        state.baseAttack = 0;
+        state.inventory = null;
+        state.relics = null;
+        state.spells = null;
+        state.gold = 77;
+        File save = File.createTempFile("chosen-quest-regression-", ".save");
+        try {
+            engine.save(save);
+            engine.load(save);
+            state = engine.getState();
+            require("Human".equals(state.race), "missing race normalized");
+            require("Fighter".equals(state.heroClass), "missing class normalized");
+            require(state.level == 1 && state.baseAttack == 5, "legacy stats normalized");
+            require(state.inventory != null && state.spells != null && state.relics != null,
+                "legacy collections normalized");
+            require(state.discovery != null && state.threatKnowledge != null &&
+                state.relicSearch != null, "map discovery state survives save normalization");
+            require(state.gold == 77, "save preserves valid state");
+        } finally {
+            save.delete();
+        }
+    }
+
+    private static HeroExpectation hero(String race, String heroClass, int health, int mana,
+                                        int attack, int defense, int gold) {
+        return new HeroExpectation(race, heroClass, health, mana, attack, defense, gold);
+    }
+
+    private static int occurrences(String text, String fragment) {
+        int count = 0;
+        int index = 0;
+        while (text != null && (index = text.indexOf(fragment, index)) >= 0) {
+            count++;
+            index += fragment.length();
+        }
+        return count;
+    }
+
+    private static void require(boolean condition, String feature) {
+        if (!condition) throw new AssertionError("Failed: " + feature);
+    }
+
+    private static final class HeroExpectation {
+        final String race;
+        final String heroClass;
+        final int health;
+        final int mana;
+        final int attack;
+        final int defense;
+        final int gold;
+
+        HeroExpectation(String race, String heroClass, int health, int mana,
+                        int attack, int defense, int gold) {
+            this.race = race;
+            this.heroClass = heroClass;
+            this.health = health;
+            this.mana = mana;
+            this.attack = attack;
+            this.defense = defense;
+            this.gold = gold;
+        }
+    }
+}

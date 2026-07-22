@@ -1,0 +1,722 @@
+[
+  {
+    "key": "weapon/arming-sword",
+    "name": "Arming Sword",
+    "category": "weapon",
+    "resource": "/assets/icons/items/weapon-arming-sword.png",
+    "sourceSheet": "inventory-weapons-4x4.png",
+    "cell": {
+      "row": 0,
+      "column": 0
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "weapon/battle-axe",
+    "name": "Battle Axe",
+    "category": "weapon",
+    "resource": "/assets/icons/items/weapon-battle-axe.png",
+    "sourceSheet": "inventory-weapons-4x4.png",
+    "cell": {
+      "row": 0,
+      "column": 1
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "weapon/flanged-mace",
+    "name": "Flanged Mace",
+    "category": "weapon",
+    "resource": "/assets/icons/items/weapon-flanged-mace.png",
+    "sourceSheet": "inventory-weapons-4x4.png",
+    "cell": {
+      "row": 0,
+      "column": 2
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "weapon/warhammer",
+    "name": "Warhammer",
+    "category": "weapon",
+    "resource": "/assets/icons/items/weapon-warhammer.png",
+    "sourceSheet": "inventory-weapons-4x4.png",
+    "cell": {
+      "row": 0,
+      "column": 3
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "weapon/greatsword",
+    "name": "Greatsword",
+    "category": "weapon",
+    "resource": "/assets/icons/items/weapon-greatsword.png",
+    "sourceSheet": "inventory-weapons-4x4.png",
+    "cell": {
+      "row": 1,
+      "column": 0
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "weapon/greataxe",
+    "name": "Greataxe",
+    "category": "weapon",
+    "resource": "/assets/icons/items/weapon-greataxe.png",
+    "sourceSheet": "inventory-weapons-4x4.png",
+    "cell": {
+      "row": 1,
+      "column": 1
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "weapon/maul",
+    "name": "Maul",
+    "category": "weapon",
+    "resource": "/assets/icons/items/weapon-maul.png",
+    "sourceSheet": "inventory-weapons-4x4.png",
+    "cell": {
+      "row": 1,
+      "column": 2
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "weapon/spear",
+    "name": "Spear",
+    "category": "weapon",
+    "resource": "/assets/icons/items/weapon-spear.png",
+    "sourceSheet": "inventory-weapons-4x4.png",
+    "cell": {
+      "row": 1,
+      "column": 3
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "weapon/arcane-staff",
+    "name": "Arcane Staff",
+    "category": "weapon",
+    "resource": "/assets/icons/items/weapon-arcane-staff.png",
+    "sourceSheet": "inventory-weapons-4x4.png",
+    "cell": {
+      "row": 2,
+      "column": 0
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "weapon/wand",
+    "name": "Wand",
+    "category": "weapon",
+    "resource": "/assets/icons/items/weapon-wand.png",
+    "sourceSheet": "inventory-weapons-4x4.png",
+    "cell": {
+      "row": 2,
+      "column": 1
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "offhand/grimoire",
+    "name": "Grimoire",
+    "category": "offhand",
+    "resource": "/assets/icons/items/offhand-grimoire.png",
+    "sourceSheet": "inventory-weapons-4x4.png",
+    "cell": {
+      "row": 2,
+      "column": 2
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "weapon/dagger",
+    "name": "Dagger",
+    "category": "weapon",
+    "resource": "/assets/icons/items/weapon-dagger.png",
+    "sourceSheet": "inventory-weapons-4x4.png",
+    "cell": {
+      "row": 2,
+      "column": 3
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "weapon/stiletto",
+    "name": "Stiletto",
+    "category": "weapon",
+    "resource": "/assets/icons/items/weapon-stiletto.png",
+    "sourceSheet": "inventory-weapons-4x4.png",
+    "cell": {
+      "row": 3,
+      "column": 0
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "weapon/serrated-dagger",
+    "name": "Serrated Dagger",
+    "category": "weapon",
+    "resource": "/assets/icons/items/weapon-serrated-dagger.png",
+    "sourceSheet": "inventory-weapons-4x4.png",
+    "cell": {
+      "row": 3,
+      "column": 1
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "weapon/parrying-dagger",
+    "name": "Parrying Dagger",
+    "category": "weapon",
+    "resource": "/assets/icons/items/weapon-parrying-dagger.png",
+    "sourceSheet": "inventory-weapons-4x4.png",
+    "cell": {
+      "row": 3,
+      "column": 2
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "weapon/shortbow",
+    "name": "Shortbow",
+    "category": "weapon",
+    "resource": "/assets/icons/items/weapon-shortbow.png",
+    "sourceSheet": "inventory-weapons-4x4.png",
+    "cell": {
+      "row": 3,
+      "column": 3
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "weapon/longbow",
+    "name": "Longbow",
+    "category": "weapon",
+    "resource": "/assets/icons/items/weapon-longbow.png",
+    "sourceSheet": "inventory-offhand-armour-4x4.png",
+    "cell": {
+      "row": 0,
+      "column": 0
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "weapon/crossbow",
+    "name": "Crossbow",
+    "category": "weapon",
+    "resource": "/assets/icons/items/weapon-crossbow.png",
+    "sourceSheet": "inventory-offhand-armour-4x4.png",
+    "cell": {
+      "row": 0,
+      "column": 1
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "offhand/round-shield",
+    "name": "Round Shield",
+    "category": "offhand",
+    "resource": "/assets/icons/items/offhand-round-shield.png",
+    "sourceSheet": "inventory-offhand-armour-4x4.png",
+    "cell": {
+      "row": 0,
+      "column": 2
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "offhand/kite-shield",
+    "name": "Kite Shield",
+    "category": "offhand",
+    "resource": "/assets/icons/items/offhand-kite-shield.png",
+    "sourceSheet": "inventory-offhand-armour-4x4.png",
+    "cell": {
+      "row": 0,
+      "column": 3
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "offhand/tower-shield",
+    "name": "Tower Shield",
+    "category": "offhand",
+    "resource": "/assets/icons/items/offhand-tower-shield.png",
+    "sourceSheet": "inventory-offhand-armour-4x4.png",
+    "cell": {
+      "row": 1,
+      "column": 0
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "offhand/tome",
+    "name": "Tome",
+    "category": "offhand",
+    "resource": "/assets/icons/items/offhand-tome.png",
+    "sourceSheet": "inventory-offhand-armour-4x4.png",
+    "cell": {
+      "row": 1,
+      "column": 1
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "offhand/elemental-totem",
+    "name": "Elemental Totem",
+    "category": "offhand",
+    "resource": "/assets/icons/items/offhand-elemental-totem.png",
+    "sourceSheet": "inventory-offhand-armour-4x4.png",
+    "cell": {
+      "row": 1,
+      "column": 2
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "offhand/warding-totem",
+    "name": "Warding Totem",
+    "category": "offhand",
+    "resource": "/assets/icons/items/offhand-warding-totem.png",
+    "sourceSheet": "inventory-offhand-armour-4x4.png",
+    "cell": {
+      "row": 1,
+      "column": 3
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "offhand/light-quiver",
+    "name": "Light Quiver",
+    "category": "offhand",
+    "resource": "/assets/icons/items/offhand-light-quiver.png",
+    "sourceSheet": "inventory-offhand-armour-4x4.png",
+    "cell": {
+      "row": 2,
+      "column": 0
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "offhand/war-quiver",
+    "name": "War Quiver",
+    "category": "offhand",
+    "resource": "/assets/icons/items/offhand-war-quiver.png",
+    "sourceSheet": "inventory-offhand-armour-4x4.png",
+    "cell": {
+      "row": 2,
+      "column": 1
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "offhand/enchanted-quiver",
+    "name": "Enchanted Quiver",
+    "category": "offhand",
+    "resource": "/assets/icons/items/offhand-enchanted-quiver.png",
+    "sourceSheet": "inventory-offhand-armour-4x4.png",
+    "cell": {
+      "row": 2,
+      "column": 2
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "armour/cloth-robe",
+    "name": "Cloth Robe",
+    "category": "armour",
+    "resource": "/assets/icons/items/armour-cloth-robe.png",
+    "sourceSheet": "inventory-offhand-armour-4x4.png",
+    "cell": {
+      "row": 2,
+      "column": 3
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "armour/leather",
+    "name": "Leather Armour",
+    "category": "armour",
+    "resource": "/assets/icons/items/armour-leather.png",
+    "sourceSheet": "inventory-offhand-armour-4x4.png",
+    "cell": {
+      "row": 3,
+      "column": 0
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "armour/chainmail",
+    "name": "Chainmail",
+    "category": "armour",
+    "resource": "/assets/icons/items/armour-chainmail.png",
+    "sourceSheet": "inventory-offhand-armour-4x4.png",
+    "cell": {
+      "row": 3,
+      "column": 1
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "armour/plate",
+    "name": "Plate Armour",
+    "category": "armour",
+    "resource": "/assets/icons/items/armour-plate.png",
+    "sourceSheet": "inventory-offhand-armour-4x4.png",
+    "cell": {
+      "row": 3,
+      "column": 2
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "offhand/rogue-buckler",
+    "name": "Rogue Buckler",
+    "category": "offhand",
+    "resource": "/assets/icons/items/offhand-rogue-buckler.png",
+    "sourceSheet": "inventory-offhand-armour-4x4.png",
+    "cell": {
+      "row": 3,
+      "column": 3
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "consumable/health-potion",
+    "name": "Health Potion",
+    "category": "consumable",
+    "resource": "/assets/icons/items/consumable-health-potion.png",
+    "sourceSheet": "inventory-consumables-quest-4x4.png",
+    "cell": {
+      "row": 0,
+      "column": 0
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "consumable/mana-potion",
+    "name": "Mana Potion",
+    "category": "consumable",
+    "resource": "/assets/icons/items/consumable-mana-potion.png",
+    "sourceSheet": "inventory-consumables-quest-4x4.png",
+    "cell": {
+      "row": 0,
+      "column": 1
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "consumable/antidote",
+    "name": "Antidote",
+    "category": "consumable",
+    "resource": "/assets/icons/items/consumable-antidote.png",
+    "sourceSheet": "inventory-consumables-quest-4x4.png",
+    "cell": {
+      "row": 0,
+      "column": 2
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "consumable/combat-tonic",
+    "name": "Combat Tonic",
+    "category": "consumable",
+    "resource": "/assets/icons/items/consumable-combat-tonic.png",
+    "sourceSheet": "inventory-consumables-quest-4x4.png",
+    "cell": {
+      "row": 0,
+      "column": 3
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "quest/unidentified-relic",
+    "name": "Unidentified Relic",
+    "category": "quest",
+    "resource": "/assets/icons/items/quest-unidentified-relic.png",
+    "sourceSheet": "inventory-consumables-quest-4x4.png",
+    "cell": {
+      "row": 1,
+      "column": 0
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "quest/identified-relic",
+    "name": "Identified Relic",
+    "category": "quest",
+    "resource": "/assets/icons/items/quest-identified-relic.png",
+    "sourceSheet": "inventory-consumables-quest-4x4.png",
+    "cell": {
+      "row": 1,
+      "column": 1
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "quest/regional-map",
+    "name": "Regional Map",
+    "category": "quest",
+    "resource": "/assets/icons/items/quest-regional-map.png",
+    "sourceSheet": "inventory-consumables-quest-4x4.png",
+    "cell": {
+      "row": 1,
+      "column": 2
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "quest/rumor-note",
+    "name": "Rumor Note",
+    "category": "quest",
+    "resource": "/assets/icons/items/quest-rumor-note.png",
+    "sourceSheet": "inventory-consumables-quest-4x4.png",
+    "cell": {
+      "row": 1,
+      "column": 3
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "currency/coin-purse",
+    "name": "Coin Purse",
+    "category": "currency",
+    "resource": "/assets/icons/items/currency-coin-purse.png",
+    "sourceSheet": "inventory-consumables-quest-4x4.png",
+    "cell": {
+      "row": 2,
+      "column": 0
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "tool/lockpicks",
+    "name": "Lockpicks",
+    "category": "tool",
+    "resource": "/assets/icons/items/tool-lockpicks.png",
+    "sourceSheet": "inventory-consumables-quest-4x4.png",
+    "cell": {
+      "row": 2,
+      "column": 1
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "consumable/spell-scroll",
+    "name": "Spell Scroll",
+    "category": "consumable",
+    "resource": "/assets/icons/items/consumable-spell-scroll.png",
+    "sourceSheet": "inventory-consumables-quest-4x4.png",
+    "cell": {
+      "row": 2,
+      "column": 2
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "consumable/travel-ration",
+    "name": "Travel Ration",
+    "category": "consumable",
+    "resource": "/assets/icons/items/consumable-travel-ration.png",
+    "sourceSheet": "inventory-consumables-quest-4x4.png",
+    "cell": {
+      "row": 2,
+      "column": 3
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "material/mana-crystal",
+    "name": "Mana Crystal",
+    "category": "material",
+    "resource": "/assets/icons/items/material-mana-crystal.png",
+    "sourceSheet": "inventory-consumables-quest-4x4.png",
+    "cell": {
+      "row": 3,
+      "column": 0
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "material/enchantment-rune",
+    "name": "Enchantment Rune",
+    "category": "material",
+    "resource": "/assets/icons/items/material-enchantment-rune.png",
+    "sourceSheet": "inventory-consumables-quest-4x4.png",
+    "cell": {
+      "row": 3,
+      "column": 1
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "tool/repair-kit",
+    "name": "Repair Toolkit",
+    "category": "tool",
+    "resource": "/assets/icons/items/tool-repair-kit.png",
+    "sourceSheet": "inventory-consumables-quest-4x4.png",
+    "cell": {
+      "row": 3,
+      "column": 2
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  },
+  {
+    "key": "material/dragon-scale",
+    "name": "Dragon Scale",
+    "category": "material",
+    "resource": "/assets/icons/items/material-dragon-scale.png",
+    "sourceSheet": "inventory-consumables-quest-4x4.png",
+    "cell": {
+      "row": 3,
+      "column": 3
+    },
+    "size": {
+      "width": 320,
+      "height": 320
+    }
+  }
+]
