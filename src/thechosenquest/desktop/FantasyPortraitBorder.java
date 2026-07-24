@@ -49,6 +49,11 @@ final class FantasyPortraitBorder extends AbstractBorder {
         return false;
     }
 
+    /** Opening used by AssetImagePanel to mask square artwork beneath the moulding. */
+    int viewportInset() { return 5; }
+
+    int viewportArc() { return compact ? 11 : 15; }
+
     @Override
     public void paintBorder(Component component, Graphics graphics, int x, int y,
                             int width, int height) {

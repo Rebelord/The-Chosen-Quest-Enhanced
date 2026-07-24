@@ -15,7 +15,9 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -56,6 +58,18 @@ final class MainWindow {
     private static final int ENEMY_BEAT_INTERVAL_MS = 680;
     private static final int ENEMY_BEAT_INITIAL_DELAY_MS = 280;
     private static final int ENEMY_BEAT_SETTLE_MS = 540;
+
+    static int enemyBeatInterval(boolean reducedMotion) {
+        return reducedMotion ? 360 : ENEMY_BEAT_INTERVAL_MS;
+    }
+
+    static int enemyBeatInitialDelay(boolean reducedMotion) {
+        return reducedMotion ? 140 : ENEMY_BEAT_INITIAL_DELAY_MS;
+    }
+
+    static int enemyBeatSettleDelay(boolean reducedMotion) {
+        return reducedMotion ? 220 : ENEMY_BEAT_SETTLE_MS;
+    }
 
     private final GameEngine engine = new GameEngine();
     private final SoundManager soundManager = new SoundManager();
@@ -226,6 +240,7 @@ final class MainWindow {
     private int previousEnemyHealth = -1;
     private int previousPlayerHealth = -1;
     private boolean combatSequencePlaying;
+    private final KeyRepeatGuard movementKeyGuard = new KeyRepeatGuard();
     private final GameSettingsOverlay settingsOverlay;
 
     MainWindow() {
@@ -323,6 +338,19 @@ final class MainWindow {
     void show() {
         frame.setVisible(true);
         soundManager.playTitleMusic();
+        if (preferences.shouldShowReleaseNotes(AppVersion.VERSION)) {
+            Timer notesDelay = new Timer(350, new ActionListener() {
+                public void actionPerformed(ActionEvent event) {
+                    settingsOverlay.showReleaseNotes(false, new Runnable() {
+                        public void run() {
+                            preferences.markReleaseNotesSeen(AppVersion.VERSION);
+                        }
+                    });
+                }
+            });
+            notesDelay.setRepeats(false);
+            notesDelay.start();
+        }
     }
 
     private void buildWindow() {
@@ -332,6 +360,7 @@ final class MainWindow {
         frame.setLocationRelativeTo(null);
         frame.addWindowFocusListener(new WindowAdapter() {
             public void windowLostFocus(WindowEvent event) {
+                movementKeyGuard.clear();
                 soundManager.setFocusSuspended(true);
             }
             public void windowGainedFocus(WindowEvent event) {
@@ -408,10 +437,41 @@ final class MainWindow {
             public void actionPerformed(ActionEvent event) {
                 if (chooseLoad()) showGame();
             }
+        }, new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                soundManager.play(SoundManager.Cue.UI_CONFIRM);
+                settingsOverlay.showCredits(false);
+            }
+        }, new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                soundManager.play(SoundManager.Cue.UI_CONFIRM);
+                settingsOverlay.showReleaseNotes(false, null);
+            }
+        }, new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                soundManager.play(SoundManager.Cue.UI_CONFIRM);
+                ProjectLinks.open(ProjectLinks.FEEDBACK);
+            }
+        }, new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                soundManager.play(SoundManager.Cue.UI_CONFIRM);
+                ProjectLinks.open(ProjectLinks.BUG_REPORT);
+            }
         });
     }
 
     static JPanel buildTitleScreen(ActionListener beginAction, ActionListener loadAction) {
+        return buildTitleScreen(beginAction, loadAction, null);
+    }
+
+    static JPanel buildTitleScreen(ActionListener beginAction, ActionListener loadAction,
+                                   ActionListener creditsAction) {
+        return buildTitleScreen(beginAction, loadAction, creditsAction, null, null, null);
+    }
+
+    static JPanel buildTitleScreen(ActionListener beginAction, ActionListener loadAction,
+                                   ActionListener creditsAction, ActionListener notesAction,
+                                   ActionListener feedbackAction, ActionListener bugAction) {
         BackgroundPanel root = new BackgroundPanel("/assets/title-screen.png", 0.0f, true);
         root.setLayout(new GridBagLayout());
         root.setBorder(BorderFactory.createEmptyBorder(0, 36, 0, 36));
@@ -489,16 +549,46 @@ final class MainWindow {
         bottomSpacer.setPreferredSize(new Dimension(1, 64));
         root.add(bottomSpacer, c);
 
+        JPanel footer = new JPanel(new BorderLayout(18, 0));
+        footer.setOpaque(false);
+        footer.setPreferredSize(new Dimension(1368, 34));
+        JPanel footerLinks = new JPanel(new java.awt.FlowLayout(
+            java.awt.FlowLayout.LEFT, 16, 0));
+        footerLinks.setOpaque(false);
+        footerLinks.add(footerButton("WHAT'S NEW", "View current release notes", notesAction));
+        footerLinks.add(footerButton("FEEDBACK", ProjectLinks.FEEDBACK, feedbackAction));
+        footerLinks.add(footerButton("REPORT A BUG", ProjectLinks.BUG_REPORT, bugAction));
+        footerLinks.add(footerButton("CREDITS & LICENSES",
+            "View contributors, asset sources, and licenses", creditsAction));
+        footer.add(footerLinks, BorderLayout.WEST);
+
         JLabel version = new JLabel(AppVersion.DISPLAY_NAME + "  •  PLAYTEST BUILD");
         version.setForeground(new Color(190, 181, 160, 210));
         version.setFont(UiTheme.body(Font.BOLD, 13));
         version.getAccessibleContext().setAccessibleName(
             "The Chosen Quest Enhanced " + AppVersion.DISPLAY_NAME + " playtest build");
+        footer.add(version, BorderLayout.EAST);
         c.gridy = 5;
-        c.anchor = GridBagConstraints.SOUTHEAST;
+        c.anchor = GridBagConstraints.SOUTH;
         c.fill = GridBagConstraints.NONE;
-        root.add(version, c);
+        root.add(footer, c);
         return root;
+    }
+
+    private static JButton footerButton(String text, String tooltip,
+                                        ActionListener action) {
+        JButton button = new JButton(text);
+        button.setForeground(new Color(220, 205, 169));
+        button.setFont(UiTheme.body(Font.BOLD, 11));
+        button.setContentAreaFilled(false);
+        button.setBorder(BorderFactory.createEmptyBorder(4, 2, 4, 2));
+        button.setFocusPainted(false);
+        button.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+        button.setToolTipText(tooltip);
+        button.getAccessibleContext().setAccessibleName(text.toLowerCase());
+        if (action != null) button.addActionListener(action);
+        else button.setEnabled(false);
+        return button;
     }
 
     private static JButton titleButton(String text, final boolean primary) {
@@ -646,7 +736,25 @@ final class MainWindow {
         bindMapZoomKey(KeyStroke.getKeyStroke("pressed ADD"), "mapZoomInNumpad", true);
         bindMapZoomKey(KeyStroke.getKeyStroke("pressed SUBTRACT"),
             "mapZoomOutNumpad", false);
+        bindWorldMapKey();
         for (char key = '1'; key <= '7'; key++) bindCombatKey(key);
+    }
+
+    private void bindWorldMapKey() {
+        JComponent root = frame.getRootPane();
+        root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+            .put(KeyStroke.getKeyStroke("pressed M"), "toggleWorldMap");
+        root.getActionMap().put("toggleWorldMap", new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+            public void actionPerformed(ActionEvent event) {
+                if (settingsOverlay.worldMapVisibleForTest()) {
+                    settingsOverlay.closeWorldMap();
+                } else if (gameVisible && !settingsOverlay.isVisible()) {
+                    soundManager.play(SoundManager.Cue.UI_CONFIRM);
+                    settingsOverlay.showWorldMap(engine);
+                }
+            }
+        });
     }
 
     private void bindMapZoomKey(KeyStroke keyStroke, String actionName,
@@ -658,7 +766,8 @@ final class MainWindow {
         root.getActionMap().put(actionName, new AbstractAction() {
             private static final long serialVersionUID = 1L;
             public void actionPerformed(ActionEvent event) {
-                if (gameVisible && enhancedExploration != null) {
+                if (gameVisible && !settingsOverlay.isVisible() &&
+                        enhancedExploration != null) {
                     enhancedExploration.triggerMapZoomShortcut(zoomIn);
                 }
             }
@@ -674,7 +783,8 @@ final class MainWindow {
             private static final long serialVersionUID = 1L;
             public void actionPerformed(ActionEvent event) {
                 GameEngine.State state = engine.getState();
-                if (gameVisible && state.health > 0 && !state.won &&
+                if (gameVisible && !settingsOverlay.isVisible() &&
+                        state.health > 0 && !state.won &&
                         engine.currentEnemy() != null) {
                     encounterPanel.triggerShortcut(key);
                 }
@@ -685,6 +795,7 @@ final class MainWindow {
     private void bindMovementKey(String keyStroke, String actionName,
                                  final int rowDelta, final int colDelta) {
         JComponent root = frame.getRootPane();
+        final String heldKey = actionName;
         root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
             .put(KeyStroke.getKeyStroke(keyStroke), actionName);
         root.getActionMap().put(actionName, new AbstractAction() {
@@ -692,8 +803,10 @@ final class MainWindow {
 
             @Override
             public void actionPerformed(ActionEvent event) {
+                if (!movementKeyGuard.press(heldKey)) return;
                 GameEngine.State state = engine.getState();
-                if (gameVisible && state.health > 0 && !state.won && engine.currentEnemy() == null) {
+                if (gameVisible && !settingsOverlay.isVisible() &&
+                        state.health > 0 && !state.won && engine.currentEnemy() == null) {
                     stageMode = STORY_CARD;
                     if (enhancedExploration != null) {
                         enhancedExploration.triggerMovementShortcut(rowDelta, colDelta);
@@ -704,6 +817,24 @@ final class MainWindow {
                 }
             }
         });
+        String releaseAction = actionName + "Released";
+        root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+            .put(KeyStroke.getKeyStroke("released " + keyStroke), releaseAction);
+        root.getActionMap().put(releaseAction, new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+            public void actionPerformed(ActionEvent event) {
+                movementKeyGuard.release(heldKey);
+            }
+        });
+    }
+
+    /** Turns operating-system key repeat into one deliberate tile step per press. */
+    static final class KeyRepeatGuard {
+        private final Set<String> held = new HashSet<String>();
+
+        boolean press(String key) { return held.add(key); }
+        void release(String key) { held.remove(key); }
+        void clear() { held.clear(); }
     }
 
     private JPanel buildMovementPanel() {
@@ -919,7 +1050,11 @@ final class MainWindow {
             "Enemies block movement. Attack, defend, or flee to safety.\n" +
             "Potions restore 20 health. Shops sell them for 10 gold.\n" +
             "Equip weapons and armour from the inventory.\n" +
-            "Mage spells are direct actions and consume mana. Resting restores health and mana.\n" +
+            "Mage spells consume mana. Fighter techniques spend Rage built by trading blows.\n" +
+            "Rogue techniques spend Momentum built through attacks, stealth, and evasion.\n" +
+            "Hunter techniques spend Focus built through Aim, accurate shots, and enemy misses.\n" +
+            "Resting restores health and Mage mana. Rage and Momentum reset between encounters;\n" +
+            "Hunters retain earned Focus between fights.\n" +
             "Defeating enemies earns experience and levels.\n\n" +
             "Defeat the dragon in the southeast corner to win.",
             "How to play", JOptionPane.INFORMATION_MESSAGE);
@@ -931,7 +1066,6 @@ final class MainWindow {
 
     private void showGame() {
         settingsOverlay.hideSettings();
-        soundManager.stopMusic();
         transition("THE QUEST BEGINS", new Color(20, 14, 9), 480, new Runnable() {
             public void run() {
                 gameVisible = true;
@@ -944,7 +1078,7 @@ final class MainWindow {
 
     private void showCharacterCreation() {
         settingsOverlay.hideSettings();
-        soundManager.stopMusic();
+        soundManager.setMusic(SoundManager.Music.EXPLORATION);
         soundManager.stopAmbience();
         transition("CHOOSE YOUR PATH", new Color(20, 14, 9), 360, new Runnable() {
             public void run() {
@@ -1125,8 +1259,9 @@ final class MainWindow {
         }
 
         final int[] index = {0};
-        Timer timer = new Timer(ENEMY_BEAT_INTERVAL_MS, null);
-        timer.setInitialDelay(ENEMY_BEAT_INITIAL_DELAY_MS);
+        final boolean reducedMotion = preferences.isReducedMotion();
+        Timer timer = new Timer(enemyBeatInterval(reducedMotion), null);
+        timer.setInitialDelay(enemyBeatInitialDelay(reducedMotion));
         timer.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent actionEvent) {
                 int position = index[0];
@@ -1148,7 +1283,7 @@ final class MainWindow {
                 index[0]++;
                 if (index[0] >= events.size()) {
                     ((Timer) actionEvent.getSource()).stop();
-                    Timer settle = new Timer(ENEMY_BEAT_SETTLE_MS, new ActionListener() {
+                    Timer settle = new Timer(enemyBeatSettleDelay(reducedMotion), new ActionListener() {
                         public void actionPerformed(ActionEvent ignored) {
                             encounterPanel.clearEnemyTurnBeat();
                             encounterPanel.setCombatActionsEnabled(true);
@@ -1170,6 +1305,7 @@ final class MainWindow {
 
     private void refreshNow() {
         updateAmbience(engine.getState(), engine.currentEnemy());
+        updateMusic(engine.getState(), engine.currentEnemy());
         if (enhancedExploration != null) {
             enhancedExploration.refresh();
             GameEngine.State state = engine.getState();
@@ -1218,8 +1354,25 @@ final class MainWindow {
             "<br>ATK " + engine.getAttack() + " &nbsp; DEF " + engine.getDefense() +
             " &nbsp; Gold " + state.gold + " &nbsp; Potions " + state.potions + "</div></html>");
         setMeter(healthBar, state.health, state.maxHealth, "HEALTH");
-        setMeter(manaBar, state.mana, Math.max(1, state.maxMana), "MANA");
-        manaBar.setVisible(state.maxMana > 0);
+        if ("Mage".equals(state.heroClass)) {
+            manaBar.setForeground(new Color(54, 91, 151));
+            setMeter(manaBar, state.mana, Math.max(1, state.maxMana), "MANA");
+            manaBar.setVisible(true);
+        } else if ("Fighter".equals(state.heroClass)) {
+            manaBar.setForeground(new Color(194, 67, 44));
+            setMeter(manaBar, state.rage, Math.max(1, state.maxRage), "RAGE");
+            manaBar.setVisible(true);
+        } else if ("Rogue".equals(state.heroClass)) {
+            manaBar.setForeground(new Color(139, 92, 183));
+            setMeter(manaBar, state.momentum, Math.max(1, state.maxMomentum), "MOMENTUM");
+            manaBar.setVisible(true);
+        } else if ("Hunter".equals(state.heroClass)) {
+            manaBar.setForeground(new Color(91, 164, 91));
+            setMeter(manaBar, state.focus, Math.max(1, state.maxFocus), "FOCUS");
+            manaBar.setVisible(true);
+        } else {
+            manaBar.setVisible(false);
+        }
         setMeter(experienceBar, state.experience, state.level * 30, "EXPERIENCE");
 
         location.setText("Location: " + engine.currentTile().label + "  (" +
@@ -1340,6 +1493,22 @@ final class MainWindow {
                 break;
         }
         soundManager.setAmbience(ambience);
+    }
+
+    /** Music communicates broad danger while ambience continues to identify place. */
+    private void updateMusic(GameEngine.State state, GameEngine.Enemy foe) {
+        if (!gameVisible || state.won || state.health == 0) {
+            soundManager.stopMusic();
+        } else if (foe != null) {
+            soundManager.setMusic(foe.tier == 2 ? SoundManager.Music.BOSS :
+                SoundManager.Music.COMBAT);
+        } else if (engine.currentTile() == GameEngine.TileType.TAVERN ||
+                   engine.currentTile() == GameEngine.TileType.SHOP ||
+                   engine.currentTile() == GameEngine.TileType.ENCAMPMENT) {
+            soundManager.setMusic(SoundManager.Music.TAVERN);
+        } else {
+            soundManager.setMusic(SoundManager.Music.EXPLORATION);
+        }
     }
 
     private void updateActionAvailability(GameEngine.State state, boolean inCombat, boolean active) {

@@ -217,31 +217,26 @@ public final class ExplorationSimulationTest {
             return secondWindUsed;
         }
         if ("Fighter".equals(state.heroClass)) {
-            if (GameEngine.abilityUnlocked(state, 3) && !secondWindUsed &&
-                    state.health * 100 <= state.maxHealth * 45) {
-                engine.useAbility(3);
-                return true;
-            }
-            if (GameEngine.abilityUnlocked(state, 2) && turn % 4 == 2) engine.useAbility(2);
-            else if (GameEngine.abilityUnlocked(state, 1) && turn % 3 == 1) engine.useAbility(1);
+            if (GameEngine.abilityAvailable(state, 2) && turn % 4 == 2) engine.useAbility(2);
+            else if (GameEngine.abilityAvailable(state, 1) && turn % 3 == 1) engine.useAbility(1);
             else if (turn % 4 == 0) engine.defend();
             else engine.attack();
-            return secondWindUsed;
+            return state.secondWindUsed;
         }
         if ("Rogue".equals(state.heroClass)) {
-            if (GameEngine.abilityUnlocked(state, 3) && enemy != null &&
+            if (GameEngine.abilityAvailable(state, 3) && enemy != null &&
                     enemy.health * 100 <= enemy.maxHealth * 35) engine.useAbility(3);
-            else if (GameEngine.abilityUnlocked(state, 2) && turn % 4 == 2) engine.useAbility(2);
-            else if (GameEngine.abilityUnlocked(state, 1) && turn % 3 == 1) engine.useAbility(1);
+            else if (GameEngine.abilityAvailable(state, 2) && turn % 4 == 2) engine.useAbility(2);
+            else if (GameEngine.abilityAvailable(state, 1) && turn % 3 == 1) engine.useAbility(1);
             else if (state.combatPreparation == null && turn % 3 == 0) engine.defend();
             else engine.attack();
             return secondWindUsed;
         }
-        if (GameEngine.abilityUnlocked(state, 3) &&
-                state.combatPreparation == null && turn % 4 == 0) engine.useAbility(3);
-        else if (GameEngine.abilityUnlocked(state, 2) && turn % 4 == 2) engine.useAbility(2);
-        else if (GameEngine.abilityUnlocked(state, 1) && turn % 3 == 1) engine.useAbility(1);
-        else if (state.combatPreparation == null && turn % 3 == 0) engine.defend();
+        if (GameEngine.abilityAvailable(state, 2)) engine.useAbility(2);
+        else if (!state.enemyMarked && GameEngine.abilityAvailable(state, 3)) engine.useAbility(3);
+        else if (GameEngine.abilityAvailable(state, 1) && turn % 3 == 1) engine.useAbility(1);
+        else if (state.combatPreparation == null &&
+                (state.focus < 35 || turn % 3 == 0)) engine.defend();
         else engine.attack();
         return secondWindUsed;
     }

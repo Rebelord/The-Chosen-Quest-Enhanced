@@ -9,6 +9,9 @@ The Enhanced edition is a polished, portfolio-ready interpretation of the origin
 game envisioned by its cofounders. The original source remains a separate Classic
 edition rather than becoming a mode inside the Enhanced interface.
 
+The intended rules are maintained in `GAME-DESIGN.md`; `CHATGPT-CONTEXT.md` is the
+portable current-build summary for external design conversations.
+
 ## Current foundation
 
 The current playable build includes the redesigned desktop shell, sixteen hero
@@ -28,20 +31,21 @@ Goal: prove that every intended build is understandable, viable, and tactically
 different across standard, elite, and boss encounters.
 
 - `BAL-001` deterministic balance harness for all builds and loadouts — completed
-- `BAL-002` level-three boss and relic tuning
-- `UX-001` ability details and outcome previews
-- `UX-002` multi-action combat timing and status clarity
-- `QA-001` repeatable playtest protocol and findings log
+- `BAL-002` level-three boss and relic tuning — completed
+- `BAL-003` human validation of Rage, Momentum, Focus, and gated abilities — in progress
+- `UX-001` ability details and outcome previews — completed
+- `UX-002` multi-action combat timing and status clarity — completed
+- `QA-001` repeatable playtest protocol and findings log — completed
 
 ## Milestone 2 — Presentation-quality combat
 
 Goal: make every important action feel authored rather than provisional.
 
 - `FX-001` distinctive ability VFX and sound cues
-- `FX-002` persistent status-effect presentation
+- `FX-002` persistent status-effect presentation — completed
 - `AUDIO-001` cohesive old-school fantasy sound and ambience pass
 - `ART-001` expanded, uniformly cropped equipment art
-- `LOOT-001` broader class-compatible loot and economy tuning
+- `LOOT-001` broader class-compatible loot and economy tuning — completed
 
 ## Milestone 3 — Design and portfolio synchronization
 
@@ -49,11 +53,13 @@ Goal: keep the playable build and presentation file aligned and easy to review.
 
 - `DSG-001` synchronize new loadout and progression components with Figma
 - `DSG-002` restore a curated primary Figma presentation page
-- `CHAR-002` make portrait cropping reliable through masked frame viewports
+- `CHAR-002` make portrait cropping reliable through masked frame viewports — completed
 - `CHAR-001` add cosmetic character-presentation variants after frame stabilization
 - `TECH-001` formal versioning, changelog, and in-game version placement — completed
 - `REL-001` commit, tag, and publish the stable GitHub beta checkpoint — completed
-- `REL-002` refresh the shareable test build
+- `REL-002` refresh the shareable test build — completed
+- `REL-003` collect opt-in beta-tester credits and maintain a consent roster
+- `TECH-002` profile and optimize UI/audio/save hot paths — completed
 
 ## Milestone 4 — A more variable world
 
@@ -68,7 +74,7 @@ Goal: increase replay value without losing the compact quest structure.
 - `WORLD-001` prototype a finite, clearable Spider Nest — completed
 - `WORLD-002` apply anti-farming rewards to spawned enemies — completed
 - `MAP-001` make enemy and landmark placement biome-aware — completed
-- `MAP-002` deepen rumors, maps, and fog-of-war discovery
+- `MAP-002` deepen rumors, maps, and fog-of-war discovery — completed
 - `WORLD-003` expand validated sources and later add dungeon/lair layers
 
 ## Later platform and preservation work

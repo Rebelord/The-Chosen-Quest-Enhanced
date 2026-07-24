@@ -7,6 +7,7 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -19,12 +20,14 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
+import javax.swing.Scrollable;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
 
 final class CharacterCreationPanel extends JPanel {
     private static final long serialVersionUID = 1L;
+    private static boolean avatarWarmupStarted;
 
     interface Listener {
         void onBegin(String name, String race, String heroClass);
@@ -77,6 +80,27 @@ final class CharacterCreationPanel extends JPanel {
         add(buildContent(), BorderLayout.CENTER);
         refreshSelection();
         initialSelection = false;
+        warmAvatarRenders();
+    }
+
+    /** Pre-renders all build portraits while the player is still on the title screen. */
+    private void warmAvatarRenders() {
+        synchronized (CharacterCreationPanel.class) {
+            if (avatarWarmupStarted) return;
+            avatarWarmupStarted = true;
+        }
+        String[] portraits = new String[GameEngine.RACES.length * GameEngine.CLASSES.length];
+        String[] fullBody = new String[portraits.length];
+        int index = 0;
+        for (String heroClass : GameEngine.CLASSES) {
+            for (String race : GameEngine.RACES) {
+                portraits[index] = asset(race, heroClass, false);
+                fullBody[index] = asset(race, heroClass, true);
+                index++;
+            }
+        }
+        AssetImagePanel.preloadRenderedAsync(portraits, 150, 150, true);
+        AssetImagePanel.preloadRenderedAsync(fullBody, 270, 360, false);
     }
 
     private JPanel buildHeader() {
@@ -109,7 +133,7 @@ final class CharacterCreationPanel extends JPanel {
     }
 
     private JScrollPane buildSelectionArea() {
-        JPanel selection = new JPanel();
+        JPanel selection = new VerticalScrollablePanel();
         selection.setLayout(new BoxLayout(selection, BoxLayout.Y_AXIS));
         selection.setBackground(UiTheme.BACKGROUND);
 
@@ -419,8 +443,25 @@ final class CharacterCreationPanel extends JPanel {
         equipment.setBackground(blend(UiTheme.SURFACE_DEEP, classAccent, .15));
         previewImage.setBorder(new FantasyPortraitBorder(selectedRace, selectedClass));
         setMeter(health, state.health, state.maxHealth, "HEALTH");
-        setMeter(mana, state.mana, Math.max(1, state.maxMana), "MANA");
-        mana.setVisible(state.maxMana > 0);
+        if ("Mage".equals(state.heroClass)) {
+            mana.setForeground(UiTheme.BLUE);
+            setMeter(mana, state.mana, Math.max(1, state.maxMana), "MANA");
+            mana.setVisible(true);
+        } else if ("Fighter".equals(state.heroClass)) {
+            mana.setForeground(new Color(194, 67, 44));
+            setMeter(mana, state.rage, Math.max(1, state.maxRage), "RAGE");
+            mana.setVisible(true);
+        } else if ("Rogue".equals(state.heroClass)) {
+            mana.setForeground(new Color(139, 92, 183));
+            setMeter(mana, state.momentum, Math.max(1, state.maxMomentum), "MOMENTUM");
+            mana.setVisible(true);
+        } else if ("Hunter".equals(state.heroClass)) {
+            mana.setForeground(new Color(91, 164, 91));
+            setMeter(mana, state.focus, Math.max(1, state.maxFocus), "FOCUS");
+            mana.setVisible(true);
+        } else {
+            mana.setVisible(false);
+        }
         attackValue.setText(Integer.toString(previewEngine.getAttack()));
         defenseValue.setText(Integer.toString(previewEngine.getDefense()));
         equipment.setText("<html><b><font color='" + htmlColor(classAccent) +
@@ -458,7 +499,7 @@ final class CharacterCreationPanel extends JPanel {
             selectedRace.toUpperCase() + " " + selectedClass.toUpperCase());
         buildSummary.setText("<html>" + buildSummaryFor(selectedRace, selectedClass) + "</html>");
         combatStyle.setText("<html>" + combatStyleFor(selectedClass) + "</html>");
-        buildTraits.setText("<html>" + raceTraitFor(selectedRace) + "<br>" +
+        buildTraits.setText("<html>" + raceTraitFor(selectedRace, selectedClass) + "<br>" +
             classTraitFor(selectedClass) + "</html>");
         GameEngine.State preview = previewEngine.getState();
         abilityPath.setText("<html>" + GameEngine.abilityProgressionSummary(preview) + "</html>");
@@ -474,25 +515,27 @@ final class CharacterCreationPanel extends JPanel {
         if ("Mage".equals(heroClass))
             return raceLead + " who wins through spell choice and careful mana control.";
         if ("Rogue".equals(heroClass))
-            return raceLead + " built around stealth, fast turns, and decisive critical strikes.";
+            return raceLead + " who builds Momentum through pressure and spends it on decisive strikes.";
         if ("Hunter".equals(heroClass))
-            return raceLead + " who creates openings with Aim and controls fights at range.";
-        return raceLead + " who survives pressure with armour, defense, and steady melee damage.";
+            return raceLead + " who builds Focus, marks priority targets, and controls fights at range.";
+        return raceLead + " who turns attacks and incoming damage into Rage-powered techniques.";
     }
 
     private String combatStyleFor(String heroClass) {
         if ("Mage".equals(heroClass))
             return "Spellcaster · tactical<br>Cast for burst damage; defend to recover mana.";
         if ("Rogue".equals(heroClass))
-            return "Skirmisher · very fast<br>Enter stealth, then convert setup into critical damage.";
+            return "Skirmisher · very fast<br>Build Momentum with attacks and evasion; spend it on advanced abilities.";
         if ("Hunter".equals(heroClass))
-            return "Ranged striker · fast<br>Take aim, then land powerful precision shots.";
-        return "Front-line defender · steady<br>Trade blows safely and use Defend against heavy attacks.";
+            return "Ranged striker · fast<br>Build Focus with Aim and accuracy; mark targets before Volley.";
+        return "Front-line warrior · steady<br>Build Rage by trading blows; spend it on powerful techniques.";
     }
 
-    private String raceTraitFor(String race) {
+    private String raceTraitFor(String race, String heroClass) {
         if ("Dwarf".equals(race)) return "Dwarf: high health and defense; slower turns.";
-        if ("Elf".equals(race)) return "Elf: bonus mana, attack, and speed.";
+        if ("Elf".equals(race)) return "Mage".equals(heroClass)
+            ? "Elf: bonus mana, attack, and speed."
+            : "Elf: bonus attack and speed.";
         if ("Halfling".equals(race)) return "Halfling: fastest movement and bonus starting gold.";
         return "Human: balanced health and attack.";
     }
@@ -521,6 +564,26 @@ final class CharacterCreationPanel extends JPanel {
         if ("Rogue".equals(heroClass)) return "Expert in stealth and shadow.";
         if ("Hunter".equals(heroClass)) return "Guardian of the wild.";
         return "Master of steel and shield.";
+    }
+
+    void selectBuildForTest(String race, String heroClass, String starterKit) {
+        selectedRace = race;
+        selectedClass = heroClass;
+        selectedStarterKit = starterKit;
+        refreshSelection();
+        artworkTimer.stop();
+        applySelectedArtwork(false);
+    }
+
+    void awaitArtworkForTest() { previewImage.awaitResource(); }
+
+    String displayedArtworkForTest() { return previewImage.displayedResourceForTest(); }
+
+    boolean racePortraitsSquareForTest() {
+        for (ChoiceCard card : raceCards) {
+            if (card != null && !card.portraitIsSquare()) return false;
+        }
+        return true;
     }
 
     private static JProgressBar meter(Color color) {
@@ -572,8 +635,10 @@ final class CharacterCreationPanel extends JPanel {
                 return;
             }
             image = new AssetImagePanel(resource, true);
-            image.setPreferredSize(new Dimension(150, 115));
-            add(image, BorderLayout.CENTER);
+            // The source portraits and decorative frames are square. A centered
+            // square viewport prevents wide desktop layouts from stretching the
+            // card while cover-scaling and cropping away the character's face.
+            add(new SquarePortraitHolder(image), BorderLayout.CENTER);
 
             JPanel copy = new JPanel(new GridLayout(2, 1, 0, 2));
             copy.setOpaque(false);
@@ -609,5 +674,59 @@ final class CharacterCreationPanel extends JPanel {
                     selected ? 2 : 1),
                 BorderFactory.createEmptyBorder(padding, padding, padding, padding)));
         }
+
+        boolean portraitIsSquare() {
+            return image == null || image.getWidth() == image.getHeight();
+        }
+    }
+
+    /** Centers the largest possible square portrait inside a responsive choice card. */
+    private static final class SquarePortraitHolder extends JPanel {
+        private static final long serialVersionUID = 1L;
+        private final AssetImagePanel portrait;
+
+        SquarePortraitHolder(AssetImagePanel portrait) {
+            this.portrait = portrait;
+            setOpaque(false);
+            setLayout(null);
+            setPreferredSize(new Dimension(150, 150));
+            setMinimumSize(new Dimension(96, 96));
+            add(portrait);
+        }
+
+        @Override
+        public void doLayout() {
+            int size = Math.max(1, Math.min(getWidth(), getHeight()));
+            portrait.setBounds((getWidth() - size) / 2, (getHeight() - size) / 2,
+                size, size);
+        }
+    }
+
+    /**
+     * The selection column always follows the viewport width. A plain JPanel
+     * retains its wider preferred width inside JScrollPane, and with horizontal
+     * scrolling disabled that silently clips the final race card.
+     */
+    private static final class VerticalScrollablePanel extends JPanel
+            implements Scrollable {
+        private static final long serialVersionUID = 1L;
+
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        public int getScrollableUnitIncrement(Rectangle visibleRect,
+                                              int orientation, int direction) {
+            return 16;
+        }
+
+        public int getScrollableBlockIncrement(Rectangle visibleRect,
+                                               int orientation, int direction) {
+            return Math.max(16, visibleRect.height - 32);
+        }
+
+        public boolean getScrollableTracksViewportWidth() { return true; }
+
+        public boolean getScrollableTracksViewportHeight() { return false; }
     }
 }

@@ -15,6 +15,8 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -78,7 +80,8 @@ final class EncounterPanel extends JPanel {
     private final JLabel defense = new JLabel();
     private final JLabel threat = new JLabel();
     private final JLabel healthCopy = new JLabel();
-    private final JPanel traitChips = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+    private final JPanel traitChips = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+    private final JPanel statusChips = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
     private final JLabel tactic = new JLabel();
     private final JLabel timeline = new JLabel();
     private final JLabel speedComparison = new JLabel();
@@ -100,6 +103,7 @@ final class EncounterPanel extends JPanel {
     private final javax.swing.border.Border normalBorder =
         BorderFactory.createEmptyBorder(0, 0, 0, 0);
     private boolean reducedMotion;
+    private GameEngine.Enemy displayedEnemy;
 
     /** Timing values are shared with the Figma Combat / Threat Intensity spec. */
     static int animationDurationForTier(EncounterCatalog.Tier tier, boolean reducedMotion) {
@@ -153,6 +157,10 @@ final class EncounterPanel extends JPanel {
             public void actionPerformed(ActionEvent event) { listener.onFlee(); }
         });
         UiTheme.applyButtonStyle(flee, UiTheme.ButtonStyle.DANGER, 7, 10);
+
+        installFocusedAbilityHelp(spellOne);
+        installFocusedAbilityHelp(spellTwo);
+        installFocusedAbilityHelp(spellThree);
 
         enemyInformation = buildEnemyInformation();
         commandConsole = buildCommandConsole();
@@ -248,11 +256,18 @@ final class EncounterPanel extends JPanel {
 
         JPanel traits = new JPanel(new BorderLayout(14, 0));
         traits.setOpaque(false);
-        traits.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
+        traits.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
+        JPanel rowLabels = new JPanel(new GridLayout(2, 1));
+        rowLabels.setOpaque(false);
         JLabel traitLabel = new JLabel("TRAITS");
-        traitLabel.setForeground(UiTheme.MUTED);
-        traitLabel.setFont(UiTheme.body(Font.BOLD, 9));
+        JLabel statusLabel = new JLabel("STATUS");
+        for (JLabel label : new JLabel[] {traitLabel, statusLabel}) {
+            label.setForeground(UiTheme.MUTED);
+            label.setFont(UiTheme.body(Font.BOLD, 9));
+            rowLabels.add(label);
+        }
         traitChips.setOpaque(false);
+        statusChips.setOpaque(false);
         tactic.setOpaque(true);
         tactic.setBackground(new Color(63, 47, 37));
         tactic.setForeground(UiTheme.MUTED);
@@ -262,8 +277,12 @@ final class EncounterPanel extends JPanel {
         enemyIntent.setForeground(UiTheme.GOLD_LIGHT);
         enemyIntent.setFont(UiTheme.body(Font.BOLD, 8));
         enemyIntent.setHorizontalAlignment(SwingConstants.RIGHT);
-        traits.add(traitLabel, BorderLayout.WEST);
-        traits.add(traitChips, BorderLayout.CENTER);
+        JPanel chipRows = new JPanel(new GridLayout(2, 1));
+        chipRows.setOpaque(false);
+        chipRows.add(traitChips);
+        chipRows.add(statusChips);
+        traits.add(rowLabels, BorderLayout.WEST);
+        traits.add(chipRows, BorderLayout.CENTER);
         JPanel intentStack = new JPanel(new GridLayout(2, 1, 0, 1));
         intentStack.setOpaque(false);
         intentStack.add(enemyIntent);
@@ -306,6 +325,8 @@ final class EncounterPanel extends JPanel {
         logTitle.setFont(UiTheme.body(Font.BOLD, 12));
         logHeader.add(logTitle, BorderLayout.WEST);
         turnBeat.setForeground(new Color(232, 92, 92));
+        turnBeat.setBackground(new Color(66, 22, 22));
+        turnBeat.setOpaque(false);
         turnBeat.setFont(UiTheme.body(Font.BOLD, 11));
         turnBeat.setHorizontalAlignment(SwingConstants.RIGHT);
         logHeader.add(turnBeat, BorderLayout.EAST);
@@ -356,6 +377,7 @@ final class EncounterPanel extends JPanel {
 
     void setEncounter(GameEngine.Enemy enemy, String history, GameEngine.State state) {
         if (enemy == null) return;
+        displayedEnemy = enemy;
         // The same panel instance is reused for every fight. A finishing attack
         // disables its controls while the impact animation plays, so a later
         // encounter must begin from an enabled baseline before class-specific
@@ -367,7 +389,10 @@ final class EncounterPanel extends JPanel {
         stage.setProfile(profile, sceneFor(tile));
         enemyName.setText(profile.displayName);
         subtitle.setText(profile.subtitle + " · LEVEL " + enemy.combatLevel);
-        defense.setText("DEF  " + enemy.defense);
+        int armorBreak = state != null && state.enemyArmorBreakTurns > 0
+            ? state.enemyArmorBreakValue : 0;
+        defense.setText("DEF  " + Math.max(0, enemy.defense - armorBreak) +
+            (armorBreak > 0 ? "  (−" + armorBreak + ")" : ""));
         threat.setText(profile.tier.label);
         threat.setBackground(profile.accent);
         health.setMaximum(Math.max(1, enemy.maxHealth));
@@ -375,7 +400,7 @@ final class EncounterPanel extends JPanel {
         health.setForeground(profile.tier == EncounterCatalog.Tier.BOSS
             ? new Color(194, 45, 45) : new Color(72, 174, 78));
         healthCopy.setText(enemy.health + " / " + enemy.maxHealth);
-        updateTraitChips(profile);
+        updateTraitChips(profile, state);
         tactic.setText("  " + profile.tactic + "  ");
         enemyInformation.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(1, 0, 1, 0, profile.accent),
@@ -442,17 +467,28 @@ final class EncounterPanel extends JPanel {
             int cost = GameEngine.spellCost(name);
             String compactName = "Magic Missile".equals(name) ? "Missile" : name;
             ((CombatActionButton) button).setActionLabel(compactName + " · " + cost + " MP");
-            button.setToolTipText(unlocked ? "Cast " + name + " immediately (" + cost + " mana)" :
-                GameEngine.abilityRequirement(state, slot));
             button.setEnabled(unlocked && state.mana >= cost);
         } else {
             ((CombatActionButton) button).setActionLabel(name);
-            button.setToolTipText(unlocked ? name + " class ability" :
-                GameEngine.abilityRequirement(state, slot));
-            button.setEnabled(unlocked);
+            button.setEnabled(GameEngine.abilityAvailable(state, slot));
         }
+        String help = GameEngine.abilityHelp(state, displayedEnemy, slot, true);
+        String accessibleHelp = GameEngine.abilityHelp(state, displayedEnemy, slot, false);
+        button.setToolTipText(help);
+        button.putClientProperty("abilityHelp",
+            GameEngine.abilityFocusSummary(state, displayedEnemy, slot));
+        button.getAccessibleContext().setAccessibleDescription(accessibleHelp);
         ((CombatActionButton) button).setSpeedLabel(GameEngine.abilityTempoLabel(state, slot));
-        button.setVisible(unlocked);
+        button.setVisible(unlocked && !GameEngine.abilityPassive(state, slot));
+    }
+
+    private void installFocusedAbilityHelp(final JButton button) {
+        button.addFocusListener(new FocusAdapter() {
+            public void focusGained(FocusEvent event) {
+                Object help = button.getClientProperty("abilityHelp");
+                if (help != null) statusFeedback.setText(help.toString());
+            }
+        });
     }
 
     private void rebuildActionGrid(GameEngine.State state) {
@@ -461,7 +497,8 @@ final class EncounterPanel extends JPanel {
         actionGrid.add(defend);
         if (GameEngine.abilityUnlocked(state, 1)) actionGrid.add(spellOne);
         if (GameEngine.abilityUnlocked(state, 2)) actionGrid.add(spellTwo);
-        if (GameEngine.abilityUnlocked(state, 3)) actionGrid.add(spellThree);
+        if (GameEngine.abilityUnlocked(state, 3) &&
+                !GameEngine.abilityPassive(state, 3)) actionGrid.add(spellThree);
         actionGrid.add(potion);
         actionGrid.add(flee);
         int rows = Math.max(2, (actionGrid.getComponentCount() + 1) / 2);
@@ -567,8 +604,9 @@ final class EncounterPanel extends JPanel {
     }
 
     /** Converts the catalog's compact trait string into Figma-style status chips. */
-    private void updateTraitChips(EncounterCatalog.Profile profile) {
+    private void updateTraitChips(EncounterCatalog.Profile profile, GameEngine.State state) {
         traitChips.removeAll();
+        statusChips.removeAll();
         String[] values = profile.tags == null ? new String[0] :
             profile.tags.trim().split("\\s{2,}");
         Color fill = profile.tier == EncounterCatalog.Tier.BOSS
@@ -584,12 +622,33 @@ final class EncounterPanel extends JPanel {
                 traitChips.add(new TraitChip(value.trim(), fill, profile.accent, copy));
             }
         }
+        for (String status : GameEngine.activeCombatStatuses(state)) {
+            Color accent = status.contains("RAGE") ? new Color(225, 82, 62) :
+                (status.contains("MOMENTUM") ? new Color(167, 112, 214) :
+                (status.contains("FOCUS") || status.contains("MARKED") ||
+                    status.contains("PINNED") ? new Color(111, 190, 111) :
+                (status.contains("BLEED") ? new Color(225, 82, 82) :
+                (status.contains("ARMOR") ? new Color(239, 154, 79) :
+                (status.contains("STUN") ? new Color(255, 205, 92) :
+                new Color(105, 181, 219))))));
+            statusChips.add(new TraitChip(status, new Color(37, 29, 25), accent, accent));
+        }
         traitChips.revalidate();
         traitChips.repaint();
+        statusChips.revalidate();
+        statusChips.repaint();
     }
 
     int traitChipCountForTest() {
         return traitChips.getComponentCount();
+    }
+
+    boolean hasStatusChipForTest(String value) {
+        for (java.awt.Component component : statusChips.getComponents()) {
+            if (component instanceof TraitChip &&
+                    ((TraitChip) component).getText().contains(value)) return true;
+        }
+        return false;
     }
 
     Color logColorForTextForTest(String text) {
@@ -634,6 +693,16 @@ final class EncounterPanel extends JPanel {
     }
 
     String statusFeedbackForTest() { return statusFeedback.getText(); }
+
+    String abilityTooltipForTest(int slot) {
+        JButton button = slot == 1 ? spellOne : (slot == 2 ? spellTwo : spellThree);
+        return button.getToolTipText();
+    }
+
+    String abilityAccessibleHelpForTest(int slot) {
+        JButton button = slot == 1 ? spellOne : (slot == 2 ? spellTwo : spellThree);
+        return button.getAccessibleContext().getAccessibleDescription();
+    }
 
     int visibleAbilityCountForTest() {
         int count = 0;
@@ -814,12 +883,19 @@ final class EncounterPanel extends JPanel {
         String count = total > 1 ? "ATTACK " + number + " OF " + total + "  ·  " : "";
         turnBeat.setText(count + event.actionName.toUpperCase() + "  ·  " +
             event.tempoLabel);
+        turnBeat.setOpaque(true);
+        turnBeat.setBorder(BorderFactory.createEmptyBorder(3, 8, 3, 8));
+        turnBeat.getAccessibleContext().setAccessibleDescription(
+            "Enemy " + event.actionName + ", " + event.tempoLabel.toLowerCase() +
+            " tempo, attack " + number + " of " + total);
         setBattleLog(visibleHistory);
         battleLog.setCaretPosition(battleLog.getDocument().getLength());
     }
 
     void clearEnemyTurnBeat() {
         turnBeat.setText("");
+        turnBeat.setOpaque(false);
+        turnBeat.setBorder(BorderFactory.createEmptyBorder());
     }
 
     boolean triggerShortcut(char key) {
@@ -834,7 +910,7 @@ final class EncounterPanel extends JPanel {
             case '7': target = flee; break;
             default: return false;
         }
-        if (!target.isEnabled()) return false;
+        if (!target.isVisible() || !target.isEnabled()) return false;
         target.doClick();
         return true;
     }

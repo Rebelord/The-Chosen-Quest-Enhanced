@@ -1,5 +1,5 @@
 THE CHOSEN QUEST — ENHANCED EDITION
-BETA PLAYTEST BUILD
+PRIVATE BETA PLAYTEST BUILD — v0.6.0-beta.1
 
 Thank you for testing The Chosen Quest Enhanced, a standalone modernization of the
 original student RPG.
@@ -38,6 +38,8 @@ CONTROLS
 - Map minus / plus controls: Overview and detail zoom
 - Escape: Close the current overlay
 - Gear icon: Audio, display, and accessibility preferences
+- What’s New: Current release changes and testing priorities
+- Credits & Licenses: Contributor acknowledgments, asset sources, and licenses
 
 PLAYTESTING
 
@@ -47,6 +49,15 @@ Please report:
 - What you were doing when a problem occurred
 - Whether loading the latest save reproduces it
 - A screenshot when the issue is visual
+
+GENERAL FEEDBACK
+https://forms.gle/GJLCPtzP7LN9PeBeA
+
+BUG REPORTS
+https://forms.gle/F8LtxPn5sKbwPAxX9
+
+The included TESTER-GUIDE.pdf contains the recommended playtest routes, reporting
+checklist, and privacy guidance.
 
 This is a beta. Combat balance, effects, sounds, and interface details will continue
 to improve from tester feedback.

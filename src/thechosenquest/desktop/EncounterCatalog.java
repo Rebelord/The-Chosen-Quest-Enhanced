@@ -90,6 +90,11 @@ final class EncounterCatalog {
         add(profiles, standard("giant-forest-spider", "Giant Forest Spider", "VENOMOUS BEAST",
             "/assets/encounters/creatures/giant-forest-spider.png", 2, 7,
             "BEAST   VENOM", "WEBBING · KEEP MOVING"), "Giant Spider");
+        add(profiles, elite("ashweb-matriarch", "Ashweb Matriarch",
+            "ELITE NEST MATRIARCH · FINAL BROOD",
+            "/assets/encounters/creatures/giant-forest-spider.png", 4, 2,
+            "BEAST   VENOM   WEB QUEEN",
+            "QUICK LUNGE · END THE BROOD WITHOUT LOSING TEMPO"));
         add(profiles, standard("swamp-serpent", "Swamp Serpent", "MARSH PREDATOR",
             "/assets/encounters/creatures/swamp-serpent.png", 3, 9,
             "BEAST   POISON", "COILED STRIKE · ANTICIPATE THE BITE"));

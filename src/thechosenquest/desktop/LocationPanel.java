@@ -176,8 +176,15 @@ final class LocationPanel extends JPanel {
             : "<html>“Careful with these vials...<br>some bite back.”</html>");
         artwork.setResourceAsync(tavern ? "/assets/encounters/npcs/innkeeper.png" :
             "/assets/encounters/npcs/alchemist.png");
-        coffer.setText("HEALTH " + state.health + "/" + state.maxHealth +
-            "     MANA " + state.mana + "/" + state.maxMana);
+        String resource = "Mage".equals(state.heroClass)
+            ? "     MANA " + state.mana + "/" + state.maxMana
+            : ("Fighter".equals(state.heroClass)
+                ? "     RAGE " + state.rage + "/" + state.maxRage
+                : ("Rogue".equals(state.heroClass)
+                    ? "     MOMENTUM " + state.momentum + "/" + state.maxMomentum
+                    : ("Hunter".equals(state.heroClass)
+                        ? "     FOCUS " + state.focus + "/" + state.maxFocus : "")));
+        coffer.setText("HEALTH " + state.health + "/" + state.maxHealth + resource);
         configureTabs(tavern
             ? new String[] {"ALL", "ROOMS", "MEALS", "RUMORS"}
             : new String[] {"ALL", "POTIONS", "INGREDIENTS", "ADVICE"});
@@ -298,7 +305,10 @@ final class LocationPanel extends JPanel {
         if ("ALL".equals(activeTab) || "ROOMS".equals(activeTab) ||
                 "POTIONS".equals(activeTab)) {
             addServiceRow(tavern ? "Night's Rest" : "Restorative Draught",
-                "Restore health and mana to full", "RECOVER",
+                "Mage".equals(currentState.heroClass)
+                    ? "Restore health and mana to full"
+                    : "Restore health to full",
+                "RECOVER",
                 tavern ? IconAssets.SERVICE_REST : IconAssets.POTION_HEALTH, true);
         }
         if ("ALL".equals(activeTab) || "MEALS".equals(activeTab) ||

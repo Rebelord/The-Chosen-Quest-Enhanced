@@ -20,4 +20,6 @@ java -cp "$ROOT/build/classes:$ROOT/build/test-classes" \
 java -cp "$ROOT/build/classes:$ROOT/build/test-classes" \
   thechosenquest.desktop.ExplorationSimulationTest "$ROOT/build/reports/exploration-report.md"
 java -Djava.awt.headless=true -cp "$ROOT/build/classes:$ROOT/build/test-classes" \
+  thechosenquest.desktop.PerformanceSmokeTest "$ROOT/build/reports/performance-report.md"
+java -Djava.awt.headless=true -cp "$ROOT/build/classes:$ROOT/build/test-classes" \
   thechosenquest.desktop.EnhancedUiSmokeTest "$ROOT/build/character-creation-preview.png"

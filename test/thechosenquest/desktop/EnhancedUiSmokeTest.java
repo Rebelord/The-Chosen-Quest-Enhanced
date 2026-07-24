@@ -19,8 +19,8 @@ import javax.swing.JPanel;
 public final class EnhancedUiSmokeTest {
     public static void main(String[] args) throws Exception {
         System.setProperty("java.awt.headless", "true");
-        if (!"0.5.0-beta.1".equals(AppVersion.VERSION) ||
-                !"v0.5.0-beta.1".equals(AppVersion.TAG)) {
+        if (!"0.6.0-beta.1".equals(AppVersion.VERSION) ||
+                !"v0.6.0-beta.1".equals(AppVersion.TAG)) {
             throw new AssertionError("Public beta version and release tag must stay aligned");
         }
         if (EnhancedUiSmokeTest.class.getResource("/assets/fonts/Cinzel.ttf") == null ||
@@ -33,6 +33,16 @@ public final class EnhancedUiSmokeTest {
             throw new AssertionError("Bundled title music is not a readable audio stream");
         }
         titleMusic.close();
+        for (SoundManager.Music music : SoundManager.Music.values()) {
+            if (music == SoundManager.Music.NONE) continue;
+            String resource = SoundManager.musicResource(music);
+            AudioInputStream sceneMusic = AudioSystem.getAudioInputStream(
+                EnhancedUiSmokeTest.class.getResource(resource));
+            if (sceneMusic.getFrameLength() <= 0) {
+                throw new AssertionError("Unreadable scene music: " + resource);
+            }
+            sceneMusic.close();
+        }
         final boolean[] randomizedName = {false};
         CharacterCreationPanel panel = new CharacterCreationPanel(new CharacterCreationPanel.Listener() {
             public void onBegin(String name, String race, String heroClass) {
@@ -58,6 +68,17 @@ public final class EnhancedUiSmokeTest {
         if (countPortraitFrames(panel) < 5) {
             throw new AssertionError("Race choices and the hero preview must use fantasy frames");
         }
+        for (int index = 0; index < 12; index++) {
+            String race = GameEngine.RACES[index % GameEngine.RACES.length];
+            String heroClass = GameEngine.CLASSES[index % GameEngine.CLASSES.length];
+            panel.selectBuildForTest(race, heroClass,
+                GameEngine.defaultStarterKit(heroClass));
+        }
+        panel.awaitArtworkForTest();
+        if (!"/assets/avatars/full-body/halfling-hunter.png".equals(
+                panel.displayedArtworkForTest())) {
+            throw new AssertionError("Rapid build switching must settle on the final portrait");
+        }
 
         BufferedImage image = new BufferedImage(1440, 900, BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics = image.createGraphics();
@@ -69,12 +90,21 @@ public final class EnhancedUiSmokeTest {
         if (!output.isFile() || output.length() < 100000L) {
             throw new AssertionError("Enhanced UI render was not produced correctly");
         }
+        File largeCharacterOutput = render(panel, 1920, 1080, output.getParentFile(),
+            "character-creation-large-preview.png", 100000L);
+        if (!panel.racePortraitsSquareForTest()) {
+            throw new AssertionError(
+                "Race portraits must retain square viewports on large displays");
+        }
         JPanel frameIdentifiers = new JPanel(new GridLayout(1, 4, 12, 0));
         frameIdentifiers.setBackground(UiTheme.BACKGROUND);
         for (String heroClass : GameEngine.CLASSES) {
             AssetImagePanel portrait = new AssetImagePanel(
                 "/assets/avatars/elf-" + heroClass.toLowerCase() + ".png", true);
             portrait.setBorder(new FantasyPortraitBorder("Elf", heroClass, true));
+            if (!portrait.usesMaskedFantasyViewportForTest()) {
+                throw new AssertionError("Fantasy portraits must use a masked frame viewport");
+            }
             frameIdentifiers.add(portrait);
         }
         File frameIdentifiersOutput = render(frameIdentifiers, 720, 180,
@@ -145,8 +175,8 @@ public final class EnhancedUiSmokeTest {
             GameEngine.DiscoveryState.SCOUTED;
         mapState.threatKnowledge[mapState.dragonLairRow][mapState.dragonLairCol] = 2;
         GameMapPanel scrollingMap = new GameMapPanel(mapEngine);
-        if (scrollingMap.viewSizeForTest() != GameMapPanel.OVERVIEW_VIEW_SIZE) {
-            throw new AssertionError("Map must open in the 9x9 exploration view");
+        if (scrollingMap.viewSizeForTest() != GameMapPanel.DETAIL_VIEW_SIZE) {
+            throw new AssertionError("Map must open in the 7x7 detail view");
         }
         if (GameMapPanel.heroMarkerSize(25) > 15 ||
                 GameMapPanel.enemyMarkerSize(25) >= GameMapPanel.heroMarkerSize(25) ||
@@ -174,17 +204,22 @@ public final class EnhancedUiSmokeTest {
         mapState.col = 6;
         scrollingMap.centerOnHero();
         scrollingMap.zoomIn();
-        if (scrollingMap.viewSizeForTest() != GameMapPanel.DETAIL_VIEW_SIZE ||
-                scrollingMap.viewRowForTest() != 3 || scrollingMap.viewColForTest() != 3) {
-            throw new AssertionError("7x7 detail zoom must remain centered on the hero");
+        if (scrollingMap.viewSizeForTest() != GameMapPanel.CLOSE_VIEW_SIZE ||
+                scrollingMap.viewRowForTest() != 4 || scrollingMap.viewColForTest() != 4) {
+            throw new AssertionError("5x5 close zoom must remain centered on the hero");
         }
         File mapDetailOutput = render(scrollingMap, 288, 280,
             output.getParentFile(), "map-detail-preview.png", 8000L);
         scrollingMap.pan(1, 1);
         scrollingMap.zoomOut();
+        if (scrollingMap.viewSizeForTest() != GameMapPanel.DETAIL_VIEW_SIZE ||
+                scrollingMap.viewRowForTest() != 4 || scrollingMap.viewColForTest() != 4) {
+            throw new AssertionError("Zooming a panned map must preserve its inspected center");
+        }
+        scrollingMap.zoomOut();
         if (scrollingMap.viewSizeForTest() != GameMapPanel.OVERVIEW_VIEW_SIZE ||
                 scrollingMap.viewRowForTest() != 3 || scrollingMap.viewColForTest() != 3) {
-            throw new AssertionError("Zooming a panned map must preserve its inspected center");
+            throw new AssertionError("Second zoom-out step must enter the 9x9 overview");
         }
         mapState.row = GameEngine.SIZE - 1;
         mapState.col = GameEngine.SIZE - 1;
@@ -197,6 +232,8 @@ public final class EnhancedUiSmokeTest {
         }
 
         JPanel titleScreen = MainWindow.buildTitleScreen(new ActionListener() {
+            public void actionPerformed(ActionEvent event) { }
+        }, new ActionListener() {
             public void actionPerformed(ActionEvent event) { }
         }, new ActionListener() {
             public void actionPerformed(ActionEvent event) { }
@@ -235,6 +272,11 @@ public final class EnhancedUiSmokeTest {
                 EncounterPanel.shakeStrengthForTier(EncounterCatalog.Tier.BOSS) != 9) {
             throw new AssertionError("Combat threat timing must stay synchronized with Figma");
         }
+        if (MainWindow.enemyBeatInterval(false) <= MainWindow.enemyBeatInterval(true) ||
+                MainWindow.enemyBeatInitialDelay(false) <= MainWindow.enemyBeatInitialDelay(true) ||
+                MainWindow.enemyBeatSettleDelay(false) <= MainWindow.enemyBeatSettleDelay(true)) {
+            throw new AssertionError("Reduced motion must preserve sequencing with shorter waits");
+        }
         if (!"/assets/scenes/alshira-ruins.png".equals(
                 EncounterPanel.sceneFor(GameEngine.TileType.FIELD)) ||
                 !"/assets/scenes/moonwater-crossing.png".equals(
@@ -246,6 +288,10 @@ public final class EnhancedUiSmokeTest {
             throw new AssertionError("Combat tile scenes are not mapped correctly");
         }
         GameEngine.State previewState = new GameEngine().getState();
+        previewState.enemyBleedTurns = 2;
+        previewState.enemyBleedDamage = 3;
+        previewState.enemyArmorBreakTurns = 2;
+        previewState.enemyArmorBreakValue = 2;
         encounter.setEncounter(new GameEngine.Enemy("Dragon", 48, 12, 1500),
             "• A Dragon confronts you!\n• Critical strike!\n" +
             "• You cast Fireball for 17 damage.\n" +
@@ -259,6 +305,10 @@ public final class EnhancedUiSmokeTest {
                 encounter.logFontSizeForTextForTest("Critical strike") < 14 ||
                 encounter.logLineSpacingForTextForTest("Critical strike") < 0.15f) {
             throw new AssertionError("Combat actions must use distinct emphasized log styles");
+        }
+        if (!encounter.hasStatusChipForTest("BLEED 3") ||
+                !encounter.hasStatusChipForTest("ARMOR −2")) {
+            throw new AssertionError("Persistent combat effects must render as separate status chips");
         }
         encounter.setSize(760, 720);
         layoutTree(encounter);
@@ -290,6 +340,9 @@ public final class EnhancedUiSmokeTest {
                 shortcutPanel.triggerShortcut('4') || shortcutPanel.triggerShortcut('5')) {
             throw new AssertionError("Level one combat must reveal only the starter ability");
         }
+        if (!shortcutPanel.abilityTooltipForTest(2).contains("UNLOCKS LEVEL 2")) {
+            throw new AssertionError("Locked ability help must explain its unlock requirement");
+        }
         shortcutEngine.getState().level = 3;
         shortcutEngine.getState().spells.add("Fireball");
         shortcutEngine.getState().spells.add("Ice Spike");
@@ -306,6 +359,13 @@ public final class EnhancedUiSmokeTest {
                 shortcutPanel.timelineForTest().length() == 0) {
             throw new AssertionError("Combat action tempo and turn timeline must be visible");
         }
+        String abilityTip = shortcutPanel.abilityTooltipForTest(1);
+        String accessibleAbility = shortcutPanel.abilityAccessibleHelpForTest(1);
+        if (abilityTip == null || !abilityTip.contains("Cost: 7 MP") ||
+                !abilityTip.contains("Tempo: NORMAL") || !abilityTip.contains("Estimated:") ||
+                accessibleAbility == null || !accessibleAbility.contains("Effect:")) {
+            throw new AssertionError("Ability help must expose cost, tempo, effect, and outcome");
+        }
         char[] keys = {'1', '2', '3', '4', '5', '6', '7'};
         for (char key : keys) {
             if (!shortcutPanel.triggerShortcut(key)) {
@@ -320,6 +380,20 @@ public final class EnhancedUiSmokeTest {
         }
         if (!shortcutPanel.statusFeedbackForTest().contains("ARCANE FOCUS")) {
             throw new AssertionError("Equipped weapon trait must be visible in combat status");
+        }
+        GameEngine fighterShortcutEngine = new GameEngine();
+        fighterShortcutEngine.newGame("Shortcut Fighter", "Human", "Fighter", "BREAKER");
+        fighterShortcutEngine.getState().level = 3;
+        fighterShortcutEngine.getState().weaponProficiency.put("HEAVY BLADE", Integer.valueOf(3));
+        shortcutPanel.setEncounter(new GameEngine.Enemy("Skeleton", 24, 9, 10), "",
+            fighterShortcutEngine.getState());
+        if (shortcutPanel.visibleAbilityCountForTest() != 2 ||
+                shortcutPanel.triggerShortcut('5')) {
+            throw new AssertionError(
+                "Second Wind must remain an armed passive rather than a combat action button");
+        }
+        if (!shortcutPanel.hasStatusChipForTest("SECOND WIND · ARMED")) {
+            throw new AssertionError("Armed fighter death-save status must be visible in combat");
         }
 
         SoundManager dialogueSound = new SoundManager();
@@ -436,6 +510,8 @@ public final class EnhancedUiSmokeTest {
         exploration.awaitArtworkForSnapshot();
         File explorationOutput = render(exploration, 1440, 900, output.getParentFile(),
             "exploration-preview.png");
+        File largeExplorationOutput = render(exploration, 1920, 1080,
+            output.getParentFile(), "exploration-large-preview.png");
         InventoryPanel inventory = new InventoryPanel(new InventoryPanel.Listener() {
             public void onEquip(GameEngine.Item item) { }
             public void onBack() { }
@@ -526,12 +602,16 @@ public final class EnhancedUiSmokeTest {
                 public void onStateChanged() { }
             });
         shell.triggerMapZoomShortcut(true);
+        if (shell.mapForTest().viewSizeForTest() != GameMapPanel.CLOSE_VIEW_SIZE) {
+            throw new AssertionError("Visible map zoom control must enter the 5x5 close view");
+        }
+        shell.triggerMapZoomShortcut(false);
         if (shell.mapForTest().viewSizeForTest() != GameMapPanel.DETAIL_VIEW_SIZE) {
-            throw new AssertionError("Visible map zoom control must enter the 7x7 detail view");
+            throw new AssertionError("Visible map zoom control must restore the 7x7 detail view");
         }
         shell.triggerMapZoomShortcut(false);
         if (shell.mapForTest().viewSizeForTest() != GameMapPanel.OVERVIEW_VIEW_SIZE) {
-            throw new AssertionError("Visible map zoom control must restore the 9x9 view");
+            throw new AssertionError("Visible map zoom control must reach the 9x9 overview");
         }
         EncounterPanel shellEncounter = new EncounterPanel();
         InventoryPanel shellInventory = new InventoryPanel(new InventoryPanel.Listener() {
@@ -611,8 +691,31 @@ public final class EnhancedUiSmokeTest {
             "figma-spider-nest-shell-preview.png");
 
         final SoundManager soundManager = new SoundManager();
+        soundManager.setMusic(SoundManager.Music.EXPLORATION);
+        if (soundManager.requestedMusicForTest() != SoundManager.Music.EXPLORATION) {
+            throw new AssertionError("Exploration music state must be retained headlessly");
+        }
+        soundManager.setMusic(SoundManager.Music.BOSS);
+        if (soundManager.requestedMusicForTest() != SoundManager.Music.BOSS) {
+            throw new AssertionError("Boss music must replace the previous scene state");
+        }
+        soundManager.stopMusic();
         if (soundManager.cachedCueCount() != SoundManager.Cue.values().length) {
             throw new AssertionError("Every sound cue must be prepared in the cache");
+        }
+        if (soundManager.fileBackedCueCount() != 13) {
+            throw new AssertionError("The authored RPG effects slice must contain 13 cues");
+        }
+        for (SoundManager.Cue cue : SoundManager.Cue.values()) {
+            String resource = SoundManager.cueResource(cue);
+            if (resource == null) continue;
+            AudioInputStream authored = AudioSystem.getAudioInputStream(
+                EnhancedUiSmokeTest.class.getResource(resource));
+            long expectedBytes = authored.getFrameLength() * authored.getFormat().getFrameSize();
+            if (expectedBytes <= 0 || soundManager.cachedSampleLengthForTest(cue) != expectedBytes) {
+                throw new AssertionError("Authored cue did not replace its fallback: " + cue);
+            }
+            authored.close();
         }
         if (soundManager.cachedAmbienceCount() != SoundManager.Ambience.values().length - 1) {
             throw new AssertionError("Every non-silent ambience must be prepared in the cache");
@@ -630,9 +733,46 @@ public final class EnhancedUiSmokeTest {
             new GameSettingsPanel.Listener() {
                 public void onCancel() { }
                 public void onApplied() { }
+                public void onCredits() { }
+                public void onReleaseNotes() { }
+                public void onFeedback() { }
+                public void onBugReport() { }
             });
         File settingsOutput = render(settings, 620, 620, output.getParentFile(),
             "settings-preview.png");
+        if (CreditsCatalog.entries().size() < 9) {
+            throw new AssertionError("Credits catalog must retain current music, VFX, and fonts");
+        }
+        CreditsPanel credits = new CreditsPanel(new Runnable() { public void run() { } });
+        File creditsOutput = render(credits, 760, 650, output.getParentFile(),
+            "credits-and-licenses-preview.png");
+        GameSettingsOverlay creditsOverlay = new GameSettingsOverlay(soundManager,
+            new GamePreferences(), null);
+        creditsOverlay.showCredits(false);
+        if (!creditsOverlay.creditsVisibleForTest()) {
+            throw new AssertionError("Credits must open inside the game overlay");
+        }
+        creditsOverlay.hideSettings();
+        ReleaseNotesPanel releaseNotes = new ReleaseNotesPanel(
+            new Runnable() { public void run() { } },
+            new Runnable() { public void run() { } },
+            new Runnable() { public void run() { } });
+        File releaseNotesOutput = render(releaseNotes, 780, 660, output.getParentFile(),
+            "release-notes-preview.png");
+        creditsOverlay.showReleaseNotes(false, null);
+        if (!creditsOverlay.releaseNotesVisibleForTest()) {
+            throw new AssertionError("Release notes must open inside the game overlay");
+        }
+        creditsOverlay.hideSettings();
+        creditsOverlay.setSize(1440, 900);
+        creditsOverlay.showWorldMap(mapEngine);
+        if (!creditsOverlay.worldMapVisibleForTest() ||
+                creditsOverlay.worldMapViewSizeForTest() != GameEngine.SIZE) {
+            throw new AssertionError("World map overlay must display the complete logical map");
+        }
+        File worldMapOutput = render(creditsOverlay, 1440, 900,
+            output.getParentFile(), "world-map-preview.png", 30000L);
+        creditsOverlay.closeWorldMap();
         soundManager.shutdown();
 
         JPanel buttonStates = new JPanel(new GridLayout(3, 5, 12, 12));
@@ -652,9 +792,11 @@ public final class EnhancedUiSmokeTest {
             "button-states-preview.png", 5000L);
 
         System.out.println("Enhanced UI smoke tests passed: " + titleOutput.getPath() + ", " +
-            output.getPath() + ", " + frameIdentifiersOutput.getPath() + ", " +
+            output.getPath() + ", " + largeCharacterOutput.getPath() + ", " +
+            frameIdentifiersOutput.getPath() + ", " +
             mapViewportOutput.getPath() + ", " + mapDetailOutput.getPath() + ", " +
-            explorationOutput.getPath() + ", " + encounterOutput.getPath() + ", " +
+            explorationOutput.getPath() + ", " + largeExplorationOutput.getPath() + ", " +
+            encounterOutput.getPath() + ", " +
             inventoryOutput.getPath() + " and " +
             locationOutput.getPath() + ", " + tavernOutput.getPath() + ", " +
             victoryOutput.getPath() + ", " + defeatOutput.getPath() + ", " +
@@ -662,7 +804,10 @@ public final class EnhancedUiSmokeTest {
             shellShop.getPath() + ", " + shellBlacksmith.getPath() + ", " +
             shellAlchemist.getPath() + ", " + shellTavern.getPath() + ", " +
             shellSpiderNest.getPath() + ", " +
-            settingsOutput.getPath() + ", " + buttonStatesOutput.getPath());
+            settingsOutput.getPath() + ", " + creditsOutput.getPath() + ", " +
+            releaseNotesOutput.getPath() + ", " +
+            worldMapOutput.getPath() + ", " +
+            buttonStatesOutput.getPath());
     }
 
     private static String buttonStateName(int state) {

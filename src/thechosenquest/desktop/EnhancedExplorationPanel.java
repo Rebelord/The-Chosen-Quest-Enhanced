@@ -9,6 +9,8 @@ import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -88,6 +90,7 @@ final class EnhancedExplorationPanel extends JPanel {
     private JButton eastTravelButton;
     private JButton zoomOutButton;
     private JButton zoomInButton;
+    private double sceneAspectRatio = 16d / 7d;
 
     private static final String STORY = "story";
     private static final String ENCOUNTER = "encounter";
@@ -229,6 +232,12 @@ final class EnhancedExplorationPanel extends JPanel {
         body.add(heroRail, BorderLayout.WEST);
         centerStage.setBackground(PARCHMENT);
         centerStage.setPreferredSize(new Dimension(UiTheme.CENTER_WIDTH, UiTheme.BODY_HEIGHT));
+        centerStage.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent event) {
+                updateSceneImageSize();
+            }
+        });
         centerStage.add(buildScene(), STORY);
         body.add(centerStage, BorderLayout.CENTER);
         mapRail = buildMapRail();
@@ -353,8 +362,11 @@ final class EnhancedExplorationPanel extends JPanel {
         JPanel narrative = new JPanel();
         narrative.setLayout(new BoxLayout(narrative, BoxLayout.Y_AXIS));
         narrative.setOpaque(false);
-        sceneImage.setPreferredSize(new Dimension(700, 300));
-        sceneImage.setMaximumSize(new Dimension(Integer.MAX_VALUE, 300));
+        // Location art is authored as wide landscape imagery. Preserve the complete
+        // composition and let its height follow the center column on larger screens.
+        sceneImage.setCover(false);
+        sceneImage.setPreferredSize(new Dimension(700, 306));
+        sceneImage.setMaximumSize(new Dimension(Integer.MAX_VALUE, 306));
         sceneImage.setAlignmentX(LEFT_ALIGNMENT);
         sceneImage.setBorder(BorderFactory.createLineBorder(new Color(42, 27, 14, 80)));
         narrative.add(sceneImage);
@@ -512,8 +524,8 @@ final class EnhancedExplorationPanel extends JPanel {
         heading.add(mapHeading, BorderLayout.CENTER);
         JPanel zoom = new JPanel(new GridLayout(1, 2, 4, 0));
         zoom.setOpaque(false);
-        zoomOutButton = mapZoomButton("−", "Zoom map out · 9×9 · Minus key", false);
-        zoomInButton = mapZoomButton("+", "Zoom map in · 7×7 · Plus key", true);
+        zoomOutButton = mapZoomButton("−", "Zoom map out · Minus key", false);
+        zoomInButton = mapZoomButton("+", "Zoom map in · Plus key", true);
         zoom.add(zoomOutButton);
         zoom.add(zoomInButton);
         heading.add(zoom, BorderLayout.EAST);
@@ -603,8 +615,24 @@ final class EnhancedExplorationPanel extends JPanel {
             zoomOutButton.setEnabled(size != GameMapPanel.OVERVIEW_VIEW_SIZE);
         }
         if (zoomInButton != null) {
-            zoomInButton.setEnabled(size != GameMapPanel.DETAIL_VIEW_SIZE);
+            zoomInButton.setEnabled(size != GameMapPanel.CLOSE_VIEW_SIZE);
         }
+    }
+
+    /**
+     * Keeps the exploration artwork at its authored landscape ratio as the desktop
+     * window grows. On shorter windows the cap protects the narrative and log.
+     */
+    private void updateSceneImageSize() {
+        int availableWidth = Math.max(420, centerStage.getWidth() - 60);
+        int ratioHeight = (int) Math.round(availableWidth / sceneAspectRatio);
+        int heightCap = Math.max(260, (int) Math.round(centerStage.getHeight() * .53d));
+        int height = Math.max(260, Math.min(ratioHeight, heightCap));
+        Dimension size = new Dimension(availableWidth, height);
+        if (size.equals(sceneImage.getPreferredSize())) return;
+        sceneImage.setPreferredSize(size);
+        sceneImage.setMaximumSize(new Dimension(Integer.MAX_VALUE, height));
+        sceneImage.revalidate();
     }
 
     /** Mirrors the visible zoom controls for the global plus/minus bindings. */
@@ -740,8 +768,25 @@ final class EnhancedExplorationPanel extends JPanel {
         heroName.setText(state.playerName);
         heroIdentity.setText(identity);
         setMeter(health, state.health, state.maxHealth, "HEALTH");
-        setMeter(mana, state.mana, Math.max(1, state.maxMana), "MANA");
-        mana.setVisible(state.maxMana > 0);
+        if ("Mage".equals(state.heroClass)) {
+            mana.setForeground(UiTheme.BLUE);
+            setMeter(mana, state.mana, Math.max(1, state.maxMana), "MANA");
+            mana.setVisible(true);
+        } else if ("Fighter".equals(state.heroClass)) {
+            mana.setForeground(new Color(194, 67, 44));
+            setMeter(mana, state.rage, Math.max(1, state.maxRage), "RAGE");
+            mana.setVisible(true);
+        } else if ("Rogue".equals(state.heroClass)) {
+            mana.setForeground(new Color(139, 92, 183));
+            setMeter(mana, state.momentum, Math.max(1, state.maxMomentum), "MOMENTUM");
+            mana.setVisible(true);
+        } else if ("Hunter".equals(state.heroClass)) {
+            mana.setForeground(new Color(91, 164, 91));
+            setMeter(mana, state.focus, Math.max(1, state.maxFocus), "FOCUS");
+            mana.setVisible(true);
+        } else {
+            mana.setVisible(false);
+        }
         setMeter(experience, state.experience, state.level * 30, "EXPERIENCE");
         refreshEquipment(weaponEquipment, equippedItem(state, state.equippedWeapon),
             state.equippedWeapon == null ? "No weapon" : state.equippedWeapon);
@@ -754,7 +799,11 @@ final class EnhancedExplorationPanel extends JPanel {
             state.potions + "</html>");
 
         headerLocation.setText(engine.currentTile().label + " — " + coordinate);
-        sceneImage.setResourceAsync(sceneResourceFor(engine.currentTile(), engine.currentVendor()));
+        String sceneResource =
+            sceneResourceFor(engine.currentTile(), engine.currentVendor());
+        sceneAspectRatio = sceneAspectRatioFor(sceneResource);
+        updateSceneImageSize();
+        sceneImage.setResourceAsync(sceneResource);
         sceneTitle.setText(titleFor(engine.currentTile()));
         sceneDescription.setText(descriptionFor(engine.currentTile()));
         eventLog.setText(engine.getHistory());
@@ -762,7 +811,13 @@ final class EnhancedExplorationPanel extends JPanel {
 
         mapLocation.setText(titleFor(engine.currentTile()) + " — " + coordinate);
         mapTerritory.setText(territoryFor(engine.currentTile()));
-        mapDescription.setText(descriptionFor(engine.currentTile()));
+        String mapCopy = descriptionFor(engine.currentTile());
+        String latestClue = engine.latestMapClue();
+        if (latestClue != null) mapCopy += "\nCLUE · " + latestClue;
+        mapDescription.setText(mapCopy);
+        mapDescription.setToolTipText(latestClue == null ? mapCopy :
+            "<html>" + mapCopy.replace("\n", "<br>") + "</html>");
+        mapDescription.getAccessibleContext().setAccessibleDescription(mapCopy);
         map.followHero();
         map.repaint();
 
@@ -888,6 +943,12 @@ final class EnhancedExplorationPanel extends JPanel {
                 : "/assets/scenes/frontier-market-exterior.png";
         }
         return "/assets/scenes/alshira-ruins.png";
+    }
+
+    /** The two early landscape paintings are 2:1; newer exteriors use 16:7. */
+    private static double sceneAspectRatioFor(String resource) {
+        return resource != null && (resource.endsWith("/forgotten-crypt.png") ||
+            resource.endsWith("/moonwater-crossing.png")) ? 2d : 16d / 7d;
     }
 
     private String territoryFor(GameEngine.TileType tile) {

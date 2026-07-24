@@ -22,6 +22,10 @@ final class GameSettingsPanel extends JPanel {
     interface Listener {
         void onCancel();
         void onApplied();
+        void onCredits();
+        void onReleaseNotes();
+        void onFeedback();
+        void onBugReport();
     }
 
     private static final long serialVersionUID = 1L;
@@ -30,6 +34,7 @@ final class GameSettingsPanel extends JPanel {
 
     private final SoundManager soundManager;
     private final GamePreferences preferences;
+    private final Listener listener;
     private final JSlider master = slider();
     private final JSlider music = slider();
     private final JSlider ambience = slider();
@@ -47,6 +52,7 @@ final class GameSettingsPanel extends JPanel {
                       final Listener listener) {
         this.soundManager = soundManager;
         this.preferences = preferences;
+        this.listener = listener;
         setLayout(new BorderLayout());
         setPreferredSize(new Dimension(620, 620));
         setBackground(UiTheme.SURFACE);
@@ -141,7 +147,42 @@ final class GameSettingsPanel extends JPanel {
         navigation.add(Box.createVerticalStrut(8));
         navigation.add(navItem("GAMEPLAY", false));
         navigation.add(Box.createVerticalGlue());
+        JButton notes = navigationButton("WHAT'S NEW", "View current release notes");
+        notes.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) { listener.onReleaseNotes(); }
+        });
+        navigation.add(notes);
+        navigation.add(Box.createVerticalStrut(6));
+        JButton feedback = navigationButton("FEEDBACK", ProjectLinks.FEEDBACK);
+        feedback.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) { listener.onFeedback(); }
+        });
+        navigation.add(feedback);
+        navigation.add(Box.createVerticalStrut(6));
+        JButton bug = navigationButton("REPORT A BUG", ProjectLinks.BUG_REPORT);
+        bug.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) { listener.onBugReport(); }
+        });
+        navigation.add(bug);
+        navigation.add(Box.createVerticalStrut(6));
+        JButton credits = navigationButton("CREDITS & LICENSES",
+            "View contributors, asset sources, and licenses");
+        credits.getAccessibleContext().setAccessibleName("Credits and licenses");
+        credits.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) { listener.onCredits(); }
+        });
+        navigation.add(credits);
         return navigation;
+    }
+
+    private JButton navigationButton(String text, String tooltip) {
+        JButton button = UiTheme.button(text, false);
+        button.setFont(UiTheme.body(Font.BOLD, 9));
+        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        button.setPreferredSize(new Dimension(136, 38));
+        button.setAlignmentX(LEFT_ALIGNMENT);
+        button.setToolTipText(tooltip);
+        return button;
     }
 
     private JLabel navItem(String text, boolean selected) {

@@ -8,6 +8,12 @@ The source page explicitly provides both the full track and loop version for
 unrestricted use. Attribution is not required, but the composer and source are
 retained here for provenance.
 
+Scene music
+-----------
+Exploration, safe-location, combat, and boss themes are by Eric Matyas of
+Soundimage.org and require attribution. Exact track names, use, source links,
+license terms, download date, and processing notes are recorded in ATTRIBUTION.md.
+
 Gameplay ambience
 -----------------
 Forest, lakeshore, crypt, market, forge, alchemist, campfire, tavern, combat,

@@ -27,7 +27,8 @@ import javax.swing.JPanel;
  */
 final class GameMapPanel extends JPanel {
     private static final long serialVersionUID = 1L;
-    /** The two authored densities keep map markers legible and controls simple. */
+    /** Authored densities balance local detail with broader route planning. */
+    static final int CLOSE_VIEW_SIZE = 5;
     static final int DETAIL_VIEW_SIZE = 7;
     static final int OVERVIEW_VIEW_SIZE = 9;
     private static final int GAP = 4;
@@ -42,7 +43,8 @@ final class GameMapPanel extends JPanel {
     private final List<MarkerHit> markerHits = new ArrayList<MarkerHit>();
     private int viewRow;
     private int viewCol;
-    private int viewSize = OVERVIEW_VIEW_SIZE;
+    // Begin close enough for terrain art and markers to read immediately.
+    private int viewSize = DETAIL_VIEW_SIZE;
     private boolean trackingHero = true;
 
     GameMapPanel(GameEngine engine) {
@@ -400,16 +402,29 @@ final class GameMapPanel extends JPanel {
     }
 
     void zoomIn() {
-        setViewSize(DETAIL_VIEW_SIZE);
+        setViewSize(viewSize == OVERVIEW_VIEW_SIZE
+            ? DETAIL_VIEW_SIZE : CLOSE_VIEW_SIZE);
     }
 
     void zoomOut() {
-        setViewSize(OVERVIEW_VIEW_SIZE);
+        setViewSize(viewSize == CLOSE_VIEW_SIZE
+            ? DETAIL_VIEW_SIZE : OVERVIEW_VIEW_SIZE);
+    }
+
+    /** Displays the complete logical world for the dedicated map overlay. */
+    void showFullWorld() {
+        trackingHero = false;
+        viewSize = GameEngine.SIZE;
+        viewRow = 0;
+        viewCol = 0;
+        revalidate();
+        repaint();
     }
 
     private void setViewSize(int requestedSize) {
-        int nextSize = requestedSize <= DETAIL_VIEW_SIZE
-            ? DETAIL_VIEW_SIZE : OVERVIEW_VIEW_SIZE;
+        int nextSize = requestedSize <= CLOSE_VIEW_SIZE ? CLOSE_VIEW_SIZE :
+            requestedSize <= DETAIL_VIEW_SIZE ? DETAIL_VIEW_SIZE :
+            OVERVIEW_VIEW_SIZE;
         if (nextSize == viewSize) return;
 
         // Preserve the point the player was inspecting when manually panned.
@@ -609,7 +624,11 @@ final class GameMapPanel extends JPanel {
         int knowledge = engine.threatKnowledgeAt(row, col);
         if (enemy != null && knowledge >= 2) tip.append("<br>").append(enemy.name);
         else if (enemy != null && knowledge == 1) tip.append("<br>Rumored threat — identity unknown");
-        if (engine.hasRelicClueAt(row, col)) tip.append("<br>Possible relic search region");
+        if (engine.hasRelicClueAt(row, col)) {
+            tip.append("<br>Possible relic search region");
+            String clue = engine.relicClueAt(row, col);
+            if (clue != null) tip.append("<br>").append(clue);
+        }
         if (discovery == GameEngine.DiscoveryState.SCOUTED) tip.append("<br>Scouted, not yet visited");
         return tip.append("</html>").toString();
     }

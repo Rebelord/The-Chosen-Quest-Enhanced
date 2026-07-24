@@ -6,6 +6,7 @@ import java.awt.Graphics2D;
 import java.awt.Insets;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.awt.geom.RoundRectangle2D;
 import java.lang.ref.SoftReference;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -31,6 +32,12 @@ final class AssetImagePanel extends JPanel {
             return thread;
         }
         });
+    static {
+        // The game reads bundled resources and does not benefit from ImageIO's
+        // temporary-disk cache. Keeping decoding in memory avoids intermittent
+        // filesystem stalls during rapid portrait changes.
+        ImageIO.setUseCache(false);
+    }
     private BufferedImage image;
     private BufferedImage rendered;
     private BufferedImage renderedSource;
@@ -143,6 +150,32 @@ final class AssetImagePanel extends JPanel {
                 });
             }
         });
+    }
+
+    /**
+     * Warms a scaled frame on a low-priority thread. Character creation calls
+     * this while the title screen is visible, so later class/race exploration
+     * uses the small render cache instead of decoding multi-megabyte originals.
+     */
+    static void preloadRenderedAsync(final String[] resources, final int width,
+                                     final int height, final boolean cover) {
+        if (resources == null || resources.length == 0) return;
+        Thread preloader = new Thread(new Runnable() {
+            public void run() {
+                for (String resource : resources) {
+                    if (Thread.currentThread().isInterrupted()) return;
+                    BufferedImage source = load(resource);
+                    renderCached(resource, source, width, height, cover, .5d, false);
+                }
+            }
+        }, "chosen-quest-avatar-preloader");
+        preloader.setDaemon(true);
+        preloader.setPriority(Thread.MIN_PRIORITY);
+        preloader.start();
+    }
+
+    static int renderedCacheSizeForTest() {
+        synchronized (RENDER_CACHE) { return RENDER_CACHE.size(); }
     }
 
     /**
@@ -342,6 +375,21 @@ final class AssetImagePanel extends JPanel {
             renderedCropAnchorY = cropAnchorY;
             renderedFlipHorizontal = flipHorizontal;
         }
-        graphics.drawImage(rendered, imageInsets.left, imageInsets.top, null);
+        Graphics2D imageGraphics = (Graphics2D) graphics.create();
+        if (getBorder() instanceof FantasyPortraitBorder) {
+            FantasyPortraitBorder frame = (FantasyPortraitBorder) getBorder();
+            int inset = frame.viewportInset();
+            int width = Math.max(1, getWidth() - inset * 2);
+            int height = Math.max(1, getHeight() - inset * 2);
+            int arc = frame.viewportArc();
+            imageGraphics.clip(new RoundRectangle2D.Double(inset, inset, width, height,
+                arc, arc));
+        }
+        imageGraphics.drawImage(rendered, imageInsets.left, imageInsets.top, null);
+        imageGraphics.dispose();
+    }
+
+    boolean usesMaskedFantasyViewportForTest() {
+        return getBorder() instanceof FantasyPortraitBorder;
     }
 }

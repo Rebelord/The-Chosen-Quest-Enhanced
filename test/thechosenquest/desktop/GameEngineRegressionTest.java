@@ -35,7 +35,9 @@ public final class GameEngineRegressionTest {
         testDeterministicCombat();
         testClassCombatActions();
         testProgressiveAbilities();
+        testMovementKeyRepeatGuard();
         testSpeedInitiativeAndActionTempo();
+        testPersistentCombatStatuses();
         testLeveling();
         testFleeingAndDefeat();
         testDragonVictory();
@@ -179,8 +181,8 @@ public final class GameEngineRegressionTest {
             "equipping a two-handed weapon clears the offhand slot");
         moveToEnemy(engine, 0);
         engine.defend();
-        require(engine.getHistory().contains("gather rage"),
-            "two-handed fighter defense action becomes rage");
+        require(state.rage > 0 && engine.getHistory().contains("battle cry"),
+            "two-handed fighter defense action builds the Rage resource");
     }
 
     private static void testProceduralWorldGeneration() {
@@ -223,6 +225,9 @@ public final class GameEngineRegressionTest {
         explorer.useMapService(GameEngine.MapService.REGIONAL_MAP);
         require(explorer.getState().regionalMapOwned && explorer.getState().gold == 8,
             "regional map is purchased once at the merchant");
+        require(explorer.latestMapClue() != null &&
+                explorer.latestMapClue().contains("threats remain unknown"),
+            "regional map records its discovery limit in the map journal");
         for (int row = 0; row < GameEngine.SIZE; row++) {
             for (int col = 0; col < GameEngine.SIZE; col++) {
                 require(explorer.discoveryAt(row, col) != GameEngine.DiscoveryState.UNKNOWN,
@@ -247,6 +252,16 @@ public final class GameEngineRegressionTest {
         }
         require(markedThreat, "a rumor marks an unknown threat");
         require(markedRelicRegion, "an elite rumor marks a relic search region");
+        require(!rumor.mapJournal().isEmpty() && rumor.latestMapClue().contains("RELIC RUMOR"),
+            "rumor direction and relic context persist in the map journal");
+        String relicClue = null;
+        for (int row = 0; row < GameEngine.SIZE && relicClue == null; row++) {
+            for (int col = 0; col < GameEngine.SIZE && relicClue == null; col++) {
+                if (rumor.hasRelicClueAt(row, col)) relicClue = rumor.relicClueAt(row, col);
+            }
+        }
+        require(relicClue != null && relicClue.contains("may"),
+            "relic regions explain which specialist may understand the eventual find");
         int knownAfterFirstRumor = knownThreatCount(rumor);
         rumor.useMapService(GameEngine.MapService.RUMOR);
         require(knownThreatCount(rumor) == knownAfterFirstRumor,
@@ -278,7 +293,12 @@ public final class GameEngineRegressionTest {
         for (int remaining = 3; remaining > 0; remaining--) {
             GameEngine.Enemy brood = engine.currentEnemy();
             require(brood != null && "SPIDER_NEST".equals(brood.sourceId) &&
-                    brood.reducedRewards && brood.reward == 3,
+                    brood.reducedRewards &&
+                    (remaining == 1
+                        ? "Ashweb Matriarch".equals(brood.name) && brood.tier == 1 &&
+                            brood.reward == 6 && brood.combatLevel == 2
+                        : "Giant Forest Spider".equals(brood.name) && brood.tier == 0 &&
+                            brood.reward == 3),
                 "nest brood is tagged for reduced source rewards");
             brood.health = 1;
             engine.setRandomSeed(remaining);
@@ -308,8 +328,8 @@ public final class GameEngineRegressionTest {
             "third brood permanently clears the spider nest");
         require(state.inventory.size() == inventoryBefore,
             "source enemies cannot farm standard equipment drops");
-        require(state.gold == goldBefore + 27,
-            "three small brood rewards plus one clearing reward are bounded");
+        require(state.gold == goldBefore + 30,
+            "two brood rewards, one Matriarch reward, and clearing gold are bounded");
         int clearedGold = state.gold;
         engine.locationAction();
         require(engine.currentEnemy() == null && state.gold == clearedGold,
@@ -465,41 +485,113 @@ public final class GameEngineRegressionTest {
         require(GameEngine.abilityUnlocked(fighterState, 1) &&
                 "Cleave".equals(GameEngine.abilityName(fighterState, 1)),
             "level two fighter unlock follows the equipped two-handed style");
+        GameEngine.Relic earlyRelic =
+            new GameEngine.Relic("Early Test Relic", "Warlord", "Blacksmith");
+        earlyRelic.identified = true;
+        earlyRelic.rewardName = "Test Greatsword";
+        fighterState.relics.add(earlyRelic);
+        fighterState.weaponProficiency.put("HEAVY BLADE", Integer.valueOf(3));
+        require(!GameEngine.abilityUnlocked(fighterState, 2) &&
+                !GameEngine.abilityUnlocked(fighterState, 3),
+            "identified relics and weapon mastery must not bypass level-three unlocks");
         moveToEnemy(fighter, 0);
         fighter.currentEnemy().health = 100;
+        require(!GameEngine.abilityAvailable(fighterState, 1) &&
+                GameEngine.abilityRequirement(fighterState, 1).contains("NEEDS 30 RAGE"),
+            "fighter tactics require earned Rage");
+        fighterState.rage = GameEngine.rageCost(1);
         int beforeCleave = fighter.currentEnemy().health;
         fighter.useAbility(1);
         require(fighter.currentEnemy().health < beforeCleave &&
+                fighter.getHistory().contains("spend 30 Rage") &&
                 fighter.getHistory().contains("You use Cleave"),
-            "unlocked fighter tactical ability resolves through combat rules");
+            "fighter tactical ability spends Rage and resolves through combat rules");
         fighterState.level = 3;
         fighterState.weaponProficiency.put("HEAVY BLADE", Integer.valueOf(3));
         require(GameEngine.abilityUnlocked(fighterState, 2) &&
                 "Armor Breaker".equals(GameEngine.abilityName(fighterState, 2)) &&
-                "Second Wind".equals(GameEngine.abilityName(fighterState, 3)),
+                "Second Wind".equals(GameEngine.abilityName(fighterState, 3)) &&
+                GameEngine.abilityPassive(fighterState, 3),
             "level three fighter exposes mastery and signature abilities");
+        fighterState.health = fighterState.maxHealth / 2;
+        int healthBeforePassiveAttempt = fighterState.health;
+        fighter.useAbility(3);
+        require(fighterState.health == healthBeforePassiveAttempt &&
+                !fighterState.secondWindUsed &&
+                fighter.getHistory().contains("triggers automatically"),
+            "Second Wind cannot be activated as a healing action");
+        fighterState.health = 1;
+        fighter.currentEnemy().health = 1000;
+        for (int turn = 0; turn < 4 && !fighterState.secondWindUsed; turn++) {
+            fighter.attack();
+        }
+        require(fighterState.secondWindUsed && fighterState.health == 1 &&
+                fighterState.rage == fighterState.maxRage &&
+                "RAGE".equals(fighterState.combatPreparation) &&
+                GameEngine.abilityRequirement(fighterState, 3).contains("SPENT"),
+            "a fatal hit triggers one last stand and returns control with Rage ready");
+        fighter.attack();
+        require(fighter.getHistory().contains("Rage empowers your heavy strike"),
+            "Second Wind adrenaline empowers the fighter's next basic attack");
 
         GameEngine rogue = new GameEngine();
         rogue.newGame("Learner", "Halfling", "Rogue", "QUICK KNIVES");
         rogue.getState().level = 2;
         require("Offhand Strike".equals(GameEngine.abilityName(rogue.getState(), 1)),
             "rogue level two unlock uses the dual-wield identity");
+        moveToEnemy(rogue, 0);
+        require(!GameEngine.abilityAvailable(rogue.getState(), 1),
+            "rogue advanced actions begin gated by Momentum");
+        int momentumBefore = rogue.getState().momentum;
+        rogue.attack();
+        require(rogue.getState().momentum > momentumBefore,
+            "rogue basic attacks build Momentum");
+        rogue.getState().momentum = GameEngine.momentumCost(1);
+        rogue.useAbility(1);
+        require(rogue.getHistory().contains("spend 30 Momentum"),
+            "rogue advanced actions consume Momentum");
 
         GameEngine hunter = new GameEngine();
         hunter.newGame("Learner", "Elf", "Hunter");
         hunter.getState().level = 3;
+        hunter.getState().maxFocus = GameEngine.maxFocusForLevel(3);
+        hunter.getState().focus = hunter.getState().maxFocus;
+        hunter.getState().weaponProficiency.put("BOW", Integer.valueOf(3));
         require("Pinning Shot".equals(GameEngine.abilityName(hunter.getState(), 1)) &&
                 "Hunter's Mark".equals(GameEngine.abilityName(hunter.getState(), 3)),
             "hunter progression adds control and setup actions");
         moveToEnemy(hunter, 0);
         hunter.currentEnemy().health = 100;
         hunter.useAbility(3);
-        require("MARK".equals(hunter.getState().combatPreparation),
-            "Hunter's Mark prepares the next shot rather than dealing hidden damage");
-        hunter.attack();
-        require(hunter.getState().combatPreparation == null &&
-                hunter.getHistory().contains("Hunter's Mark empowers the shot"),
-            "marked shot visibly consumes its preparation");
+        require(hunter.getState().enemyMarked &&
+                hunter.getState().focus == hunter.getState().maxFocus -
+                    GameEngine.hunterFocusCost(hunter.getState(), 3),
+            "Hunter's Mark spends Focus and establishes a persistent target requirement");
+        hunter.getState().focus = GameEngine.hunterFocusCost(hunter.getState(), 2);
+        require("Volley".equals(GameEngine.abilityName(hunter.getState(), 2)) &&
+                GameEngine.abilityAvailable(hunter.getState(), 2),
+            "Volley becomes available only with sufficient Focus and a marked target");
+        hunter.useAbility(2);
+        require(!hunter.getState().enemyMarked &&
+                hunter.getHistory().contains("You use Volley"),
+            "Volley consumes Hunter's Mark when it resolves");
+        require(GameEngine.isMeleeActionName("Claw") &&
+                GameEngine.isMeleeActionName("Heavy Strike") &&
+                !GameEngine.isMeleeActionName("Breath Attack") &&
+                !GameEngine.isMeleeActionName("Dark Ritual"),
+            "Pinning Shot distinguishes melee intent from breath and magical attacks");
+    }
+
+    private static void testMovementKeyRepeatGuard() {
+        MainWindow.KeyRepeatGuard guard = new MainWindow.KeyRepeatGuard();
+        require(guard.press("moveNorth") && !guard.press("moveNorth"),
+            "holding a movement key must produce only one accepted press");
+        guard.release("moveNorth");
+        require(guard.press("moveNorth"),
+            "releasing a movement key must allow the next deliberate step");
+        guard.clear();
+        require(guard.press("moveNorth"),
+            "losing window focus must clear held movement keys");
     }
 
     private static void testSpeedInitiativeAndActionTempo() {
@@ -558,6 +650,38 @@ public final class GameEngineRegressionTest {
             "level advantage improves speed within the capped modifier");
         require(mage.getEnemySpeed() >= mage.currentEnemy().speed,
             "enemy tier modifiers never reduce base speed");
+    }
+
+    private static void testPersistentCombatStatuses() {
+        GameEngine engine = new GameEngine();
+        engine.newGame("Status", "Human", "Fighter");
+        moveToEnemy(engine, 0);
+        GameEngine.State state = engine.getState();
+        GameEngine.Enemy enemy = engine.currentEnemy();
+        enemy.health = 100;
+        // Establish the encounter clock before injecting deterministic effects;
+        // first-time timeline setup intentionally clears stale combat counters.
+        engine.defend();
+        engine.consumeEnemyTurnEvents();
+        state.enemyBleedDamage = 3;
+        state.enemyBleedTurns = 2;
+        state.enemyArmorBreakValue = 2;
+        state.enemyArmorBreakTurns = 2;
+        state.enemyStunTurns = 1;
+        state.consecutiveHeroActions = 2;
+        int enemyHealth = enemy.health;
+        engine.defend();
+        require(enemy.health == enemyHealth - 3 && state.enemyBleedTurns == 1 &&
+                state.enemyArmorBreakTurns == 1,
+            "bleed and armor break persist and age on perceptible enemy turns");
+        List<GameEngine.EnemyTurnEvent> turns = engine.consumeEnemyTurnEvents();
+        require(turns.size() == 1 && turns.get(0).missed && turns.get(0).damage == 0 &&
+                turns.get(0).actionName.startsWith("Stunned"),
+            "a stunned enemy turn remains a visible presentation beat");
+        List<String> statuses = GameEngine.activeCombatStatuses(state);
+        require(statuses.toString().contains("BLEED 3") &&
+                statuses.toString().contains("ARMOR −2"),
+            "active combat effects expose source, magnitude, and remaining duration");
     }
 
     private static void testLeveling() {
@@ -828,6 +952,21 @@ public final class GameEngineRegressionTest {
             require(engine.getAttack() > startingAttack,
                 upgrade[0] + " shop weapon is a meaningful minor upgrade");
         }
+        engine.newGame("Loot", "Human", "Mage");
+        require("UNCOMMON".equals(GameEngine.itemQuality(item(engine, "Runed Wand"))) &&
+                "UNCOMMON".equals(GameEngine.itemQuality(item(engine, "Serrated Dagger"))) &&
+                "UNCOMMON".equals(GameEngine.itemQuality(item(engine, "Soldier Shield"))),
+            "shops identify class-specific minor upgrades as uncommon gear");
+        require(!containsShopItem(engine, "Hunting Crossbow") &&
+                !containsShopItem(engine, "Carved Totem"),
+            "advanced field-loot variants do not enter shops before level two");
+        engine.getState().level = 2;
+        require(containsShopItem(engine, "Hunting Crossbow") &&
+                containsShopItem(engine, "Carved Totem"),
+            "level two expands specialized ranged and magical stock");
+        GameEngine.Item resale = item(engine, "Runed Wand");
+        require(GameEngine.salePrice(resale, false) == resale.cost / 2,
+            "uncommon resale provides meaningful progress toward a replacement");
     }
 
     private static void testSpellIdentityAndCombatCurve() {

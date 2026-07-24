@@ -1,6 +1,7 @@
 # Generated build and packaged release output
 /build/
 /dist/
+/tmp/
 
 # Java compiler and crash artifacts
 *.class

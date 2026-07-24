@@ -1,0 +1,3 @@
+# One approved public display name or gamer tag per line.
+# Do not add email addresses, survey answers, or names without explicit consent.
+# Keep this file empty until the REL-003 consent roster has been reviewed.

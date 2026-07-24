@@ -47,6 +47,7 @@ final class InventoryPanel extends JPanel {
     private final JLabel[] abilityNames = new JLabel[4];
     private final JLabel[] abilityStates = new JLabel[4];
     private final JLabel[] statValues = new JLabel[6];
+    private final JLabel[] statLabels = new JLabel[6];
     private final DefaultListModel<GameEngine.Item> items = new DefaultListModel<GameEngine.Item>();
     private final JList<GameEngine.Item> itemList = new JList<GameEngine.Item>(items);
     private final JComboBox<String> sort = new JComboBox<String>(new String[] {
@@ -129,6 +130,7 @@ final class InventoryPanel extends JPanel {
             card.setBackground(new Color(38, 28, 23));
             card.setBorder(BorderFactory.createLineBorder(new Color(212, 175, 55)));
             JLabel label = new JLabel(labels[i], SwingConstants.CENTER);
+            statLabels[i] = label;
             label.setForeground(UiTheme.MUTED);
             label.setFont(UiTheme.body(Font.BOLD, 9));
             label.setBorder(BorderFactory.createEmptyBorder(8, 2, 0, 2));
@@ -302,8 +304,21 @@ final class InventoryPanel extends JPanel {
         experienceCopy.setText(state.experience + "/" + (state.level * 30) + " XP");
         experience.setMaximum(Math.max(1, state.level * 30));
         experience.setValue(state.experience);
+        String resourceLabel = "Mage".equals(state.heroClass) ? "MANA" :
+            ("Fighter".equals(state.heroClass) ? "RAGE" :
+            ("Rogue".equals(state.heroClass) ? "MOMENTUM" :
+            ("Hunter".equals(state.heroClass) ? "FOCUS" : "RESOURCE")));
+        String resourceValue = "Mage".equals(state.heroClass)
+            ? state.mana + "/" + state.maxMana :
+            ("Fighter".equals(state.heroClass)
+                ? state.rage + "/" + state.maxRage :
+            ("Rogue".equals(state.heroClass)
+                ? state.momentum + "/" + state.maxMomentum :
+            ("Hunter".equals(state.heroClass)
+                ? state.focus + "/" + state.maxFocus : "—")));
+        statLabels[3].setText(resourceLabel);
         String[] values = {String.valueOf(attack), String.valueOf(defense),
-            state.health + "/" + state.maxHealth, state.mana + "/" + state.maxMana,
+            state.health + "/" + state.maxHealth, resourceValue,
             String.valueOf(state.gold), String.valueOf(state.potions)};
         for (int i = 0; i < values.length; i++) statValues[i].setText(values[i]);
         GameEngine.Item equippedWeapon = GameEngine.equippedWeapon(state);

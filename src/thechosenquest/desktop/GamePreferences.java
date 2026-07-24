@@ -5,6 +5,7 @@ import java.util.prefs.Preferences;
 /** Persistent non-audio interface preferences. */
 final class GamePreferences {
     private static final String REDUCED_MOTION_KEY = "interface.reducedMotion";
+    private static final String RELEASE_NOTES_VERSION_KEY = "releaseNotes.lastSeenVersion";
 
     private final Preferences preferences;
     private boolean reducedMotion;
@@ -33,5 +34,21 @@ final class GamePreferences {
                 preferences.putBoolean(REDUCED_MOTION_KEY, value);
             } catch (RuntimeException ignored) { }
         }
+    }
+
+    boolean shouldShowReleaseNotes(String version) {
+        if (version == null || version.length() == 0 || preferences == null) return true;
+        try {
+            return !version.equals(preferences.get(RELEASE_NOTES_VERSION_KEY, ""));
+        } catch (RuntimeException ignored) {
+            return true;
+        }
+    }
+
+    void markReleaseNotesSeen(String version) {
+        if (version == null || version.length() == 0 || preferences == null) return;
+        try {
+            preferences.put(RELEASE_NOTES_VERSION_KEY, version);
+        } catch (RuntimeException ignored) { }
     }
 }

@@ -20,7 +20,7 @@ public final class BalanceSimulationTest {
     private static final Scenario[] SCENARIOS = {
         new Scenario("STANDARD", 1, "Skeletal Guardian", 28, 9, 11, 0, false),
         new Scenario("ELITE", 2, "Orc Warlord", 62, 14, 42, 1, false),
-        new Scenario("BOSS", 3, "Corrupted Shadow Dragon", 145, 20, 340, 2, true)
+        new Scenario("BOSS", 3, "Corrupted Shadow Dragon", 138, 19, 340, 2, true)
     };
 
     public static void main(String[] args) throws Exception {
@@ -84,13 +84,9 @@ public final class BalanceSimulationTest {
         int dealt = 0;
         int incomingDamage = 0;
         int turns = 0;
-        boolean usedSecondWind = false;
         while (state.health > 0 && enemy.health > 0 && turns < MAX_PLAYER_TURNS) {
             int enemyBefore = enemy.health;
-            boolean secondWindReady = "Fighter".equals(heroClass) && scenario.level >= 3 &&
-                !usedSecondWind && state.health * 100 <= state.maxHealth * 45;
-            if (secondWindReady) usedSecondWind = true;
-            takeTacticalAction(engine, scenario, turns, secondWindReady);
+            takeTacticalAction(engine, scenario, turns, false);
             dealt += Math.max(0, enemyBefore - enemy.health);
             for (GameEngine.EnemyTurnEvent event : engine.consumeEnemyTurnEvents()) {
                 incomingDamage += event.damage;
@@ -106,6 +102,10 @@ public final class BalanceSimulationTest {
         GameEngine.State state = engine.getState();
         int levels = scenario.level - 1;
         state.level = scenario.level;
+        if ("Hunter".equals(state.heroClass)) {
+            state.maxFocus = GameEngine.maxFocusForLevel(state.level);
+            state.focus = state.maxFocus / 3;
+        }
         state.maxHealth += levels * 8;
         state.health = state.maxHealth;
         state.maxMana += levels * ("Mage".equals(state.heroClass) ? 6 : 2);
@@ -170,11 +170,14 @@ public final class BalanceSimulationTest {
         }
         if ("Rogue".equals(state.heroClass)) {
             if (scenario.level >= 3 && enemy != null &&
-                    enemy.health * 100 <= enemy.maxHealth * 35) {
+                    enemy.health * 100 <= enemy.maxHealth * 35 &&
+                    GameEngine.abilityAvailable(state, 3)) {
                 engine.useAbility(3);
-            } else if (scenario.level >= 3 && turn % 4 == 2) {
+            } else if (scenario.level >= 3 && turn % 4 == 2 &&
+                    GameEngine.abilityAvailable(state, 2)) {
                 engine.useAbility(2);
-            } else if (scenario.level >= 2 && turn % 3 == 1) {
+            } else if (scenario.level >= 2 && turn % 3 == 1 &&
+                    GameEngine.abilityAvailable(state, 1)) {
                 engine.useAbility(1);
             } else if (state.combatPreparation == null && turn % 3 == 0) {
                 engine.defend();
@@ -184,13 +187,16 @@ public final class BalanceSimulationTest {
             return;
         }
         if ("Hunter".equals(state.heroClass)) {
-            if (scenario.level >= 3 && state.combatPreparation == null && turn % 4 == 0) {
-                engine.useAbility(3);
-            } else if (scenario.level >= 3 && turn % 4 == 2) {
+            if (scenario.level >= 3 && GameEngine.abilityAvailable(state, 2)) {
                 engine.useAbility(2);
-            } else if (scenario.level >= 2 && turn % 3 == 1) {
+            } else if (scenario.level >= 3 && !state.enemyMarked &&
+                    GameEngine.abilityAvailable(state, 3)) {
+                engine.useAbility(3);
+            } else if (scenario.level >= 2 && turn % 3 == 1 &&
+                    GameEngine.abilityAvailable(state, 1)) {
                 engine.useAbility(1);
-            } else if (state.combatPreparation == null && turn % 3 == 0) {
+            } else if (state.combatPreparation == null &&
+                    (state.focus < 35 || turn % 3 == 0)) {
                 engine.defend();
             } else {
                 engine.attack();
@@ -198,9 +204,11 @@ public final class BalanceSimulationTest {
             return;
         }
 
-        if (scenario.level >= 3 && turn % 4 == 2) {
+        if (scenario.level >= 3 && turn % 4 == 2 &&
+                GameEngine.abilityAvailable(state, 2)) {
             engine.useAbility(2);
-        } else if (scenario.level >= 2 && turn % 3 == 1) {
+        } else if (scenario.level >= 2 && turn % 3 == 1 &&
+                GameEngine.abilityAvailable(state, 1)) {
             engine.useAbility(1);
         } else if (turn % 3 == 0) {
             engine.defend();

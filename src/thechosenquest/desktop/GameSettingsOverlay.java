@@ -11,6 +11,8 @@ import java.awt.GridBagConstraints;
 import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -21,6 +23,7 @@ import javax.swing.JLabel;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
 import javax.swing.JTextArea;
+import java.util.List;
 
 /** Modal in-game settings layer that keeps the game visible beneath a dim scrim. */
 final class GameSettingsOverlay extends JPanel {
@@ -33,6 +36,7 @@ final class GameSettingsOverlay extends JPanel {
     private Timer transitionTimer;
     private Timer dialogueTimer;
     private JTextArea dialogueCopy;
+    private GameMapPanel worldMap;
     private String fullDialogueText;
     private Color transitionColor = Color.BLACK;
     private float transitionOpacity;
@@ -50,6 +54,10 @@ final class GameSettingsOverlay extends JPanel {
                 hideSettings();
                 if (onApplied != null) onApplied.run();
             }
+            public void onCredits() { showCredits(true); }
+            public void onReleaseNotes() { showReleaseNotes(true, null); }
+            public void onFeedback() { ProjectLinks.open(ProjectLinks.FEEDBACK); }
+            public void onBugReport() { ProjectLinks.open(ProjectLinks.BUG_REPORT); }
         });
         GridBagConstraints centered = new GridBagConstraints();
         centered.gridx = 0;
@@ -86,9 +94,308 @@ final class GameSettingsOverlay extends JPanel {
 
     void hideSettings() {
         stopDialogueTimer();
+        worldMap = null;
         settings.setVisible(false);
         modalHost.setVisible(false);
         setVisible(false);
+    }
+
+    /** Opens the release-owned credits without falling back to a system dialog. */
+    void showCredits(final boolean returnToSettings) {
+        if (transitionTimer != null && transitionTimer.isRunning()) transitionTimer.stop();
+        stopDialogueTimer();
+        settings.setVisible(false);
+        transitionLabel.setVisible(false);
+        modalHost.removeAll();
+        final Runnable close = new Runnable() {
+            public void run() {
+                if (returnToSettings) {
+                    modalHost.setVisible(false);
+                    modalHost.removeAll();
+                    showSettings();
+                } else {
+                    closeModal(null);
+                }
+            }
+        };
+        modalDismiss = close;
+        modalHost.add(new CreditsPanel(close), BorderLayout.CENTER);
+        modalHost.setVisible(true);
+        setVisible(true);
+        revalidate();
+        repaint();
+    }
+
+    /** Opens the current tester-release summary as a reusable in-game reference. */
+    void showReleaseNotes(final boolean returnToSettings, final Runnable afterClose) {
+        if (transitionTimer != null && transitionTimer.isRunning()) transitionTimer.stop();
+        stopDialogueTimer();
+        settings.setVisible(false);
+        transitionLabel.setVisible(false);
+        modalHost.removeAll();
+        final Runnable close = new Runnable() {
+            public void run() {
+                if (afterClose != null) afterClose.run();
+                if (returnToSettings) {
+                    modalHost.setVisible(false);
+                    modalHost.removeAll();
+                    showSettings();
+                } else {
+                    closeModal(null);
+                }
+            }
+        };
+        modalDismiss = close;
+        modalHost.add(new ReleaseNotesPanel(close,
+            new Runnable() {
+                public void run() { ProjectLinks.open(ProjectLinks.FEEDBACK); }
+            },
+            new Runnable() {
+                public void run() { ProjectLinks.open(ProjectLinks.BUG_REPORT); }
+            }), BorderLayout.CENTER);
+        modalHost.setVisible(true);
+        setVisible(true);
+        revalidate();
+        repaint();
+    }
+
+    /** Opens the complete 13x13 world without exposing undiscovered information. */
+    void showWorldMap(GameEngine engine) {
+        if (transitionTimer != null && transitionTimer.isRunning()) transitionTimer.stop();
+        stopDialogueTimer();
+        settings.setVisible(false);
+        transitionLabel.setVisible(false);
+        modalHost.removeAll();
+
+        int availableWidth = getWidth() > 0 ? getWidth() : UiTheme.SHELL_WIDTH;
+        int availableHeight = getHeight() > 0 ? getHeight() : UiTheme.SHELL_HEIGHT;
+        int cardWidth = Math.max(760, availableWidth - 100);
+        int cardHeight = Math.max(600, availableHeight - 80);
+        int mapSide = Math.max(480, Math.min(cardHeight - 130, cardWidth - 330));
+
+        JPanel card = new JPanel(new BorderLayout(22, 16));
+        card.setPreferredSize(new Dimension(cardWidth, cardHeight));
+        card.setBackground(UiTheme.SURFACE_DEEP);
+        card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(UiTheme.GOLD, 2),
+            BorderFactory.createEmptyBorder(20, 24, 20, 24)));
+
+        JPanel heading = new JPanel(new BorderLayout(16, 0));
+        heading.setOpaque(false);
+        JLabel title = new JLabel("<html><font color='#d4af37' size='+2'>" +
+            "<b>WORLD MAP</b></font><br><font color='#a69987'>" +
+            "Discovered terrain, known threats, and recorded clues</font></html>");
+        title.setFont(UiTheme.body(Font.PLAIN, 13));
+        heading.add(title, BorderLayout.WEST);
+        JButton close = UiTheme.button("CLOSE  [M]", false);
+        close.setToolTipText("Close the world map · M or Escape");
+        close.getAccessibleContext().setAccessibleName("Close world map");
+        close.addActionListener(new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+            public void actionPerformed(ActionEvent event) { closeWorldMap(); }
+        });
+        heading.add(close, BorderLayout.EAST);
+        card.add(heading, BorderLayout.NORTH);
+
+        JPanel mapHolder = new JPanel(new GridBagLayout());
+        mapHolder.setOpaque(false);
+        worldMap = new GameMapPanel(engine);
+        worldMap.showFullWorld();
+        worldMap.setPreferredSize(new Dimension(mapSide, mapSide));
+        worldMap.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
+        mapHolder.add(worldMap);
+        card.add(mapHolder, BorderLayout.CENTER);
+
+        JPanel legend = new JPanel();
+        legend.setLayout(new BoxLayout(legend, BoxLayout.Y_AXIS));
+        legend.setOpaque(false);
+        legend.setPreferredSize(new Dimension(310, 0));
+        legend.add(mapInfoCard("ACTIVE QUEST", activeQuestCopy(engine)));
+        legend.add(Box.createVerticalStrut(10));
+        legend.add(mapInfoCard("OBJECTIVES", objectiveCopy(engine)));
+        legend.add(Box.createVerticalStrut(10));
+        legend.add(mapInfoCard("RUMORS & CLUES", rumorCopy(engine)));
+        legend.add(Box.createVerticalStrut(10));
+        legend.add(mapInfoCard("JOURNEY STATUS", journeyStatusCopy(engine)));
+        legend.add(Box.createVerticalStrut(10));
+        legend.add(buildMapLegend());
+        legend.add(Box.createVerticalGlue());
+        JLabel help = new JLabel("<html><font color='#a69987'>" +
+            "Hover tiles for details · <b>M</b> or <b>Esc</b> closes</font></html>");
+        help.setFont(UiTheme.body(Font.PLAIN, 12));
+        help.setAlignmentX(LEFT_ALIGNMENT);
+        legend.add(help);
+        card.add(legend, BorderLayout.EAST);
+
+        modalDismiss = null;
+        modalHost.add(card, BorderLayout.CENTER);
+        modalHost.setVisible(true);
+        setVisible(true);
+        revalidate();
+        repaint();
+        close.requestFocusInWindow();
+    }
+
+    private JPanel buildMapLegend() {
+        JPanel panel = mapInfoPanel();
+        panel.add(mapLegendTitle("MAP LEGEND"));
+        panel.add(Box.createVerticalStrut(8));
+        JPanel items = new JPanel(new java.awt.GridLayout(4, 2, 8, 8));
+        items.setOpaque(false);
+        items.setAlignmentX(LEFT_ALIGNMENT);
+        items.setMaximumSize(new Dimension(Integer.MAX_VALUE, 116));
+        items.add(mapLegendItem("●", UiTheme.GOLD, "Hero"));
+        items.add(mapLegendItem("◆", UiTheme.MAP_WARNING, "Enemy"));
+        items.add(mapLegendItem("!", UiTheme.DANGER, "Rumor"));
+        items.add(mapLegendItem("◆", UiTheme.QUALITY_RELIC, "Relic"));
+        items.add(mapLegendItem("▦", UiTheme.MUTED, "Fog"));
+        items.add(mapLegendItem("◐", new Color(175, 185, 196), "Scouted"));
+        items.add(mapLegendItem("⌖", new Color(177, 136, 71), "Landmark"));
+        items.add(mapLegendItem("◎", UiTheme.GOLD_LIGHT, "Visited"));
+        panel.add(items);
+        return panel;
+    }
+
+    private JPanel mapInfoCard(String title, String htmlCopy) {
+        JPanel panel = mapInfoPanel();
+        panel.add(mapLegendTitle(title));
+        panel.add(Box.createVerticalStrut(7));
+        JLabel copy = new JLabel("<html>" + htmlCopy + "</html>");
+        copy.setForeground(UiTheme.TEXT);
+        copy.setFont(UiTheme.body(Font.PLAIN, 12));
+        copy.setAlignmentX(LEFT_ALIGNMENT);
+        panel.add(copy);
+        return panel;
+    }
+
+    private JPanel mapInfoPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(UiTheme.SURFACE);
+        panel.setAlignmentX(LEFT_ALIGNMENT);
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 150));
+        panel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(UiTheme.BORDER),
+            BorderFactory.createEmptyBorder(10, 12, 10, 12)));
+        return panel;
+    }
+
+    private String activeQuestCopy(GameEngine engine) {
+        GameEngine.State state = engine.getState();
+        if (state.won) {
+            return "<font color='#6fce78'><b>QUEST COMPLETE</b></font><br>" +
+                "The dragon has fallen and the frontier is safe.";
+        }
+        boolean lairKnown = engine.discoveryAt(state.dragonLairRow, state.dragonLairCol) !=
+            GameEngine.DiscoveryState.UNKNOWN ||
+            engine.threatKnowledgeAt(state.dragonLairRow, state.dragonLairCol) > 0;
+        String destination = lairKnown
+            ? coordinate(state.dragonLairRow, state.dragonLairCol)
+            : "location unknown";
+        return "<font color='#f1e5ac'><b>Defeat the Shadow Dragon</b></font><br>" +
+            "Prepare with elite relics and survive the final battle.<br>" +
+            "<font color='#a69987'>Lair: " + destination + "</font>";
+    }
+
+    private String objectiveCopy(GameEngine engine) {
+        GameEngine.State state = engine.getState();
+        int recovered = state.relics == null ? 0 : state.relics.size();
+        int identified = engine.identifiedRelicCount();
+        boolean nestKnown = engine.discoveryAt(state.spiderNestRow, state.spiderNestCol) !=
+            GameEngine.DiscoveryState.UNKNOWN || state.spiderNestCleared;
+        StringBuilder copy = new StringBuilder();
+        copy.append(objectiveLine(state.level >= 3,
+            "Reach level 3", "Level " + state.level));
+        copy.append(objectiveLine(recovered > 0,
+            "Recover elite relics", recovered + " recovered"));
+        copy.append(objectiveLine(recovered > 0 && identified == recovered,
+            "Identify recovered relics", identified + " identified"));
+        if (nestKnown) {
+            copy.append(objectiveLine(state.spiderNestCleared,
+                "Clear the Ashweb Nest", state.spiderNestCleared
+                    ? "Route secured" : state.spiderNestRemaining + " brood remain"));
+        }
+        return copy.toString();
+    }
+
+    private String objectiveLine(boolean complete, String objective, String status) {
+        return "<font color='" + (complete ? "#6fce78" : "#d4af37") + "'><b>" +
+            (complete ? "✓" : "◆") + "</b></font> " + objective +
+            " <font color='#a69987'>· " + status + "</font><br>";
+    }
+
+    private String rumorCopy(GameEngine engine) {
+        List<String> journal = engine.mapJournal();
+        if (journal.isEmpty()) {
+            return "<font color='#a69987'>No rumors recorded yet.<br>" +
+                "Ask an innkeeper or alchemist for guidance.</font>";
+        }
+        StringBuilder copy = new StringBuilder();
+        int first = Math.max(0, journal.size() - 3);
+        for (int index = journal.size() - 1; index >= first; index--) {
+            copy.append("<font color='#c795ff'>◆</font> ")
+                .append(journal.get(index)).append("<br>");
+        }
+        return copy.toString();
+    }
+
+    private String journeyStatusCopy(GameEngine engine) {
+        GameEngine.State state = engine.getState();
+        int charted = 0;
+        int visited = 0;
+        int knownThreats = 0;
+        for (int row = 0; row < GameEngine.SIZE; row++) {
+            for (int col = 0; col < GameEngine.SIZE; col++) {
+                GameEngine.DiscoveryState discovery = engine.discoveryAt(row, col);
+                if (discovery != GameEngine.DiscoveryState.UNKNOWN) charted++;
+                if (discovery == GameEngine.DiscoveryState.VISITED) visited++;
+                if (state.enemies[row][col] != null &&
+                        engine.threatKnowledgeAt(row, col) > 0) knownThreats++;
+            }
+        }
+        int percent = (int) Math.round(charted * 100d /
+            (GameEngine.SIZE * GameEngine.SIZE));
+        return "<font color='#f1e5ac'><b>" + state.playerName + "</b></font> · Level " +
+            state.level + "<br>Position: " + coordinate(state.row, state.col) +
+            " · " + engine.currentTile().label + "<br>Charted: " + percent +
+            "% · " + visited + " visited<br>Known threats: " + knownThreats +
+            " · Relics: " + engine.identifiedRelicCount() +
+            (state.regionalMapOwned
+                ? "<br><font color='#6fce78'>Regional map acquired</font>"
+                : "<br><font color='#a69987'>Regional map not acquired</font>");
+    }
+
+    private static String coordinate(int row, int col) {
+        return Character.toString((char) ('A' + row)) + (col + 1);
+    }
+
+    private JLabel mapLegendTitle(String copy) {
+        JLabel label = new JLabel(copy);
+        label.setForeground(UiTheme.GOLD_LIGHT);
+        label.setFont(UiTheme.body(Font.BOLD, 12));
+        label.setAlignmentX(LEFT_ALIGNMENT);
+        return label;
+    }
+
+    private JLabel mapLegendItem(String symbol, Color color, String copy) {
+        JLabel label = new JLabel("<html><font color='" + colorHex(color) +
+            "'><b>" + symbol + "</b></font>&nbsp;&nbsp;" + copy + "</html>");
+        label.setForeground(UiTheme.TEXT);
+        label.setFont(UiTheme.body(Font.BOLD, 14));
+        label.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
+        label.setAlignmentX(LEFT_ALIGNMENT);
+        return label;
+    }
+
+    private static String colorHex(Color color) {
+        return String.format("#%02x%02x%02x",
+            color.getRed(), color.getGreen(), color.getBlue());
+    }
+
+    void closeWorldMap() {
+        if (worldMap == null) return;
+        worldMap = null;
+        closeModal(null);
     }
 
     /**
@@ -288,6 +595,7 @@ final class GameSettingsOverlay extends JPanel {
 
     private void closeModal(Runnable afterClose) {
         stopDialogueTimer();
+        worldMap = null;
         modalHost.setVisible(false);
         modalHost.removeAll();
         modalDismiss = null;
@@ -298,6 +606,20 @@ final class GameSettingsOverlay extends JPanel {
     boolean dialogueVisibleForTest() { return modalHost.isVisible() && dialogueCopy != null; }
     String dialogueTextForTest() { return dialogueCopy == null ? "" : dialogueCopy.getText(); }
     void completeDialogueForTest() { completeDialogue(); }
+    boolean creditsVisibleForTest() {
+        return modalHost.isVisible() && modalHost.getComponentCount() == 1 &&
+            modalHost.getComponent(0) instanceof CreditsPanel;
+    }
+    boolean releaseNotesVisibleForTest() {
+        return modalHost.isVisible() && modalHost.getComponentCount() == 1 &&
+            modalHost.getComponent(0) instanceof ReleaseNotesPanel;
+    }
+    boolean worldMapVisibleForTest() {
+        return worldMap != null && modalHost.isVisible() && isVisible();
+    }
+    int worldMapViewSizeForTest() {
+        return worldMap == null ? 0 : worldMap.viewSizeForTest();
+    }
 
     /** Painterly rounded speech bubble with a small portrait-facing tail. */
     private static final class SpeechBubble extends JPanel {

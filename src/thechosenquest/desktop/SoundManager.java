@@ -1,6 +1,7 @@
 package thechosenquest.desktop;
 
 import java.awt.GraphicsEnvironment;
+import java.io.ByteArrayOutputStream;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -26,14 +27,30 @@ import javax.sound.sampled.SourceDataLine;
  * replace individual cues later without changing any gameplay call sites.
  */
 final class SoundManager {
+    /** Authored music states keep scene changes expressive without gameplay call-site noise. */
+    enum Music {
+        NONE(null),
+        TITLE("/assets/audio/title-theme.wav"),
+        EXPLORATION("/assets/audio/exploration-theme.wav"),
+        TAVERN("/assets/audio/tavern-theme.wav"),
+        COMBAT("/assets/audio/combat-theme.wav"),
+        BOSS("/assets/audio/boss-theme.wav");
+
+        final String resource;
+
+        Music(String resource) { this.resource = resource; }
+    }
+
     enum Ambience {
         NONE, FOREST, LAKESHORE, CRYPT, MARKET, FORGE, ALCHEMIST, CAMPFIRE, TAVERN,
         COMBAT, DRAGON
     }
 
     enum Cue {
-        UI_CONFIRM(new double[] {660, 880}, new int[] {55, 65}, false),
-        UI_CANCEL(new double[] {330, 220}, new int[] {65, 85}, false),
+        UI_CONFIRM(new double[] {660, 880}, new int[] {55, 65}, false,
+            "/assets/audio/sfx/ui-confirm.wav"),
+        UI_CANCEL(new double[] {330, 220}, new int[] {65, 85}, false,
+            "/assets/audio/sfx/ui-cancel.wav"),
         DICE_ROLL(new double[] {190, 145, 225, 165, 205},
             new int[] {34, 30, 38, 32, 58}, true),
         RACE_HUMAN(new double[] {392, 523}, new int[] {75, 115}, false),
@@ -46,17 +63,27 @@ final class SoundManager {
         CLASS_HUNTER(new double[] {392, 587}, new int[] {75, 135}, false),
         ADVENTURE_BEGIN(new double[] {392, 523, 659, 784, 1047},
             new int[] {70, 70, 85, 105, 220}, false),
-        ERROR(new double[] {180, 145}, new int[] {90, 130}, true),
+        ERROR(new double[] {180, 145}, new int[] {90, 130}, true,
+            "/assets/audio/sfx/error.wav"),
         MOVE(new double[] {150}, new int[] {65}, true),
-        EQUIP(new double[] {480, 720}, new int[] {70, 100}, false),
-        PURCHASE(new double[] {880, 1175, 1450}, new int[] {45, 45, 70}, false),
-        ATTACK(new double[] {280, 120}, new int[] {70, 85}, true),
-        ENEMY_HIT(new double[] {165, 105}, new int[] {45, 95}, true),
-        PLAYER_HIT(new double[] {110}, new int[] {120}, true),
-        DEFEND(new double[] {240, 360}, new int[] {75, 85}, false),
-        SPELL(new double[] {420, 630, 945}, new int[] {70, 75, 120}, false),
-        HEAL(new double[] {520, 660, 790}, new int[] {75, 75, 130}, false),
-        REST(new double[] {440, 554, 659}, new int[] {140, 140, 220}, false),
+        EQUIP(new double[] {480, 720}, new int[] {70, 100}, false,
+            "/assets/audio/sfx/equip.wav"),
+        PURCHASE(new double[] {880, 1175, 1450}, new int[] {45, 45, 70}, false,
+            "/assets/audio/sfx/purchase.wav"),
+        ATTACK(new double[] {280, 120}, new int[] {70, 85}, true,
+            "/assets/audio/sfx/attack.wav"),
+        ENEMY_HIT(new double[] {165, 105}, new int[] {45, 95}, true,
+            "/assets/audio/sfx/enemy-hit.wav"),
+        PLAYER_HIT(new double[] {110}, new int[] {120}, true,
+            "/assets/audio/sfx/player-hit.wav"),
+        DEFEND(new double[] {240, 360}, new int[] {75, 85}, false,
+            "/assets/audio/sfx/defend.wav"),
+        SPELL(new double[] {420, 630, 945}, new int[] {70, 75, 120}, false,
+            "/assets/audio/sfx/spell.wav"),
+        HEAL(new double[] {520, 660, 790}, new int[] {75, 75, 130}, false,
+            "/assets/audio/sfx/heal.wav"),
+        REST(new double[] {440, 554, 659}, new int[] {140, 140, 220}, false,
+            "/assets/audio/sfx/rest.wav"),
         FLEE(new double[] {420, 300, 190}, new int[] {60, 65, 100}, true),
         ENEMY_DEFEATED(new double[] {520, 660, 880}, new int[] {75, 75, 160}, false),
         RELIC_DISCOVERED(new double[] {523, 659, 784, 1047, 1319},
@@ -65,16 +92,23 @@ final class SoundManager {
             new int[] {80, 80, 90, 110, 240}, false),
         VICTORY(new double[] {523, 659, 784, 1047}, new int[] {120, 120, 140, 300}, false),
         DEFEAT(new double[] {392, 294, 196}, new int[] {180, 190, 330}, false),
-        DRAGON_ROAR(new double[] {92, 73, 58}, new int[] {220, 250, 380}, true);
+        DRAGON_ROAR(new double[] {92, 73, 58}, new int[] {220, 250, 380}, true,
+            "/assets/audio/sfx/dragon-roar.wav");
 
         final double[] frequencies;
         final int[] durations;
         final boolean noisy;
+        final String resource;
 
         Cue(double[] frequencies, int[] durations, boolean noisy) {
+            this(frequencies, durations, noisy, null);
+        }
+
+        Cue(double[] frequencies, int[] durations, boolean noisy, String resource) {
             this.frequencies = frequencies;
             this.durations = durations;
             this.noisy = noisy;
+            this.resource = resource;
         }
     }
 
@@ -126,7 +160,7 @@ final class SoundManager {
     private volatile boolean audioAvailable = true;
     private volatile boolean musicAvailable = true;
     private volatile boolean ambienceAvailable = true;
-    private volatile boolean titleMusicRequested;
+    private volatile Music requestedMusic = Music.NONE;
     private volatile boolean ambienceThreadStarted;
     private volatile boolean shuttingDown;
     private volatile int ambienceRevision;
@@ -163,7 +197,7 @@ final class SoundManager {
         muted = savedMuted;
         muteWhenUnfocused = savedFocus;
         for (Cue cue : Cue.values()) {
-            sampleCache.put(cue, synthesize(cue));
+            sampleCache.put(cue, loadCueSample(cue));
         }
         for (Ambience ambienceType : Ambience.values()) {
             if (ambienceType != Ambience.NONE) {
@@ -211,7 +245,13 @@ final class SoundManager {
     boolean isAmbienceAvailable() { return ambienceAvailable; }
 
     synchronized boolean isTitleMusicPlaying() {
-        return titleMusicRequested && musicClip != null && musicClip.isRunning();
+        return requestedMusic == Music.TITLE && musicClip != null && musicClip.isRunning();
+    }
+
+    synchronized Music requestedMusicForTest() { return requestedMusic; }
+
+    static String musicResource(Music music) {
+        return music == null ? null : music.resource;
     }
 
     void setMasterVolume(int value) {
@@ -262,6 +302,19 @@ final class SoundManager {
         return sampleCache.size();
     }
 
+    int fileBackedCueCount() {
+        int count = 0;
+        for (Cue cue : Cue.values()) if (cue.resource != null) count++;
+        return count;
+    }
+
+    static String cueResource(Cue cue) { return cue == null ? null : cue.resource; }
+
+    int cachedSampleLengthForTest(Cue cue) {
+        byte[] sample = sampleCache.get(cue);
+        return sample == null ? 0 : sample.length;
+    }
+
     int cachedAmbienceCount() {
         return ambienceCache.size();
     }
@@ -298,7 +351,7 @@ final class SoundManager {
         shuttingDown = true;
         stopAmbience();
         synchronized (this) {
-            titleMusicRequested = false;
+            requestedMusic = Music.NONE;
             if (musicClip != null) {
                 musicClip.stop();
                 musicClip.close();
@@ -311,18 +364,26 @@ final class SoundManager {
     }
 
     synchronized void playTitleMusic() {
-        titleMusicRequested = true;
-        // A line can be unavailable transiently while the application is
-        // starting. Returning to the title screen should retry instead of
-        // leaving music disabled for the remainder of the process.
-        if (musicClip == null) musicAvailable = true;
+        setMusic(Music.TITLE);
+    }
+
+    synchronized void setMusic(Music music) {
+        Music next = music == null ? Music.NONE : music;
+        if (requestedMusic != next) {
+            requestedMusic = next;
+            if (musicClip != null) {
+                musicClip.stop();
+                musicClip.close();
+                musicClip = null;
+            }
+            // A line or asset can be unavailable transiently. A later scene
+            // change retries instead of disabling music for the whole session.
+            musicAvailable = true;
+        }
         refreshMusicState();
     }
 
-    void stopMusic() {
-        titleMusicRequested = false;
-        refreshMusicState();
-    }
+    void stopMusic() { setMusic(Music.NONE); }
 
     private float effectiveVolume() {
         return (masterVolume / 100.0f) * (effectsVolume / 100.0f);
@@ -410,7 +471,7 @@ final class SoundManager {
 
     private synchronized void refreshMusicState() {
         if (GraphicsEnvironment.isHeadless()) return;
-        boolean shouldPlay = titleMusicRequested && !muted &&
+        boolean shouldPlay = requestedMusic != Music.NONE && !muted &&
             !(muteWhenUnfocused && focusSuspended) && masterVolume > 0 && musicVolume > 0;
         if (!shouldPlay) {
             if (musicClip != null && musicClip.isRunning()) musicClip.stop();
@@ -428,11 +489,17 @@ final class SoundManager {
     }
 
     private void ensureMusicClip() {
-        if (musicClip != null || !musicAvailable) return;
+        if (musicClip != null || !musicAvailable || requestedMusic == Music.NONE) return;
         AudioInputStream stream = null;
         try {
-            stream = AudioSystem.getAudioInputStream(
-                SoundManager.class.getResource("/assets/audio/title-theme.wav"));
+            java.net.URL resource = SoundManager.class.getResource(requestedMusic.resource);
+            // Preserve audible feedback if an optional scene track is missing
+            // from a development build; the title theme is the stable fallback.
+            if (resource == null && requestedMusic != Music.TITLE) {
+                resource = SoundManager.class.getResource(Music.TITLE.resource);
+            }
+            if (resource == null) throw new java.io.IOException("Music resource unavailable");
+            stream = AudioSystem.getAudioInputStream(resource);
             musicClip = AudioSystem.getClip();
             musicClip.open(stream);
         } catch (Exception unavailable) {
@@ -473,6 +540,38 @@ final class SoundManager {
             if (line != null) {
                 line.stop();
                 line.close();
+            }
+        }
+    }
+
+    /** Decode short authored WAVs once; synthesis remains a zero-dependency fallback. */
+    private byte[] loadCueSample(Cue cue) {
+        if (cue.resource == null) return synthesize(cue);
+        AudioInputStream stream = null;
+        try {
+            java.net.URL resource = SoundManager.class.getResource(cue.resource);
+            if (resource == null) return synthesize(cue);
+            stream = AudioSystem.getAudioInputStream(resource);
+            AudioFormat format = stream.getFormat();
+            if (!AudioFormat.Encoding.PCM_SIGNED.equals(format.getEncoding()) ||
+                    Math.round(format.getSampleRate()) != SAMPLE_RATE ||
+                    format.getSampleSizeInBits() != 16 || format.getChannels() != 1 ||
+                    format.isBigEndian()) {
+                return synthesize(cue);
+            }
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = stream.read(buffer)) >= 0) {
+                if (read > 0) output.write(buffer, 0, read);
+            }
+            byte[] decoded = output.toByteArray();
+            return decoded.length == 0 ? synthesize(cue) : decoded;
+        } catch (Exception unavailable) {
+            return synthesize(cue);
+        } finally {
+            if (stream != null) {
+                try { stream.close(); } catch (Exception ignored) { }
             }
         }
     }

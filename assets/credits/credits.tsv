@@ -1,0 +1,11 @@
+# section	title	creator	license	source	notes
+GAME	The Chosen Quest — Enhanced Edition	The Chosen Quest project team	Original project work		Design, development, writing, art direction, and playtesting coordination
+MUSIC	The Old Tower Inn (loop version)	RandomMind	CC0 1.0 Universal	https://opengameart.org/content/medieval-the-old-tower-inn	Title-screen music
+MUSIC	Our Mountain v003	Eric Matyas	Soundimage attribution license	https://soundimage.org/fantasywonder/	Exploration and character-creation music
+MUSIC	Magic Clock Shop	Eric Matyas	Soundimage attribution license	https://soundimage.org/fantasywonder/	Tavern, shop, and safe-haven music
+MUSIC	Fantasy Game Background	Eric Matyas	Soundimage attribution license	https://soundimage.org/fantasywonder/	Standard and elite combat music
+MUSIC	Bog Creatures on the Move	Eric Matyas	Soundimage attribution license	https://soundimage.org/fantasywonder/	Boss encounter music
+SOUND EFFECTS	RPG Sound Pack	artisticdude	CC0 1.0 Universal	https://opengameart.org/content/rpg-sound-pack	UI, inventory, weapon, magic, recovery, and temporary creature cues
+VISUAL EFFECTS	Prototype combat VFX collections	Cethiel	CC0 1.0 Universal	https://opengameart.org/users/cethiel	Temporary combat animation source; custom replacements are planned
+TYPOGRAPHY	Cinzel	The Cinzel Project Authors	SIL Open Font License 1.1	https://github.com/NDISCOVER/Cinzel	Display and title typography
+TYPOGRAPHY	Cormorant Garamond	The Cormorant Project Authors	SIL Open Font License 1.1	https://github.com/CatharsisFonts/Cormorant	Narrative and interface typography
