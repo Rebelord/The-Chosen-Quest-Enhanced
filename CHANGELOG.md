@@ -10,6 +10,11 @@ on playtest feedback.
 
 Updater validation and presentation-fix prerelease for private testers.
 
+- Completed the first published prerelease-to-prerelease updater test: beta.1
+  discovered beta.2 automatically and manually, retained complete version text,
+  opened View Changes in-game without crashing, and passed reminder/download
+  handoff checks.
+
 - Added a styled post-combat loot reveal for common and uncommon equipment with
   item artwork, quality color, slot/stat comparison, distinct discovery chimes,
   and direct Inventory access; reward cards queue cleanly after level and relic

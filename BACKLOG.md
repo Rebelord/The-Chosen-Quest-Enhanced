@@ -47,7 +47,7 @@ this file records why an item matters and how difficult it is expected to be.
 | MKT-001 | Apply the shared Art Deco hero system to tester, community, release, and portfolio templates | High | Medium | In Progress | Review tester assets at actual Discord, Form, PDF, and GitHub crop sizes |
 | CHAR-001 | Add a cosmetic character-presentation choice and counterpart art | Medium–High | Large | Completed | Approve counterpart art and presentation wording |
 | TECH-001 | Establish public versioning, changelog, and in-game version label | High | Small | Completed | Review version naming at the next milestone |
-| UPDATE-001 | Add safe in-game update checking and a one-click Update & Restart workflow | High | Large | In Progress | Publish a newer private prerelease and verify the Phase 1 notification/download handoff on a second computer |
+| UPDATE-001 | Add safe in-game update checking and a one-click Update & Restart workflow | High | Large | In Progress | Test checksum-verified package download and assisted installation for Phase 2 |
 | REL-001 | Commit, push, tag, and publish the stable beta checkpoint | High | Small | Completed | Test the published archive on a second computer |
 | REL-002 | Refresh the shareable Dropbox/test build | Medium | Small | Completed | Test the unzipped `0.5.0-beta.1` Dropbox build on a second computer |
 | REL-003 | Collect opt-in beta-tester credits and maintain a consent roster | Medium | Small | In Progress | Submit the optional credit choice in the live general feedback form |
@@ -98,7 +98,7 @@ this file records why an item matters and how difficult it is expected to be.
 
 ### UPDATE-001 — Streamlined application updates
 
-- Status: **In Progress — Phase 1 implemented**
+- Status: **In Progress — Phase 1 implemented and human-verified**
 - Value: **High**
 - Workload: **Large**, delivered in independently testable stages.
 - Host a small versioned update manifest through the project repository or GitHub
@@ -111,6 +111,10 @@ this file records why an item matters and how difficult it is expected to be.
   and Beta releases with prerelease-aware semantic ordering, ignores drafts, keeps
   dismissed-version state outside the game directory, and opens only official
   release/download URLs. It does not modify or execute application files.
+- End-to-end verification completed on 2026-07-31: retained `0.7.0-beta.1`
+  discovered published `0.7.0-beta.2` automatically at launch and through the
+  manual Settings action; the version remained unclipped, View Changes stayed
+  in-game without crashing, and reminder/download handoff actions worked.
 - Phase 2 downloads the correct platform package with visible progress, verifies its
   checksum, and offers an assisted installation without executing unverified files.
 - Phase 3 introduces a separate updater process and a single **Update & Restart**
@@ -129,6 +133,8 @@ this file records why an item matters and how difficult it is expected to be.
   - **Verified:** semantic version comparison handles beta/prerelease versions,
     numeric prerelease identifiers, stable-over-prerelease precedence, and leading
     `v` tags correctly.
+  - **Verified:** a published prerelease is detected from the previous beta through
+    both automatic and manual checks without delaying or destabilizing the game.
   - A tampered or mismatched package is rejected before installation.
   - Canceling, losing connectivity, or running offline leaves the installed game
     playable.
