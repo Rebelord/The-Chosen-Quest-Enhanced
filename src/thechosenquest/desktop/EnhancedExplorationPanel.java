@@ -311,13 +311,13 @@ final class EnhancedExplorationPanel extends JPanel {
         weapon.setAlignmentX(LEFT_ALIGNMENT);
         armour.setAlignmentX(LEFT_ALIGNMENT);
         offhand.setAlignmentX(LEFT_ALIGNMENT);
-        weaponEquipment = equipmentRow(weapon, IconAssets.WEAPON_SWORD);
+        weaponEquipment = equipmentRow(weapon, "WEAPON", IconAssets.WEAPON_SWORD);
         rail.add(weaponEquipment);
         rail.add(Box.createVerticalStrut(8));
-        armourEquipment = equipmentRow(armour, IconAssets.ARMOUR_SHIELD);
+        armourEquipment = equipmentRow(armour, "ARMOUR", IconAssets.ARMOUR_SHIELD);
         rail.add(armourEquipment);
         rail.add(Box.createVerticalStrut(8));
-        offhandEquipment = equipmentRow(offhand, IconAssets.ARMOUR_SHIELD);
+        offhandEquipment = equipmentRow(offhand, "OFFHAND", null);
         rail.add(offhandEquipment);
         rail.add(Box.createVerticalStrut(18));
 
@@ -350,8 +350,8 @@ final class EnhancedExplorationPanel extends JPanel {
         return label;
     }
 
-    private EquipmentRow equipmentRow(JLabel value, String iconResource) {
-        return new EquipmentRow(value, iconResource);
+    private EquipmentRow equipmentRow(JLabel value, String slot, String iconResource) {
+        return new EquipmentRow(value, slot, iconResource);
     }
 
     private JPanel buildScene() {
@@ -745,6 +745,7 @@ final class EnhancedExplorationPanel extends JPanel {
 
     private void performTertiaryAction() {
         if (engine.currentEnemy() != null) {
+            if ("Fighter".equals(engine.getState().heroClass)) return;
             listener.onSound(SoundManager.Cue.DEFEND);
             engine.defend();
         } else if (engine.currentTile() == GameEngine.TileType.TAVERN ||
@@ -762,8 +763,8 @@ final class EnhancedExplorationPanel extends JPanel {
         GameEngine.State state = engine.getState();
         String coordinate = Character.toString((char) ('A' + state.row)) + (state.col + 1);
         String identity = "Level " + state.level + " " + state.race + " " + state.heroClass;
-        heroPortrait.setResourceAsync("/assets/avatars/" + state.race.toLowerCase() + "-" +
-            state.heroClass.toLowerCase() + ".png");
+        heroPortrait.setResourceAsync(
+            CharacterArt.portrait(state.race, state.heroClass, state.gender));
         heroPortrait.setBorder(new FantasyPortraitBorder(state.race, state.heroClass));
         heroName.setText(state.playerName);
         heroIdentity.setText(identity);
@@ -789,11 +790,11 @@ final class EnhancedExplorationPanel extends JPanel {
         }
         setMeter(experience, state.experience, state.level * 30, "EXPERIENCE");
         refreshEquipment(weaponEquipment, equippedItem(state, state.equippedWeapon),
-            state.equippedWeapon == null ? "No weapon" : state.equippedWeapon);
+            state.equippedWeapon);
         refreshEquipment(armourEquipment, equippedItem(state, state.equippedArmour),
-            state.equippedArmour == null ? "No armour" : state.equippedArmour);
+            state.equippedArmour);
         refreshEquipment(offhandEquipment, equippedItem(state, state.equippedOffhand),
-            state.equippedOffhand == null ? "Empty offhand" : state.equippedOffhand);
+            state.equippedOffhand);
         heroStats.setText("<html>ATK " + engine.getAttack() + " &nbsp;&nbsp; DEF " +
             engine.getDefense() + "<br>GOLD " + state.gold + " &nbsp;&nbsp; POTIONS " +
             state.potions + "</html>");
@@ -825,22 +826,32 @@ final class EnhancedExplorationPanel extends JPanel {
         if (enemy != null) {
             primaryAction.setText("ATTACK " + enemy.name.toUpperCase());
             secondaryAction.setText("FLEE");
-            tertiaryAction.setText("DEFEND");
+            if ("Fighter".equals(state.heroClass)) {
+                tertiaryAction.setVisible(false);
+            } else {
+                tertiaryAction.setVisible(true);
+                tertiaryAction.setText("Mage".equals(state.heroClass) ? "CHANNEL WARD" :
+                    ("Rogue".equals(state.heroClass) ? "ENTER STEALTH" : "TAKE AIM"));
+            }
         } else if (engine.currentTile() == GameEngine.TileType.SHOP) {
+            tertiaryAction.setVisible(true);
             primaryAction.setText("ENTER SHOP");
             secondaryAction.setText("CONTINUE JOURNEY");
             tertiaryAction.setText("USE POTION");
         } else if (engine.currentTile() == GameEngine.TileType.TAVERN ||
                    engine.currentTile() == GameEngine.TileType.ENCAMPMENT) {
+            tertiaryAction.setVisible(true);
             primaryAction.setText(engine.currentTile() == GameEngine.TileType.TAVERN ?
                 "ENTER TAVERN" : "VISIT WAYCAMP");
             secondaryAction.setText("CONTINUE JOURNEY");
             tertiaryAction.setText("REST");
         } else if (engine.currentTile() == GameEngine.TileType.SPIDER_NEST) {
+            tertiaryAction.setVisible(true);
             primaryAction.setText(engine.spiderNestCleared() ? "NEST CLEARED" : "SEARCH NEST");
             secondaryAction.setText("CONTINUE JOURNEY");
             tertiaryAction.setText("USE POTION");
         } else {
+            tertiaryAction.setVisible(true);
             primaryAction.setText("INVESTIGATE");
             secondaryAction.setText("CONTINUE JOURNEY");
             tertiaryAction.setText("USE POTION");
@@ -1010,30 +1021,43 @@ final class EnhancedExplorationPanel extends JPanel {
     private static final class EquipmentRow extends JPanel {
         private static final long serialVersionUID = 1L;
         private final JLabel value;
+        private final JLabel icon;
+        private final String slot;
+        private final String fallbackIconResource;
 
-        EquipmentRow(JLabel value, String iconResource) {
+        EquipmentRow(JLabel value, String slot, String iconResource) {
             super(new BorderLayout(8, 0));
             this.value = value;
+            this.slot = slot;
+            this.fallbackIconResource = iconResource;
             setBackground(new Color(39, 29, 24));
             setAlignmentX(LEFT_ALIGNMENT);
             setPreferredSize(new Dimension(220, 46));
             setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
-            JLabel icon = new JLabel("", SwingConstants.CENTER);
-            icon.setIcon(IconAssets.icon(iconResource, 19));
+            icon = new JLabel("", SwingConstants.CENTER);
+            icon.setIcon(iconResource == null ? IconAssets.emptySlotIcon(19) :
+                IconAssets.icon(iconResource, 19));
             icon.setPreferredSize(new Dimension(22, 20));
             value.setFont(UiTheme.body(Font.BOLD, 12));
             add(icon, BorderLayout.WEST);
             add(value, BorderLayout.CENTER);
-            showItem(null, "No equipment");
+            showItem(null, null);
         }
 
         void showItem(GameEngine.Item item, String fallbackName) {
+            boolean empty = item == null &&
+                (fallbackName == null || fallbackName.trim().isEmpty());
             String quality = item == null ? "EMPTY" : GameEngine.itemQuality(item);
             Color qualityColor = item == null ? UiTheme.MUTED : UiTheme.qualityColor(quality);
-            String name = fallbackName == null ? "No equipment" : fallbackName;
+            String name = item == null ? fallbackName : item.name;
+            icon.setIcon(empty ? IconAssets.emptySlotIcon(19) :
+                (item == null ? IconAssets.icon(fallbackIconResource, 19) :
+                    IconAssets.itemIcon(item, 19)));
             value.setForeground(qualityColor);
-            value.setText("<html><b>" + name + "</b><br><font size='2'>[" +
-                quality + "]</font></html>");
+            value.setText("<html><font size='2'>" + slot +
+                (empty ? "" : " · " + quality) + "</font><br><b>" +
+                (empty ? "&nbsp;" : name) + "</b></html>");
+            setToolTipText(empty ? slot + " slot is empty" : name + " [" + quality + "]");
             setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(1, 3, 1, 1, qualityColor),
                 BorderFactory.createEmptyBorder(6, 8, 6, 8)));

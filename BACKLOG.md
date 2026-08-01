@@ -33,11 +33,21 @@ this file records why an item matters and how difficult it is expected to be.
 | FX-002 | Show persistent stun, bleed, mark, guard, and armour-break states | High | Medium | Completed | Review icon and color language for accessibility |
 | LOOT-001 | Expand common/uncommon/rare pools and retune drops, prices, and sales | High | Medium | Completed | Propose item names and compare reward excitement |
 | ART-001 | Add uniformly cropped art for weapons, offhands, armour, and relics | Medium | Large | Planned | Generate/select sprites and check crop consistency |
+| ART-002 | Refine the provisional Male Dwarf Rogue toward a lighter, more agile rogue silhouette | Low | Small | Planned | Reduce shoulder/forearm armour while preserving the approved male dwarf anatomy, dual daggers, crop, and tunnel art direction |
 | DSG-001 | Sync loadout, proficiency, ability, and progression UI to Figma | High | Medium | Ready | Review the Figma presentation against game captures |
 | DSG-002 | Rebuild the primary Figma page as a curated screen presentation | High | Medium | Ready | Choose the strongest representative screens |
 | CHAR-002 | Rebuild portrait frames with masked artwork viewports | High | Medium | Completed | Check every frame size for edge bleed and crop quality |
-| CHAR-001 | Add a cosmetic character-presentation choice and counterpart art | Medium–High | Large | Planned | Approve counterpart portraits and presentation wording |
+| CHAR-003 | Refocus character creation around one dominant live hero showcase | High | Medium | Completed | Verify the screen contains exactly one character image at every supported size |
+| CHAR-004 | Replace thin selectors and the wide summary with class cards and a build dossier | High | Medium | Completed | Review resource, role, difficulty, strengths, and progression wording |
+| CHAR-005 | Add cached character-selection transitions and confirmation polish | Medium–High | Medium | Planned | Suggest subtle class particles, transition cues, and reduced-motion behavior |
+| CHAR-006 | Preserve advanced creation concepts for a later presentation expansion | Medium | Large | Later | Develop idle-animation, diorama, rotation, and origin concepts without changing current balance |
+| CHAR-007 | Build the painterly Art Deco creation theme from modular race/class layers | High | Large | Completed | Review representative builds and keep race motifs quieter than class identity |
+| CHAR-008 | Close the remaining character-creation fidelity gap against the approved Art Deco mockup | High | Medium | In Progress | Compare standard and large previews for clipping, dead space, readability, and material depth |
+| DSG-003 | Carry the shared hero visual theme through appropriate gameplay surfaces | High | Medium | Ready | Check that hero identity is visible without recoloring shops, maps, enemies, or global navigation |
+| MKT-001 | Apply the shared Art Deco hero system to tester, community, release, and portfolio templates | High | Medium | In Progress | Review tester assets at actual Discord, Form, PDF, and GitHub crop sizes |
+| CHAR-001 | Add a cosmetic character-presentation choice and counterpart art | Medium–High | Large | Completed | Approve counterpart art and presentation wording |
 | TECH-001 | Establish public versioning, changelog, and in-game version label | High | Small | Completed | Review version naming at the next milestone |
+| UPDATE-001 | Add safe in-game update checking and a one-click Update & Restart workflow | High | Large | In Progress | Publish a newer private prerelease and verify the Phase 1 notification/download handoff on a second computer |
 | REL-001 | Commit, push, tag, and publish the stable beta checkpoint | High | Small | Completed | Test the published archive on a second computer |
 | REL-002 | Refresh the shareable Dropbox/test build | Medium | Small | Completed | Test the unzipped `0.5.0-beta.1` Dropbox build on a second computer |
 | REL-003 | Collect opt-in beta-tester credits and maintain a consent roster | Medium | Small | In Progress | Submit the optional credit choice in the live general feedback form |
@@ -85,6 +95,202 @@ this file records why an item matters and how difficult it is expected to be.
 - Add duplicate-safe Google Apps Script automation that creates labeled, sanitized
   GitHub issues and records the resulting issue URL or failure status in the Sheet.
 - Never embed Google or GitHub credentials in the game, repository, Form, or Sheet.
+
+### UPDATE-001 — Streamlined application updates
+
+- Status: **In Progress — Phase 1 implemented**
+- Value: **High**
+- Workload: **Large**, delivered in independently testable stages.
+- Host a small versioned update manifest through the project repository or GitHub
+  Releases. It records the latest version, release and download URLs, SHA-256,
+  update channel, required/optional status, and concise patch notes.
+- Phase 1 adds a quiet startup check, a manual **Check for Updates** action in
+  Settings, and a game-styled update overlay with **Download**, **Remind Me Later**,
+  and **View Changes**. Offline play and network failures must never block launch.
+- Phase 1 now checks the public GitHub Releases API asynchronously, compares Stable
+  and Beta releases with prerelease-aware semantic ordering, ignores drafts, keeps
+  dismissed-version state outside the game directory, and opens only official
+  release/download URLs. It does not modify or execute application files.
+- Phase 2 downloads the correct platform package with visible progress, verifies its
+  checksum, and offers an assisted installation without executing unverified files.
+- Phase 3 introduces a separate updater process and a single **Update & Restart**
+  action. The updater closes the game, swaps application files, preserves saves and
+  settings, relaunches the game, and restores the previous build if replacement
+  fails.
+- Support distinct **Stable** and **Beta** channels; private testers may opt into
+  Beta while ordinary players remain on Stable.
+- Store saves, settings, diagnostics, and update preferences outside the replaceable
+  application directory before enabling automatic replacement.
+- Ordinary updates remain optional. Reserve required updates for severe defects or
+  explicitly documented save/protocol incompatibility.
+- Do not enable Phase 3 until platform packaging, install locations, signing
+  expectations, and a private prerelease-to-prerelease update test are verified.
+- Acceptance criteria:
+  - **Verified:** semantic version comparison handles beta/prerelease versions,
+    numeric prerelease identifiers, stable-over-prerelease precedence, and leading
+    `v` tags correctly.
+  - A tampered or mismatched package is rejected before installation.
+  - Canceling, losing connectivity, or running offline leaves the installed game
+    playable.
+  - Updating preserves existing saves and preferences.
+  - A failed replacement restores the prior working version.
+  - Update UI follows the existing overlay, button-state, typography, and
+    accessibility conventions.
+
+### CHAR-003 — Selected-hero character-creation showcase
+
+- Status: **Completed**
+- Preserve the current name generator, race/class choices, two starting loadouts,
+  build preview rules, class sounds, confirmation chime, and all sixteen authored
+  race/class combinations.
+- Make the selected build the only full-size character illustration on the screen;
+  replace competing race portraits with compact illustrated crests or emblems.
+- Character creation contains exactly one character illustration: the live full-body
+  hero. Race and class controls use heraldry or symbolic icons, never miniature
+  character portraits.
+- Enlarge the selected hero artwork by roughly 20–25% where the responsive layout
+  permits, without allowing artwork to bleed past the masked fantasy frame.
+- Rebalance the desktop layout so unused lower-right space supports the selected
+  character while the selection controls remain readable at 1280 × 720.
+- Keep every race, class, loadout, name, Back, and Begin Journey action keyboard
+  reachable with a clear selected, focused, disabled, and hover state.
+- Do not change combat formulas, racial bonuses, class resources, starting items,
+  or progression as part of this presentation task.
+- Preload or reuse the existing artwork cache so rapid selection changes do not
+  reintroduce the character-creation lag addressed by `TECH-002`.
+
+### CHAR-004 — Class cards and selected-build dossier
+
+- Status: **Completed**
+- Replace the thin class tabs with equal-size cards showing class emblem, name,
+  resource, and one concise playstyle label.
+- Consolidate Selected Build, Combat Style, Build Traits, equipment, and ability
+  progression into a scannable character-sheet presentation beside the hero.
+- Reuse the existing inventory icon library for starting weapon, armour, and offhand
+  presentation instead of plain bullet text.
+- Prefer accurate resource, role, strength, weakness, equipment, and progression
+  language over speculative statistics or mechanics the engine does not calculate.
+- Retain exact health, resource, attack, and defense information where it helps
+  players compare builds; do not introduce decorative attribute bars that imply
+  unsupported formulas.
+
+### CHAR-005 — Lightweight selection and confirmation transitions
+
+- Status: **Planned** after `CHAR-003` and `CHAR-004`
+- Add a short cached crossfade or class-colored overlay when the selected hero art
+  changes; avoid frame-by-frame character animation that requires new viewpoints.
+- Give each class a restrained particle or lighting accent that does not obscure the
+  portrait or compete with class-color accessibility.
+- Preserve the existing race/class selection sounds and give Begin Journey a brief,
+  interruptible confirmation flourish before entering the game.
+- Reduced-motion mode must replace transitions with an immediate state change while
+  retaining sound, focus, and selection feedback.
+- Rapidly alternating selections must not queue stale images, sounds, or animations.
+- Preserve the single-hero rule: transitions update the one live hero showcase and
+  never add thumbnail portraits to race or class controls.
+
+### CHAR-007 — Modular painterly Art Deco creation theme
+
+- Status: **Completed**
+- Preserve one fixed layout and component hierarchy across all sixteen builds.
+- Compose the visual treatment from a neutral Art Deco shell, transparent
+  class-color wash, subtle race motif, modular frame ornament, and ordinary content.
+- Keep race decoration at roughly 5–10% intensity; class color may carry active
+  states, resource identity, and restrained lighting.
+- Export painterly overlays with transparency and no embedded text, panels, portrait,
+  or neighboring-component shadows. Prefer programmatic geometry where practical.
+- `HeroVisualTheme.forBuild(race, heroClass)` is the shared implementation contract.
+- `HERO-VISUAL-THEME-SYSTEM.md` records asset and Figma component rules before the
+  full visual reskin proceeds.
+- Every build must preserve spacing, hit targets, keyboard flow, focus indication,
+  readability, portrait masking, and rapid-selection performance.
+- The production screen now uses responsive clipped-corner frames, metallic inset
+  lines, themed selection cards, a branded header, ornamental section heading,
+  central diamond divider, themed dossier/equipment frames, and a large-display
+  hero treatment without flattening those elements into background art.
+- Resource meters now honor their runtime `HeroVisualTheme` color rather than the
+  construction-time default.
+
+### DSG-003 — Shared hero identity across gameplay
+
+- Status: **Ready**, after the `CHAR-007` creation-screen foundation.
+- Resolve one `HeroVisualTheme` from the saved race/class selection and reuse it
+  across hero-owned surfaces.
+- Apply class identity to resource meters, selected quick actions, compatible item
+  actions, player status, and restrained hero VFX.
+- Apply race identity only as subtle heraldry or material on personal profile,
+  progression, reward, and outcome surfaces.
+- Keep global navigation, maps, settings, shops, NPCs, enemies, quality tiers,
+  danger tiers, health, validation, and disabled states neutral or context-owned.
+- No gameplay panel may fork into sixteen race/class-specific layouts.
+- Verify all sixteen builds in character creation, exploration, inventory, combat,
+  dialogue, and outcome previews.
+
+### CHAR-008 — Art Deco fidelity refinement
+
+- Status: **In Progress**
+- `CHARACTER-CREATION-FIDELITY-AUDIT.md` compares the approved mockup with standard
+  and large production previews and records the ranked gaps.
+- First correct responsive vertical rhythm, dossier clipping, large-screen dead
+  space, scrollbar/divider competition, bespoke button states, and typography.
+- Then build the richer scalable hero frame, shell/header treatment, name ornament,
+  and more legible item/card hierarchy.
+- Finish with reusable painterly lacquer, parchment, metal-wear, shadow, class-enamel,
+  and race-heraldry layers rather than a flattened background.
+- Verify 1440×900 and 1920×1080 previews across representative and edge-case names,
+  all four classes, all four races, both cosmetic choices, and both loadouts.
+- First completed slice unifies the divider and scrollbar in one permanently reserved
+  28 px component. Its themed gem is centered when content fits and becomes the
+  draggable thumb when content overflows, with a larger invisible drag target.
+- The responsive-composition slice now uses bounded gaps and dossier growth at
+  1080p, expands the masked hero showcase to 420×560 where space permits, preserves
+  the complete 1440×900 flow, and retains themed scrolling at 1280×720.
+- The profile-hierarchy slice adds a maximum-name-safe ornamental lockup, shared
+  Art Deco meters, and larger quality-aware equipment presentation without
+  sacrificing the compact 1280×720 layout.
+- The shell-and-selection slice adds layered crop-safe rails, a measured title
+  ornament, and single-rim enamel selection states with an independent keyboard
+  focus outline.
+- The first authored-material slice adds cached lacquer/parchment tiles and records
+  the required nine-slice, mask, multi-resolution, and regression workflow in
+  `UI-MATERIAL-ASSET-PIPELINE.md`.
+- The authored-frame slice adds a button three-slice, supporting panel nine-slice,
+  and dedicated 3:4 hero overlay. A class-color backplate now shows only through
+  independent native-size gem and enamel underlays derived from the source artwork.
+  Their hidden four-pixel underlap is clipped by the opaque brass overlay, so the
+  frame remains aligned at every scale without coordinate-defined shapes. Portrait,
+  masks, metal, and artwork remain independent runtime layers. Transparent race
+  overlays and broader gameplay-surface rollout remain in scope.
+
+### MKT-001 — Cohesive branded communication templates
+
+- Status: **In Progress**
+- `BRAND-VISUAL-SYSTEM.md` defines the shared marketing composition, modular slots,
+  transparency rules, placement defaults, and review checklist.
+- Treat tester invitations, tester guides, feedback/bug Form headers, Discord art,
+  GitHub release cards, portfolio images, and eventual store graphics as extensions
+  of the product visual system.
+- General materials use a neutral four-class ensemble; focused campaigns may use
+  the featured build's class wash and quieter race heraldry.
+- Keep hero, environment, logo, ornament, class wash, race motif, copy, version,
+  links, attribution, and crop guides editable as independent layers.
+- Create and verify reusable master templates at the actual target aspect ratios.
+- Do not mark complete until the existing tester kit and community assets have been
+  reconciled against the new system.
+
+### CHAR-006 — Deferred expanded creation concepts
+
+- Status: **Later**
+- Preserve, but do not yet implement, a miniature/diorama presentation, handcrafted
+  idle animations, alternate character viewpoints, and optional origin/background
+  choices.
+- If implemented, the diorama replaces the live hero canvas; it does not add a
+  second character image or restore portrait grids.
+- Treat origins as a gameplay-and-balance feature requiring separate GDD approval,
+  save migration, item/relic rules, simulations, and Figma work rather than bundling
+  them into a visual character-creation revision.
+- Reassess this item after counterpart character art, any new classes, and the
+  eventual platform direction are settled.
 
 ### AUDIO-001 — Cohesive old-school fantasy sound pass
 

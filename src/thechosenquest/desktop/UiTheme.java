@@ -1,11 +1,13 @@
 package thechosenquest.desktop;
 
 import java.awt.Color;
+import java.awt.BasicStroke;
 import java.awt.Cursor;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
+import java.awt.Polygon;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.io.InputStream;
@@ -26,7 +28,9 @@ final class UiTheme {
         ICON,
         KEY,
         TITLE_PRIMARY,
-        TITLE_SECONDARY
+        TITLE_SECONDARY,
+        DECO_PRIMARY,
+        DECO_SECONDARY
     }
 
     private static final Font DISPLAY_FONT = loadFont(
@@ -184,6 +188,15 @@ final class UiTheme {
                 content.dispose();
                 return;
             }
+            if (style == ButtonStyle.DECO_PRIMARY ||
+                    style == ButtonStyle.DECO_SECONDARY) {
+                paintDecoButton(graphics, button, enabled, hover, pressed, active);
+                Graphics2D content = (Graphics2D) graphics.create();
+                content.translate(0, pressed ? 1 : -2);
+                super.paint(content, component);
+                content.dispose();
+                return;
+            }
 
             Graphics2D g = (Graphics2D) graphics.create();
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
@@ -308,6 +321,101 @@ final class UiTheme {
             g.dispose();
         }
 
+        /** Painterly Art Deco face used by character creation and later hero UI. */
+        private void paintDecoButton(Graphics graphics, JButton button, boolean enabled,
+                                     boolean hover, boolean pressed, boolean active) {
+            Graphics2D g = (Graphics2D) graphics.create();
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                RenderingHints.VALUE_ANTIALIAS_ON);
+            int width = Math.max(1, button.getWidth() - 1);
+            int height = Math.max(1, button.getHeight() - 1);
+            int offset = pressed ? 2 : 0;
+            int faceBottom = Math.max(8, height - 4);
+            int cut = Math.min(9, Math.max(4, height / 5));
+            Color accent = button.getClientProperty("thechosenquest.button.accent")
+                instanceof Color
+                ? (Color) button.getClientProperty("thechosenquest.button.accent")
+                : GOLD;
+            boolean primary = style == ButtonStyle.DECO_PRIMARY;
+
+            Polygon shadow = clippedButton(2, offset + 5, Math.max(2, width - 2),
+                height, cut);
+            g.setColor(new Color(0, 0, 0, enabled ? 150 : 75));
+            g.fillPolygon(shadow);
+
+            Color rimColor = !enabled ? new Color(79, 69, 56)
+                : hover ? GOLD_LIGHT : active ? accent
+                    : blendColor(new Color(63, 48, 34), accent, .55);
+
+            // The material face remains code-driven and responsive. Authored
+            // painterly hardware is composited over it below.
+            Polygon face = clippedButton(3, offset + 3, Math.max(3, width - 3),
+                Math.max(offset + 4, faceBottom - 3), Math.max(3, cut - 2));
+            Color fill;
+            if (!enabled) fill = new Color(39, 34, 29);
+            else if (primary) fill = pressed
+                ? new Color(205, 183, 125) : hover
+                    ? new Color(255, 241, 194) : new Color(239, 220, 166);
+            else if (active) fill = blendColor(
+                pressed ? new Color(30, 24, 19) : SURFACE, accent,
+                hover ? .34 : .24);
+            else fill = pressed ? new Color(27, 20, 16)
+                : hover ? new Color(52, 39, 29) : new Color(31, 24, 20);
+            g.setColor(fill);
+            g.fillPolygon(face);
+
+            if (primary) {
+                UiMaterials.paintParchment(g, face, enabled ? .42f : .18f);
+            } else {
+                UiMaterials.paintLacquer(g, face, enabled ? .34f : .16f);
+            }
+
+            float borderOpacity = !enabled ? .34f
+                : primary ? .96f
+                    : active ? .90f : hover ? .82f : .68f;
+            float borderTint = !enabled ? 0f : active ? .20f : hover ? .10f : 0f;
+            boolean authoredFrame = UiBorderAssets.paintButtonFrame(g, 0, offset,
+                width, Math.max(1, faceBottom - offset), borderOpacity,
+                active ? accent : rimColor, borderTint);
+            if (!authoredFrame) {
+                // A restrained fallback keeps controls usable if an installation
+                // is missing the optional painterly border resource.
+                g.setStroke(new BasicStroke(active ? 1.6f : 1f));
+                g.setColor(new Color(rimColor.getRed(), rimColor.getGreen(),
+                    rimColor.getBlue(), enabled ? 205 : 110));
+                g.drawPolygon(face);
+            }
+
+            if (button.isFocusOwner() && enabled) {
+                Polygon focus = clippedButton(5, offset + 5, Math.max(5, width - 5),
+                    Math.max(offset + 6, faceBottom - 5), Math.max(2, cut - 4));
+                g.setColor(new Color(accent.getRed(), accent.getGreen(),
+                    accent.getBlue(), 210));
+                g.drawPolygon(focus);
+            }
+            g.dispose();
+        }
+
+        private Polygon clippedButton(int left, int top, int right, int bottom,
+                                      int cut) {
+            return new Polygon(
+                new int[] {left + cut, right - cut, right, right,
+                    right - cut, left + cut, left, left},
+                new int[] {top, top, top + cut, bottom - cut,
+                    bottom, bottom, bottom - cut, top + cut}, 8);
+        }
+
+        private Color blendColor(Color base, Color accent, double amount) {
+            double weight = Math.max(0d, Math.min(1d, amount));
+            return new Color(
+                (int) Math.round(base.getRed() * (1d - weight) +
+                    accent.getRed() * weight),
+                (int) Math.round(base.getGreen() * (1d - weight) +
+                    accent.getGreen() * weight),
+                (int) Math.round(base.getBlue() * (1d - weight) +
+                    accent.getBlue() * weight));
+        }
+
         @Override
         protected void paintText(Graphics graphics, AbstractButton button,
                 Rectangle textRect, String text) {
@@ -335,7 +443,8 @@ final class UiTheme {
                 return new Color(170, 37, 42);
             }
             if (style == ButtonStyle.PRIMARY || style == ButtonStyle.TITLE_PRIMARY ||
-                    style == ButtonStyle.TITLE_SECONDARY) {
+                    style == ButtonStyle.TITLE_SECONDARY ||
+                    style == ButtonStyle.DECO_PRIMARY) {
                 if (pressed) return new Color(211, 181, 107);
                 if (hover) return new Color(255, 241, 202);
                 if (active) return new Color(226, 197, 121);
@@ -354,7 +463,8 @@ final class UiTheme {
             if (pressed) return new Color(174, 133, 35);
             if (hover || active) return GOLD_LIGHT;
             return style == ButtonStyle.PRIMARY || style == ButtonStyle.TITLE_PRIMARY ||
-                style == ButtonStyle.TITLE_SECONDARY ? GOLD : BORDER;
+                style == ButtonStyle.TITLE_SECONDARY ||
+                style == ButtonStyle.DECO_PRIMARY ? GOLD : BORDER;
         }
 
         private Color copy(boolean enabled, boolean active) {
@@ -362,7 +472,11 @@ final class UiTheme {
             if (style == ButtonStyle.TITLE_PRIMARY) return enabled ? TEXT : MUTED;
             if (style == ButtonStyle.TITLE_SECONDARY) return enabled ? GOLD_LIGHT : MUTED;
             if (style == ButtonStyle.KEY) return enabled ? GOLD_LIGHT : MUTED;
-            if (style == ButtonStyle.PRIMARY) return new Color(26, 19, 15);
+            if (style == ButtonStyle.PRIMARY ||
+                    style == ButtonStyle.DECO_PRIMARY)
+                return new Color(26, 19, 15);
+            if (style == ButtonStyle.DECO_SECONDARY)
+                return enabled ? GOLD_LIGHT : MUTED;
             return active ? GOLD_LIGHT : TEXT;
         }
     }

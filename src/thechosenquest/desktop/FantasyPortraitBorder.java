@@ -54,6 +54,18 @@ final class FantasyPortraitBorder extends AbstractBorder {
 
     int viewportArc() { return compact ? 11 : 15; }
 
+    /**
+     * The authored hero overlay reserves a larger architectural moulding than
+     * compact choice portraits. Keeping these proportions with the frame means
+     * the character artwork is rendered into—not cropped behind—the opening.
+     */
+    Insets viewportInsets(int width, int height) {
+        if (compact) return new Insets(5, 5, 5, 5);
+        int horizontal = Math.max(18, Math.round(width * .135f));
+        int vertical = Math.max(22, Math.round(height * .128f));
+        return new Insets(vertical, horizontal, vertical, horizontal);
+    }
+
     @Override
     public void paintBorder(Component component, Graphics graphics, int x, int y,
                             int width, int height) {
@@ -65,6 +77,17 @@ final class FantasyPortraitBorder extends AbstractBorder {
         Color accent = accentForClass(heroClass);
         int right = x + width - 1;
         int bottom = y + height - 1;
+
+        if (!compact && UiBorderAssets.paintHeroFrame(g, x, y, width, height, 1f,
+                accent)) {
+            g.dispose();
+            return;
+        }
+
+        if (!compact) {
+            paintArtDecoSilhouette(g, x, y, right, bottom, material, highlight,
+                accent);
+        }
 
         // Deep outer moulding, metallic face, and inset engraved line.
         g.setStroke(new BasicStroke(compact ? 6f : 10f));
@@ -89,6 +112,66 @@ final class FantasyPortraitBorder extends AbstractBorder {
         // baseline sat directly on the bottom edge and clipped the Hunter bow.
         paintClassEmblem(g, x + width / 2, bottom - (compact ? 11 : 14), accent);
         g.dispose();
+    }
+
+    private void paintArtDecoSilhouette(Graphics2D g, int x, int y,
+                                        int right, int bottom, Color material,
+                                        Color highlight, Color accent) {
+        int center = (x + right) / 2;
+        Path2D stepped = new Path2D.Double();
+        stepped.moveTo(center - 34, y + 3);
+        stepped.lineTo(center - 17, y + 9);
+        stepped.lineTo(x + 22, y + 9);
+        stepped.lineTo(x + 10, y + 21);
+        stepped.lineTo(x + 10, bottom - 24);
+        stepped.lineTo(x + 20, bottom - 14);
+        stepped.lineTo(center - 22, bottom - 14);
+        stepped.lineTo(center, bottom - 2);
+        stepped.lineTo(center + 22, bottom - 14);
+        stepped.lineTo(right - 20, bottom - 14);
+        stepped.lineTo(right - 10, bottom - 24);
+        stepped.lineTo(right - 10, y + 21);
+        stepped.lineTo(right - 22, y + 9);
+        stepped.lineTo(center + 17, y + 9);
+        stepped.lineTo(center + 34, y + 3);
+
+        g.setStroke(new BasicStroke(11f, BasicStroke.CAP_SQUARE,
+            BasicStroke.JOIN_MITER));
+        g.setColor(new Color(8, 6, 5, 225));
+        g.draw(stepped);
+        g.setStroke(new BasicStroke(4.5f, BasicStroke.CAP_SQUARE,
+            BasicStroke.JOIN_MITER));
+        g.setColor(material);
+        g.draw(stepped);
+        g.setStroke(new BasicStroke(1.2f));
+        g.setColor(highlight);
+        g.draw(stepped);
+
+        // Crown fan echoes the approved frame without adding a raster overlay.
+        Path2D crown = new Path2D.Double();
+        crown.moveTo(center - 28, y + 10);
+        crown.lineTo(center - 15, y + 4);
+        crown.lineTo(center, y);
+        crown.lineTo(center + 15, y + 4);
+        crown.lineTo(center + 28, y + 10);
+        crown.closePath();
+        g.setColor(new Color(10, 8, 6, 235));
+        g.fill(crown);
+        g.setColor(material);
+        g.draw(crown);
+        for (int offset = -18; offset <= 18; offset += 9) {
+            g.setColor(offset == 0 ? accent : highlight);
+            g.drawLine(center, y + 1, center + offset, y + 9);
+        }
+
+        // Small side steps break the rectangular silhouette at eye level.
+        int middle = (y + bottom) / 2;
+        g.setColor(material);
+        g.setStroke(new BasicStroke(2f));
+        g.drawLine(x + 4, middle - 24, x + 10, middle - 18);
+        g.drawLine(x + 10, middle - 18, x + 4, middle - 12);
+        g.drawLine(right - 4, middle - 24, right - 10, middle - 18);
+        g.drawLine(right - 10, middle - 18, right - 4, middle - 12);
     }
 
     private void paintCornerBrackets(Graphics2D g, int x, int y, int right, int bottom,
@@ -149,8 +232,21 @@ final class FantasyPortraitBorder extends AbstractBorder {
     }
 
     private void paintClassEmblem(Graphics2D g, int centerX, int centerY, Color accent) {
-        int plateWidth = compact ? 22 : 26;
-        int plateHeight = compact ? 12 : 14;
+        if (!compact) {
+            Path2D mount = diamond(centerX, centerY, 9);
+            g.setColor(new Color(10, 7, 6, 235));
+            g.fill(mount);
+            g.setColor(materialColor());
+            g.draw(mount);
+            Path2D jewel = diamond(centerX, centerY, 5);
+            g.setColor(accent);
+            g.fill(jewel);
+            g.setColor(highlightColor());
+            g.draw(jewel);
+            return;
+        }
+        int plateWidth = 22;
+        int plateHeight = 12;
         g.setColor(new Color(12, 8, 7, 225));
         g.fillOval(centerX - plateWidth / 2, centerY - plateHeight / 2,
             plateWidth, plateHeight);

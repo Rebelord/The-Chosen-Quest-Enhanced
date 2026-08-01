@@ -25,6 +25,7 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -316,11 +317,10 @@ final class MainWindow {
         engine.useAbility(slot);
         int healthAfter = target.health;
         if (healthAfter < healthBefore) {
-            String spell = "Mage".equals(state.heroClass) ? ability : null;
             EncounterPanel.PlayerAttackStyle style =
-                EncounterPanel.PlayerAttackStyle.forAction(state.heroClass, spell);
-            soundManager.play(spell != null && state.mana < manaBefore
-                ? SoundManager.Cue.SPELL : SoundManager.Cue.ATTACK);
+                EncounterPanel.PlayerAttackStyle.forAbility(state.heroClass, ability);
+            soundManager.play(cueForAbility(state.heroClass, ability,
+                state.mana < manaBefore));
             encounterPanel.setCombatActionsEnabled(false);
             encounterPanel.playPlayerAttack(healthBefore, healthAfter, style, false,
                 new Runnable() {
@@ -330,9 +330,30 @@ final class MainWindow {
                 });
         } else {
             soundManager.play(state.health > playerHealthBefore ? SoundManager.Cue.HEAL :
-                SoundManager.Cue.DEFEND);
+                cueForAbility(state.heroClass, ability, state.mana < manaBefore));
             refresh();
         }
+    }
+
+    private SoundManager.Cue cueForAbility(String heroClass, String ability,
+                                           boolean spentMana) {
+        if ("Mage".equals(heroClass)) return spentMana
+            ? ("Fireball".equals(ability) ? SoundManager.Cue.FIREBALL :
+                ("Ice Spike".equals(ability) ? SoundManager.Cue.ICE_SPIKE :
+                    SoundManager.Cue.MAGIC_MISSILE))
+            : SoundManager.Cue.ERROR;
+        if ("Shield Bash".equals(ability) || "Stunning Blow".equals(ability))
+            return SoundManager.Cue.SHIELD_BASH;
+        if ("Cleave".equals(ability) || "Power Strike".equals(ability) ||
+                "Armor Breaker".equals(ability) || "Piercing Bolt".equals(ability))
+            return SoundManager.Cue.HEAVY_STRIKE;
+        if ("Offhand Strike".equals(ability) || "Blade Flurry".equals(ability))
+            return SoundManager.Cue.ROGUE_STRIKE;
+        if ("Pinning Shot".equals(ability) || "Volley".equals(ability))
+            return SoundManager.Cue.PINNING_SHOT;
+        if ("Execute".equals(ability)) return SoundManager.Cue.EXECUTE;
+        if ("Hunter's Mark".equals(ability)) return SoundManager.Cue.HUNTERS_MARK;
+        return SoundManager.Cue.WEAPON_MASTERY;
     }
 
     void show() {
@@ -344,16 +365,36 @@ final class MainWindow {
                     settingsOverlay.showReleaseNotes(false, new Runnable() {
                         public void run() {
                             preferences.markReleaseNotesSeen(AppVersion.VERSION);
+                            Timer updateDelay = new Timer(450,
+                                new ActionListener() {
+                                    public void actionPerformed(ActionEvent event) {
+                                        settingsOverlay.checkForUpdatesQuietly();
+                                    }
+                                });
+                            updateDelay.setRepeats(false);
+                            updateDelay.start();
                         }
                     });
                 }
             });
             notesDelay.setRepeats(false);
             notesDelay.start();
+        } else {
+            // A short delay keeps network setup out of the initial paint path.
+            // The worker remains silent when offline or already current.
+            Timer updateDelay = new Timer(900, new ActionListener() {
+                public void actionPerformed(ActionEvent event) {
+                    settingsOverlay.checkForUpdatesQuietly();
+                }
+            });
+            updateDelay.setRepeats(false);
+            updateDelay.start();
         }
     }
 
     private void buildWindow() {
+        java.net.URL appIcon = MainWindow.class.getResource("/assets/app-icon.png");
+        if (appIcon != null) frame.setIconImage(new ImageIcon(appIcon).getImage());
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setMinimumSize(new Dimension(1100, 720));
         frame.setSize(UiTheme.SHELL_WIDTH, UiTheme.SHELL_HEIGHT);
@@ -379,8 +420,14 @@ final class MainWindow {
             }
 
             public void onBegin(String name, String race, String heroClass, String starterKit) {
+                onBegin(name, race, heroClass, starterKit,
+                    CharacterArt.defaultGender(race, heroClass));
+            }
+
+            public void onBegin(String name, String race, String heroClass, String starterKit,
+                                String gender) {
                 soundManager.play(SoundManager.Cue.ADVENTURE_BEGIN);
-                engine.newGame(name, race, heroClass, starterKit);
+                engine.newGame(name, race, heroClass, starterKit, gender);
                 showGame();
             }
 
@@ -398,6 +445,10 @@ final class MainWindow {
 
             public void onClassSelected(String heroClass) {
                 soundManager.playSelection(SoundManager.cueForClass(heroClass));
+            }
+
+            public void onGenderSelected(String gender) {
+                soundManager.playSelection(SoundManager.Cue.UI_CONFIRM);
             }
         }), CREATE_CARD);
         enhancedExploration = new EnhancedExplorationPanel(engine,
@@ -457,6 +508,11 @@ final class MainWindow {
                 soundManager.play(SoundManager.Cue.UI_CONFIRM);
                 ProjectLinks.open(ProjectLinks.BUG_REPORT);
             }
+        }, new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                soundManager.play(SoundManager.Cue.UI_CONFIRM);
+                settingsOverlay.showSettings();
+            }
         });
     }
 
@@ -472,6 +528,14 @@ final class MainWindow {
     static JPanel buildTitleScreen(ActionListener beginAction, ActionListener loadAction,
                                    ActionListener creditsAction, ActionListener notesAction,
                                    ActionListener feedbackAction, ActionListener bugAction) {
+        return buildTitleScreen(beginAction, loadAction, creditsAction, notesAction,
+            feedbackAction, bugAction, null);
+    }
+
+    static JPanel buildTitleScreen(ActionListener beginAction, ActionListener loadAction,
+                                   ActionListener creditsAction, ActionListener notesAction,
+                                   ActionListener feedbackAction, ActionListener bugAction,
+                                   ActionListener settingsAction) {
         BackgroundPanel root = new BackgroundPanel("/assets/title-screen.png", 0.0f, true);
         root.setLayout(new GridBagLayout());
         root.setBorder(BorderFactory.createEmptyBorder(0, 36, 0, 36));
@@ -555,6 +619,12 @@ final class MainWindow {
         JPanel footerLinks = new JPanel(new java.awt.FlowLayout(
             java.awt.FlowLayout.LEFT, 16, 0));
         footerLinks.setOpaque(false);
+        JButton settings = footerButton("SETTINGS", "Audio, display, and update settings",
+            settingsAction);
+        settings.setIcon(new SystemIcon(SystemIcon.Type.SETTINGS, 15,
+            new Color(220, 205, 169)));
+        settings.setIconTextGap(6);
+        footerLinks.add(settings);
         footerLinks.add(footerButton("WHAT'S NEW", "View current release notes", notesAction));
         footerLinks.add(footerButton("FEEDBACK", ProjectLinks.FEEDBACK, feedbackAction));
         footerLinks.add(footerButton("REPORT A BUG", ProjectLinks.BUG_REPORT, bugAction));
@@ -1046,11 +1116,11 @@ final class MainWindow {
     private void showHelp() {
         JOptionPane.showMessageDialog(frame,
             "Explore with WASD or the map-rail keys (arrows also work).\n\n" +
-            "In combat, use 1–7 for attack, class defense, spells, potion, and flee.\n" +
-            "Enemies block movement. Attack, defend, or flee to safety.\n" +
+            "In combat, use 1–7 for attack, class actions, abilities, potion, and flee.\n" +
+            "Enemies block movement. Attack, use class tactics, or flee to safety.\n" +
             "Potions restore 20 health. Shops sell them for 10 gold.\n" +
             "Equip weapons and armour from the inventory.\n" +
-            "Mage spells consume mana. Fighter techniques spend Rage built by trading blows.\n" +
+            "Mage spells consume mana. Fighters build Rage only by attacking and taking damage.\n" +
             "Rogue techniques spend Momentum built through attacks, stealth, and evasion.\n" +
             "Hunter techniques spend Focus built through Aim, accurate shots, and enemy misses.\n" +
             "Resting restores health and Mage mana. Rage and Momentum reset between encounters;\n" +
@@ -1109,6 +1179,7 @@ final class MainWindow {
             return;
         }
         final GameEngine.Relic discoveredRelic = engine.consumeRelicDiscovery();
+        final GameEngine.Item discoveredLoot = engine.consumeLootDiscovery();
         final GameEngine.ProgressionNotice progression = engine.consumeProgressionNotice();
         GameEngine.State state = engine.getState();
         GameEngine.Enemy foe = engine.currentEnemy();
@@ -1143,13 +1214,17 @@ final class MainWindow {
                     new Runnable() {
                         public void run() {
                             refreshNow();
-                            if (progression != null || discoveredRelic != null) {
+                            if (progression != null || discoveredRelic != null ||
+                                    discoveredLoot != null) {
                                 Timer reveal = new Timer(220, new ActionListener() {
                                     public void actionPerformed(ActionEvent ignored) {
                                         if (progression != null) {
-                                            showProgression(progression, discoveredRelic);
+                                            showProgression(progression, discoveredRelic,
+                                                discoveredLoot);
+                                        } else if (discoveredRelic != null) {
+                                            showRelicDiscovery(discoveredRelic, discoveredLoot);
                                         } else {
-                                            showRelicDiscovery(discoveredRelic);
+                                            showLootDiscovery(discoveredLoot);
                                         }
                                     }
                                 });
@@ -1165,30 +1240,59 @@ final class MainWindow {
     }
 
     private void showRelicDiscovery(GameEngine.Relic relic) {
+        showRelicDiscovery(relic, null);
+    }
+
+    private void showRelicDiscovery(GameEngine.Relic relic,
+                                    final GameEngine.Item chainedLoot) {
         soundManager.play(SoundManager.Cue.RELIC_DISCOVERED);
         settingsOverlay.showRelicDiscovery(relic, new Runnable() {
             public void run() { showInventory(); }
         }, new Runnable() {
-            public void run() { refresh(); }
+            public void run() {
+                if (chainedLoot != null) showLootDiscovery(chainedLoot);
+                else refresh();
+            }
         });
     }
 
+    private void showLootDiscovery(final GameEngine.Item item) {
+        String quality = GameEngine.itemQuality(item);
+        soundManager.play("COMMON".equals(quality) ? SoundManager.Cue.LOOT_DISCOVERED :
+            SoundManager.Cue.UNCOMMON_LOOT);
+        GameEngine.State state = engine.getState();
+        String equippedName = "Weapon".equals(item.type) ? state.equippedWeapon :
+            ("Offhand".equals(item.type) ? state.equippedOffhand : state.equippedArmour);
+        settingsOverlay.showLootDiscovery(item, equippedName,
+            equippedValue(state, item.type), new Runnable() {
+                public void run() { showInventory(); }
+            }, new Runnable() {
+                public void run() { refresh(); }
+            });
+    }
+
     private void showProgression(GameEngine.ProgressionNotice notice,
-                                 final GameEngine.Relic chainedRelic) {
+                                 final GameEngine.Relic chainedRelic,
+                                 final GameEngine.Item chainedLoot) {
         soundManager.play(SoundManager.Cue.ADVENTURE_BEGIN);
         Runnable next = new Runnable() {
             public void run() {
-                if (chainedRelic != null) showRelicDiscovery(chainedRelic);
+                if (chainedRelic != null) showRelicDiscovery(chainedRelic, chainedLoot);
+                else if (chainedLoot != null) showLootDiscovery(chainedLoot);
                 else refresh();
             }
         };
         settingsOverlay.showProgression(notice, new Runnable() {
             public void run() {
                 showInventory();
-                if (chainedRelic != null) {
+                if (chainedRelic != null || chainedLoot != null) {
                     Timer reveal = new Timer(260, new ActionListener() {
                         public void actionPerformed(ActionEvent ignored) {
-                            showRelicDiscovery(chainedRelic);
+                            if (chainedRelic != null) {
+                                showRelicDiscovery(chainedRelic, chainedLoot);
+                            } else {
+                                showLootDiscovery(chainedLoot);
+                            }
                         }
                     });
                     reveal.setRepeats(false);
@@ -1208,8 +1312,7 @@ final class MainWindow {
                 EncounterCatalog.Profile profile = EncounterCatalog.forEnemy(foe.name);
                 settingsOverlay.showDialogue(EncounterPanel.assetFor(foe.name),
                     profile.displayName,
-                    foe.tier == 2 ? "BOSS THREAT" :
-                        (foe.tier == 1 ? "ELITE CHALLENGE" : "BATTLE CRY"),
+                    GameEngine.enemyIntroductionRole(foe),
                     GameEngine.enemyBattleCry(foe.name), profile.accent,
                     new Runnable() { public void run() { refresh(); } });
             }

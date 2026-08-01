@@ -1,0 +1,52 @@
+COPY-READY PRIVATE BETA INVITATIONS
+
+SHORT MESSAGE / DISCORD
+
+You have been invited to privately test The Chosen Quest Enhanced v0.7.0-beta.2.
+Download the beta and Tester Guide here:
+https://github.com/Rebelord/The-Chosen-Quest-Enhanced/releases/tag/v0.7.0-beta.2
+
+Java 8 or newer is required. After playing, please share general feedback at
+https://forms.gle/GJLCPtzP7LN9PeBeA or report reproducible bugs at https://forms.gle/F8LtxPn5sKbwPAxX9.
+
+Please keep this exact build installed for the update test. It should initially
+report v0.7.0-beta.2 as current under Settings > Check Updates. After the next beta
+is announced, relaunch this older build and verify that its update notice opens
+the official release download.
+
+Please keep this build within the invited testing group. Thank you for helping
+shape the adventure!
+
+
+EMAIL
+
+Subject: Your invitation to test The Chosen Quest Enhanced
+
+Hello,
+
+I would love your help testing The Chosen Quest Enhanced, a modernized version
+of our original turn-based fantasy RPG. This private beta focuses on combat
+balance, exploration, character builds, vendors, relic progression, audio, and
+interface clarity.
+
+Download v0.7.0-beta.2:
+https://github.com/Rebelord/The-Chosen-Quest-Enhanced/releases/tag/v0.7.0-beta.2
+
+You will need Java 8 or newer, about 250 MB of free space, and a Windows, macOS,
+Linux, or Chromebook Linux desktop environment. Extract the ZIP before using the
+included launcher. A one-page Quick Reference and full Tester Guide are included.
+
+Please keep this exact build folder after testing. In Settings, choose Check Updates
+and confirm v0.7.0-beta.2 is current. When the next beta is announced, launch this
+older build again and test its update notice, View Changes, Remind Me Later, and
+official Download handoff.
+
+When you finish:
+- General feedback: https://forms.gle/GJLCPtzP7LN9PeBeA
+- Bug reports: https://forms.gle/F8LtxPn5sKbwPAxX9
+
+Please keep the build and invitation within the private testing group. Honest
+feedback is valuable - especially when something feels confusing, unbalanced,
+slow, visually broken, or unexpectedly fun.
+
+Thank you for helping shape The Chosen Quest Enhanced.

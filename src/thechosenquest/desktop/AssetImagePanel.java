@@ -323,6 +323,12 @@ final class AssetImagePanel extends JPanel {
 
     /** Portrait artwork extends beneath decorative borders like a physical frame. */
     private Insets imageInsets() {
+        if (getBorder() instanceof FantasyPortraitBorder) {
+            FantasyPortraitBorder frame = (FantasyPortraitBorder) getBorder();
+            int width = getWidth() > 0 ? getWidth() : getPreferredSize().width;
+            int height = getHeight() > 0 ? getHeight() : getPreferredSize().height;
+            return frame.viewportInsets(Math.max(1, width), Math.max(1, height));
+        }
         return new Insets(0, 0, 0, 0);
     }
 
@@ -378,11 +384,12 @@ final class AssetImagePanel extends JPanel {
         Graphics2D imageGraphics = (Graphics2D) graphics.create();
         if (getBorder() instanceof FantasyPortraitBorder) {
             FantasyPortraitBorder frame = (FantasyPortraitBorder) getBorder();
-            int inset = frame.viewportInset();
-            int width = Math.max(1, getWidth() - inset * 2);
-            int height = Math.max(1, getHeight() - inset * 2);
+            int left = imageInsets.left;
+            int top = imageInsets.top;
+            int width = Math.max(1, getWidth() - imageInsets.left - imageInsets.right);
+            int height = Math.max(1, getHeight() - imageInsets.top - imageInsets.bottom);
             int arc = frame.viewportArc();
-            imageGraphics.clip(new RoundRectangle2D.Double(inset, inset, width, height,
+            imageGraphics.clip(new RoundRectangle2D.Double(left, top, width, height,
                 arc, arc));
         }
         imageGraphics.drawImage(rendered, imageInsets.left, imageInsets.top, null);

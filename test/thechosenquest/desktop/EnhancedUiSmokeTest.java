@@ -3,6 +3,7 @@ package thechosenquest.desktop;
 import java.awt.Component;
 import java.awt.Color;
 import java.awt.Container;
+import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -19,13 +20,68 @@ import javax.swing.JPanel;
 public final class EnhancedUiSmokeTest {
     public static void main(String[] args) throws Exception {
         System.setProperty("java.awt.headless", "true");
-        if (!"0.6.0-beta.1".equals(AppVersion.VERSION) ||
-                !"v0.6.0-beta.1".equals(AppVersion.TAG)) {
+        if (!"0.7.0-beta.2".equals(AppVersion.VERSION) ||
+                !"v0.7.0-beta.2".equals(AppVersion.TAG)) {
             throw new AssertionError("Public beta version and release tag must stay aligned");
         }
         if (EnhancedUiSmokeTest.class.getResource("/assets/fonts/Cinzel.ttf") == null ||
                 EnhancedUiSmokeTest.class.getResource("/assets/fonts/CormorantGaramond.ttf") == null) {
             throw new AssertionError("Bundled UI fonts are missing");
+        }
+        if (IconAssets.emptySlotIcon(24) == null ||
+                IconAssets.itemResource((GameEngine.Item) null) != null) {
+            throw new AssertionError(
+                "Empty equipment must use a neutral icon rather than a shield resource");
+        }
+        String[] frameResources = {
+            "/assets/ui/borders/button-frame-brass-v1.png",
+            "/assets/ui/borders/panel-frame-brass-v1.png",
+            "/assets/ui/borders/hero-frame-metal-overlay-v5.png",
+            "/assets/ui/borders/hero-frame-enamel-mask-v5.png",
+            "/assets/ui/borders/hero-frame-gem-mask-v5.png"
+        };
+        for (String resource : frameResources) {
+            BufferedImage frame = ImageIO.read(
+                EnhancedUiSmokeTest.class.getResource(resource));
+            if (frame == null || !frame.getColorModel().hasAlpha() ||
+                    ((frame.getRGB(0, 0) >>> 24) & 255) != 0) {
+                throw new AssertionError(
+                    "Authored UI frames must be readable transparent overlays: " +
+                    resource);
+            }
+        }
+        BufferedImage fighterFrame = new BufferedImage(233, 310,
+            BufferedImage.TYPE_INT_ARGB);
+        Graphics2D fighterFrameGraphics = fighterFrame.createGraphics();
+        UiBorderAssets.paintHeroFrame(fighterFrameGraphics, 0, 0, 233, 310,
+            1f, Color.RED);
+        fighterFrameGraphics.dispose();
+        BufferedImage mageFrame = new BufferedImage(233, 310,
+            BufferedImage.TYPE_INT_ARGB);
+        Graphics2D mageFrameGraphics = mageFrame.createGraphics();
+        UiBorderAssets.paintHeroFrame(mageFrameGraphics, 0, 0, 233, 310,
+            1f, Color.BLUE);
+        mageFrameGraphics.dispose();
+        if (!imagesDiffer(fighterFrame, mageFrame)) {
+            throw new AssertionError(
+                "Hero frame inlays must accept the exact runtime tint mask");
+        }
+        for (String race : GameEngine.RACES) {
+            for (String heroClass : GameEngine.CLASSES) {
+                HeroVisualTheme theme = HeroVisualTheme.forBuild(race, heroClass);
+                if (!race.equals(theme.race()) ||
+                        !heroClass.equals(theme.heroClass()) ||
+                        theme.classAccent() == null ||
+                        theme.raceAccent() == null ||
+                        theme.metalAccent() == null ||
+                        theme.resourceColor() == null ||
+                        theme.raceMotif() == null ||
+                        theme.classOverlay(22).getAlpha() != 22 ||
+                        theme.raceOverlay(18).getAlpha() != 18) {
+                    throw new AssertionError(
+                        "Every build must resolve complete modular creation-theme inputs");
+                }
+            }
         }
         AudioInputStream titleMusic = AudioSystem.getAudioInputStream(
             EnhancedUiSmokeTest.class.getResource("/assets/audio/title-theme.wav"));
@@ -65,8 +121,28 @@ public final class EnhancedUiSmokeTest {
         if (!randomizedName[0]) {
             throw new AssertionError("Name randomizer must request its dice-roll sound cue");
         }
-        if (countPortraitFrames(panel) < 5) {
-            throw new AssertionError("Race choices and the hero preview must use fantasy frames");
+        panel.setPlayerNameForTest("AelindraTheStormweaverXXYYZZ");
+        if (panel.playerNameForTest().length() != GameEngine.MAX_PLAYER_NAME_LENGTH ||
+                !panel.playerNameForTest().equals(panel.displayedProfileNameForTest())) {
+            throw new AssertionError(
+                "Player names must stop at the profile-safe limit and update the grand title");
+        }
+        if (countPortraitFrames(panel) != 1) {
+            throw new AssertionError(
+                "Character creation must show one framed hero and no miniature portraits");
+        }
+        for (String race : GameEngine.RACES) {
+            String resource = "/assets/race-crests/" + race.toLowerCase() + ".png";
+            if (EnhancedUiSmokeTest.class.getResource(resource) == null) {
+                throw new AssertionError("Missing race crest: " + resource);
+            }
+            BufferedImage crest = ImageIO.read(
+                EnhancedUiSmokeTest.class.getResource(resource));
+            if (crest == null || !crest.getColorModel().hasAlpha() ||
+                    ((crest.getRGB(0, 0) >>> 24) & 255) != 0) {
+                throw new AssertionError(
+                    "Race crests must have a transparent surrounding canvas: " + resource);
+            }
         }
         for (int index = 0; index < 12; index++) {
             String race = GameEngine.RACES[index % GameEngine.RACES.length];
@@ -78,6 +154,46 @@ public final class EnhancedUiSmokeTest {
         if (!"/assets/avatars/full-body/halfling-hunter.png".equals(
                 panel.displayedArtworkForTest())) {
             throw new AssertionError("Rapid build switching must settle on the final portrait");
+        }
+        panel.selectGenderForTest(CharacterArt.MALE);
+        panel.awaitArtworkForTest();
+        if (!"/assets/avatars/counterpart/full-body/halfling-hunter.png".equals(
+                panel.displayedArtworkForTest())) {
+            throw new AssertionError(
+                "Gender choice must load the authored counterpart without changing the build");
+        }
+        for (String race : GameEngine.RACES) {
+            for (String heroClass : GameEngine.CLASSES) {
+                String counterpartGender = CharacterArt.MALE.equals(
+                    CharacterArt.defaultGender(race, heroClass))
+                    ? CharacterArt.FEMALE : CharacterArt.MALE;
+                if (EnhancedUiSmokeTest.class.getResource(
+                        CharacterArt.portrait(race, heroClass, counterpartGender)) == null ||
+                    EnhancedUiSmokeTest.class.getResource(
+                        CharacterArt.fullBody(race, heroClass, counterpartGender)) == null) {
+                    throw new AssertionError(
+                        "Missing gender counterpart art for " + race + " " + heroClass);
+                }
+            }
+        }
+        if (!CharacterArt.FEMALE.equals(
+                CharacterArt.defaultGender("Dwarf", "Rogue")) ||
+                !"/assets/avatars/full-body/dwarf-rogue.png".equals(
+                    CharacterArt.fullBody("Dwarf", "Rogue", CharacterArt.FEMALE)) ||
+                !"/assets/avatars/counterpart/full-body/dwarf-rogue.png".equals(
+                    CharacterArt.fullBody("Dwarf", "Rogue", CharacterArt.MALE))) {
+            throw new AssertionError(
+                "Dwarf Rogue female and male artwork assignments must not be reversed");
+        }
+        BufferedImage dwarfRogueFemale = ImageIO.read(
+            EnhancedUiSmokeTest.class.getResource(
+                CharacterArt.fullBody("Dwarf", "Rogue", CharacterArt.FEMALE)));
+        BufferedImage dwarfRogueMale = ImageIO.read(
+            EnhancedUiSmokeTest.class.getResource(
+                CharacterArt.fullBody("Dwarf", "Rogue", CharacterArt.MALE)));
+        if (!imagesDiffer(dwarfRogueFemale, dwarfRogueMale)) {
+            throw new AssertionError(
+                "Dwarf Rogue gender choices must resolve distinct authored artwork");
         }
 
         BufferedImage image = new BufferedImage(1440, 900, BufferedImage.TYPE_INT_ARGB);
@@ -92,10 +208,8 @@ public final class EnhancedUiSmokeTest {
         }
         File largeCharacterOutput = render(panel, 1920, 1080, output.getParentFile(),
             "character-creation-large-preview.png", 100000L);
-        if (!panel.racePortraitsSquareForTest()) {
-            throw new AssertionError(
-                "Race portraits must retain square viewports on large displays");
-        }
+        File compactCharacterOutput = render(panel, 1280, 720, output.getParentFile(),
+            "character-creation-1280x720-preview.png", 70000L);
         JPanel frameIdentifiers = new JPanel(new GridLayout(1, 4, 12, 0));
         frameIdentifiers.setBackground(UiTheme.BACKGROUND);
         for (String heroClass : GameEngine.CLASSES) {
@@ -109,6 +223,18 @@ public final class EnhancedUiSmokeTest {
         }
         File frameIdentifiersOutput = render(frameIdentifiers, 720, 180,
             output.getParentFile(), "frame-identifiers-preview.png", 20000L);
+        JPanel heroFrameVariants = new JPanel(new GridLayout(1, 4, 16, 0));
+        heroFrameVariants.setBackground(UiTheme.BACKGROUND);
+        for (String heroClass : GameEngine.CLASSES) {
+            AssetImagePanel portrait = new AssetImagePanel(
+                "/assets/avatars/full-body/elf-" +
+                    heroClass.toLowerCase() + ".png", true);
+            portrait.setOpaque(false);
+            portrait.setBorder(new FantasyPortraitBorder("Elf", heroClass));
+            heroFrameVariants.add(portrait);
+        }
+        File heroFrameVariantsOutput = render(heroFrameVariants, 1000, 340,
+            output.getParentFile(), "hero-frame-variants-preview.png", 50000L);
 
         // A newly requested encounter must never display the previous enemy's
         // portrait while its own artwork is loading.
@@ -231,13 +357,30 @@ public final class EnhancedUiSmokeTest {
             throw new AssertionError("Map viewport must clamp cleanly at world edges");
         }
 
+        final boolean[] titleSettingsOpened = { false };
         JPanel titleScreen = MainWindow.buildTitleScreen(new ActionListener() {
             public void actionPerformed(ActionEvent event) { }
         }, new ActionListener() {
             public void actionPerformed(ActionEvent event) { }
         }, new ActionListener() {
             public void actionPerformed(ActionEvent event) { }
+        }, new ActionListener() {
+            public void actionPerformed(ActionEvent event) { }
+        }, new ActionListener() {
+            public void actionPerformed(ActionEvent event) { }
+        }, new ActionListener() {
+            public void actionPerformed(ActionEvent event) { }
+        }, new ActionListener() {
+            public void actionPerformed(ActionEvent event) { titleSettingsOpened[0] = true; }
         });
+        JButton titleSettings = findAccessibleButton(titleScreen, "settings");
+        if (titleSettings == null) {
+            throw new AssertionError("Title screen must expose the shared game settings");
+        }
+        titleSettings.doClick();
+        if (!titleSettingsOpened[0]) {
+            throw new AssertionError("Title screen Settings control must invoke its action");
+        }
         File titleOutput = render(titleScreen, 1440, 900, output.getParentFile(),
             "title-screen-preview.png");
 
@@ -353,6 +496,10 @@ public final class EnhancedUiSmokeTest {
         }
         if (!"Channel Ward".equals(shortcutPanel.defenseActionLabelForTest())) {
             throw new AssertionError("Mage combat action must be labeled Channel Ward");
+        }
+        if (!shortcutPanel.resourceMeterTextForTest().startsWith("MANA") ||
+                !shortcutPanel.resourceMeterHelpForTest().contains("Channel Ward")) {
+            throw new AssertionError("Combat quick actions must expose the active class resource");
         }
         if (!"NORMAL".equals(shortcutPanel.attackSpeedLabelForTest()) ||
                 !"NORMAL".equals(shortcutPanel.spellSpeedLabelForTest()) ||
@@ -759,9 +906,51 @@ public final class EnhancedUiSmokeTest {
             new Runnable() { public void run() { } });
         File releaseNotesOutput = render(releaseNotes, 780, 660, output.getParentFile(),
             "release-notes-preview.png");
+        UpdateService.Release updateRelease = new UpdateService.Release(
+            "0.7.0-beta.2", "v0.7.0-beta.2",
+            "The Chosen Quest Enhanced — Beta 0.7.0 Update Test",
+            "## Highlights\n- Safer updates\n- New interface refinements",
+            ProjectLinks.RELEASES, ProjectLinks.RELEASES,
+            "sha256:test", true);
+        UpdateService.Result updateResult = UpdateService.Result.available(updateRelease);
+        UpdatePanel updatePanel = new UpdatePanel(updateResult,
+            new Runnable() { public void run() { } },
+            new Runnable() { public void run() { } },
+            new Runnable() { public void run() { } });
+        File updateOutput = render(updatePanel, 720, 540, output.getParentFile(),
+            "update-available-preview.png");
+        GameEngine.Item previewLoot = new GameEngine.Item("Flanged Mace", "Weapon",
+            9, 0, 30, "Fighter", false, "UNCOMMON", false);
+        creditsOverlay.setSize(900, 700);
+        creditsOverlay.showLootDiscovery(previewLoot, "Iron Mace", 6,
+            new Runnable() { public void run() { } },
+            new Runnable() { public void run() { } });
+        if (findButtonByText(creditsOverlay, "VIEW IN INVENTORY") == null) {
+            throw new AssertionError("Combat loot must provide direct Inventory access");
+        }
+        File lootOutput = render(creditsOverlay, 900, 700, output.getParentFile(),
+            "loot-discovery-preview.png", 18000L);
+        creditsOverlay.hideSettings();
         creditsOverlay.showReleaseNotes(false, null);
         if (!creditsOverlay.releaseNotesVisibleForTest()) {
             throw new AssertionError("Release notes must open inside the game overlay");
+        }
+        creditsOverlay.hideSettings();
+        creditsOverlay.showUpdateResultForTest(updateResult);
+        if (!creditsOverlay.updateVisibleForTest()) {
+            throw new AssertionError("Updates must open inside the game overlay");
+        }
+        JButton viewChanges = findButtonByText(creditsOverlay, "VIEW CHANGES");
+        if (viewChanges == null) {
+            throw new AssertionError("Update results must offer an in-game change review");
+        }
+        viewChanges.doClick();
+        javax.swing.SwingUtilities.invokeAndWait(new Runnable() {
+            public void run() { }
+        });
+        if (!creditsOverlay.releaseNotesVisibleForTest()) {
+            throw new AssertionError(
+                "View Changes must remain in-game instead of opening a fragile system browser");
         }
         creditsOverlay.hideSettings();
         creditsOverlay.setSize(1440, 900);
@@ -775,25 +964,38 @@ public final class EnhancedUiSmokeTest {
         creditsOverlay.closeWorldMap();
         soundManager.shutdown();
 
-        JPanel buttonStates = new JPanel(new GridLayout(3, 5, 12, 12));
+        JPanel buttonStates = new JPanel(new GridLayout(5, 5, 12, 12));
         buttonStates.setBackground(UiTheme.BACKGROUND);
         buttonStates.setBorder(javax.swing.BorderFactory.createEmptyBorder(24, 24, 24, 24));
-        for (int style = 0; style < 3; style++) {
+        for (int style = 0; style < 5; style++) {
             for (int state = 0; state < 5; state++) {
                 JButton stateButton = UiTheme.button(buttonStateName(state), style == 0);
                 if (style == 2) {
                     UiTheme.applyButtonStyle(stateButton, UiTheme.ButtonStyle.DANGER, 10, 20);
+                } else if (style == 3) {
+                    UiTheme.applyButtonStyle(stateButton,
+                        UiTheme.ButtonStyle.DECO_PRIMARY, 10, 20);
+                    stateButton.putClientProperty(
+                        "thechosenquest.button.accent", UiTheme.GREEN);
+                    stateButton.setFont(UiTheme.displayBold(15));
+                } else if (style == 4) {
+                    UiTheme.applyButtonStyle(stateButton,
+                        UiTheme.ButtonStyle.DECO_SECONDARY, 10, 20);
+                    stateButton.putClientProperty(
+                        "thechosenquest.button.accent", UiTheme.GREEN);
+                    stateButton.setFont(UiTheme.displayBold(15));
                 }
                 configureButtonState(stateButton, state);
                 buttonStates.add(stateButton);
             }
         }
-        File buttonStatesOutput = render(buttonStates, 900, 250, output.getParentFile(),
-            "button-states-preview.png", 5000L);
+        File buttonStatesOutput = render(buttonStates, 900, 390, output.getParentFile(),
+            "button-states-preview.png", 8000L);
 
         System.out.println("Enhanced UI smoke tests passed: " + titleOutput.getPath() + ", " +
             output.getPath() + ", " + largeCharacterOutput.getPath() + ", " +
             frameIdentifiersOutput.getPath() + ", " +
+            heroFrameVariantsOutput.getPath() + ", " +
             mapViewportOutput.getPath() + ", " + mapDetailOutput.getPath() + ", " +
             explorationOutput.getPath() + ", " + largeExplorationOutput.getPath() + ", " +
             encounterOutput.getPath() + ", " +
@@ -806,8 +1008,21 @@ public final class EnhancedUiSmokeTest {
             shellSpiderNest.getPath() + ", " +
             settingsOutput.getPath() + ", " + creditsOutput.getPath() + ", " +
             releaseNotesOutput.getPath() + ", " +
+            updateOutput.getPath() + ", " +
+            lootOutput.getPath() + ", " +
             worldMapOutput.getPath() + ", " +
             buttonStatesOutput.getPath());
+    }
+
+    private static boolean imagesDiffer(BufferedImage first, BufferedImage second) {
+        if (first.getWidth() != second.getWidth() ||
+                first.getHeight() != second.getHeight()) return true;
+        for (int y = 0; y < first.getHeight(); y++) {
+            for (int x = 0; x < first.getWidth(); x++) {
+                if (first.getRGB(x, y) != second.getRGB(x, y)) return true;
+            }
+        }
+        return false;
     }
 
     private static String buttonStateName(int state) {
@@ -909,6 +1124,20 @@ public final class EnhancedUiSmokeTest {
             }
             if (component instanceof Container) {
                 JButton nested = findAccessibleButton((Container) component, accessibleName);
+                if (nested != null) return nested;
+            }
+        }
+        return null;
+    }
+
+    private static JButton findButtonByText(Container container, String text) {
+        for (Component component : container.getComponents()) {
+            if (component instanceof JButton &&
+                    text.equals(((JButton) component).getText())) {
+                return (JButton) component;
+            }
+            if (component instanceof Container) {
+                JButton nested = findButtonByText((Container) component, text);
                 if (nested != null) return nested;
             }
         }

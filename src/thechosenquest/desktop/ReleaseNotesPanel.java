@@ -36,33 +36,36 @@ final class ReleaseNotesPanel extends JPanel {
         content.setBorder(BorderFactory.createEmptyBorder(22, 24, 26, 24));
         content.add(intro());
         content.add(Box.createVerticalStrut(18));
-        content.add(section("COMBAT & CLASS BALANCE",
-            "Fighters, Rogues, and Hunters now use Rage, Momentum, and Focus. " +
-            "Second Wind is a once-per-encounter death save instead of repeatable healing. " +
-            "Hunter's Mark now gates Volley, relics respect level requirements, and dragon " +
-            "protection is consistent across attacks, spells, and abilities."));
+        content.add(section("CHARACTER CREATION & VISUAL IDENTITY",
+            "Character creation now centers one live hero showcase with cosmetic artwork " +
+            "choice, race crests, starting loadouts, build guidance, a fantasy name die, " +
+            "and modular painterly Art Deco class and race theming. Authored borders, app " +
+            "iconography, meters, and interaction states now share one product language."));
         content.add(Box.createVerticalStrut(12));
-        content.add(section("WORLD & EXPLORATION",
-            "The full-world map is available with M, map zoom now includes a closer 5x5 " +
-            "view, fog-aware objectives and rumors occupy the map rail, and movement keys " +
-            "advance one deliberate tile per press. The Ashweb Nest now ends with the elite " +
-            "Ashweb Matriarch."));
+        content.add(section("COMBAT, EQUIPMENT & PROGRESSION",
+            "Rage, Momentum, Focus, and Mana give every class a distinct tactical loop. " +
+            "Weapon traits, proficiency, status feedback, specialized vendors, equipment " +
+            "comparison, loot tiers, and identified elite relics make preparation clearer. " +
+            "Boss protection and level gates remain consistent across all attack types."));
         content.add(Box.createVerticalStrut(12));
-        content.add(section("PRESENTATION & ACCESSIBILITY",
-            "Character artwork and landscape scenes scale more reliably on large screens. " +
-            "Status effects, ability costs, action tempo, multi-hit turns, inventory, and " +
-            "portrait frames provide clearer feedback with reduced-motion support."));
+        content.add(section("WORLD, MAP & ENCOUNTERS",
+            "The larger fog-aware world supports scrolling, detail zoom, a full M-key map, " +
+            "rumors, objectives, biome placement, roaming threats, and landscape scenes. " +
+            "The finite Ashweb Nest ends with the elite Ashweb Matriarch, while fleeing " +
+            "returns the hero to a nearby valid tile."));
         content.add(Box.createVerticalStrut(12));
-        content.add(section("AUDIO & CREDITS",
-            "Exploration, safe locations, combat, and bosses now receive scene-aware music. " +
-            "High-frequency UI and combat cues use attributed game-ready assets, with full " +
-            "credits and licenses available in-game and in the download."));
+        content.add(section("UPDATES, AUDIO & TESTING",
+            "The game now checks official GitHub Releases without blocking startup. A " +
+            "styled overlay offers Download, View Changes, and Remind Me Later, while " +
+            "Settings provides a manual check from both the title screen and adventure. " +
+            "Release names wrap safely, View Changes remains inside the game, and macOS " +
+            "download links use the operating system browser handoff."));
         content.add(Box.createVerticalStrut(12));
         content.add(section("WHAT WE NEED FROM TESTERS",
-            "Try different race, class, and loadout combinations. Tell us when balance feels " +
-            "unfair, when an action is unclear, when audio becomes repetitive, or when a " +
-            "second encounter behaves differently from the first. Please include your game " +
-            "version and operating system with bug reports."));
+            "Keep an extracted v0.7.0-beta.1 folder, launch it online, and use Settings > " +
+            "Check Updates. Confirm it offers v0.7.0-beta.2, View Changes opens these notes " +
+            "inside the game without a crash, and the reminder and official download actions " +
+            "work. Also verify offline launch remains fully playable."));
 
         JScrollPane scroll = new JScrollPane(content,
             ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
@@ -107,9 +110,10 @@ final class ReleaseNotesPanel extends JPanel {
     }
 
     private JTextArea intro() {
-        JTextArea copy = text("This build packages the balance, exploration, interface, " +
-            "audio, and testing improvements completed since the first public beta. Human " +
-            "playtesting is the purpose of this release, so feedback is part of the quest.",
+        JTextArea copy = text("This prerelease completes the first end-to-end updater test " +
+            "and packages the latest stability, loot-feedback, equipment-slot, and interface " +
+            "refinements. Human playtesting remains the purpose of this build, so feedback " +
+            "is part of the quest.",
             13, UiTheme.TEXT);
         copy.setRows(3);
         copy.setMaximumSize(new Dimension(Integer.MAX_VALUE, 72));

@@ -7,6 +7,10 @@
 *.class
 hs_err_pid*.log
 
+# Python helper-script caches
+__pycache__/
+*.py[cod]
+
 # macOS and editor metadata
 .DS_Store
 **/.DS_Store

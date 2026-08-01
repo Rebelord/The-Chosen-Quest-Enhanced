@@ -1,5 +1,5 @@
 THE CHOSEN QUEST — ENHANCED EDITION
-PRIVATE BETA PLAYTEST BUILD — v0.6.0-beta.1
+PRIVATE BETA PLAYTEST BUILD — v0.7.0-beta.2
 
 Thank you for testing The Chosen Quest Enhanced, a standalone modernization of the
 original student RPG.
@@ -37,7 +37,7 @@ CONTROLS
 - 1–7: Combat actions and abilities
 - Map minus / plus controls: Overview and detail zoom
 - Escape: Close the current overlay
-- Gear icon: Audio, display, and accessibility preferences
+- Gear icon: Audio, display, accessibility, and Check Updates
 - What’s New: Current release changes and testing priorities
 - Credits & Licenses: Contributor acknowledgments, asset sources, and licenses
 
@@ -58,6 +58,15 @@ https://forms.gle/F8LtxPn5sKbwPAxX9
 
 The included TESTER-GUIDE.pdf contains the recommended playtest routes, reporting
 checklist, and privacy guidance.
+
+UPDATE FEATURE TEST
+
+1. Keep an extracted v0.7.0-beta.1 folder for the end-to-end updater test.
+2. Launch that older copy online and choose Settings > Check Updates.
+3. Verify it offers v0.7.0-beta.2 and that View Changes stays inside the game.
+4. Verify Remind Me Later and the official Download handoff. The game does not
+   replace files automatically in this phase.
+5. Launch this v0.7.0-beta.2 build offline and confirm the game remains usable.
 
 This is a beta. Combat balance, effects, sounds, and interface details will continue
 to improve from tester feedback.

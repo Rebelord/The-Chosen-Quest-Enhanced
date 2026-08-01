@@ -21,6 +21,7 @@ import java.util.Random;
 final class GameEngine {
     /** Logical world edge; the UI presents a smaller scrolling viewport. */
     static final int SIZE = 13;
+    static final int MAX_PLAYER_NAME_LENGTH = 24;
     private static final int POTION_COST = 10;
     static final int REGIONAL_MAP_COST = 12;
 
@@ -240,6 +241,7 @@ final class GameEngine {
         String playerName;
         String race;
         String heroClass;
+        String gender;
         String starterKit;
         int health = 50;
         int maxHealth = 50;
@@ -315,6 +317,7 @@ final class GameEngine {
     private final ArrayList<EnemyTurnEvent> pendingEnemyTurnEvents =
         new ArrayList<EnemyTurnEvent>();
     private Relic pendingRelicDiscovery;
+    private Item pendingLootDiscovery;
     private ProgressionNotice pendingProgressionNotice;
 
     GameEngine() {
@@ -330,14 +333,25 @@ final class GameEngine {
     }
 
     void newGame(String playerName, String race, String heroClass, String starterKit) {
+        newGame(playerName, race, heroClass, starterKit,
+            CharacterArt.defaultGender(race, heroClass));
+    }
+
+    void newGame(String playerName, String race, String heroClass, String starterKit,
+                 String gender) {
         state = new State();
         pendingRelicDiscovery = null;
+        pendingLootDiscovery = null;
         pendingProgressionNotice = null;
         pendingEnemyTurnEvents.clear();
         String cleaned = playerName == null ? "" : playerName.trim();
+        if (cleaned.length() > MAX_PLAYER_NAME_LENGTH) {
+            cleaned = cleaned.substring(0, MAX_PLAYER_NAME_LENGTH).trim();
+        }
         state.playerName = cleaned.isEmpty() ? "Chosen One" : cleaned;
         state.race = validChoice(race, RACES, "Human");
         state.heroClass = validChoice(heroClass, CLASSES, "Fighter");
+        state.gender = CharacterArt.normalizeGender(gender, state.race, state.heroClass);
         state.starterKit = validStarterKit(state.heroClass, starterKit);
         configureHero();
 
@@ -368,10 +382,17 @@ final class GameEngine {
     }
 
     void configureHeroPreview(String race, String heroClass, String starterKit) {
+        configureHeroPreview(race, heroClass, starterKit,
+            CharacterArt.defaultGender(race, heroClass));
+    }
+
+    void configureHeroPreview(String race, String heroClass, String starterKit,
+                              String gender) {
         state = new State();
         state.playerName = "Preview";
         state.race = validChoice(race, RACES, "Human");
         state.heroClass = validChoice(heroClass, CLASSES, "Fighter");
+        state.gender = CharacterArt.normalizeGender(gender, state.race, state.heroClass);
         state.starterKit = validStarterKit(state.heroClass, starterKit);
         configureHero();
     }
@@ -1037,15 +1058,15 @@ final class GameEngine {
             add("You ready your shield, but no danger approaches.");
             return;
         }
-        Item weapon = findItem(state.equippedWeapon);
+        if ("Fighter".equals(state.heroClass)) {
+            add("Fighters build Rage by attacking and enduring enemy blows; " +
+                "they have no defensive setup action.");
+            state.combatStatus = "FIGHTER · ATTACK TO BUILD RAGE";
+            return;
+        }
         Item offhand = findItem(state.equippedOffhand);
         state.defending = true;
-        if ("Fighter".equals(state.heroClass) && isTwoHanded(weapon)) {
-            state.defending = false;
-            gainRage(25, "battle cry");
-            add("You answer the threat with a battle cry and build Rage.");
-            state.combatStatus = "BATTLE CRY · RAGE BUILDING";
-        } else if ("Mage".equals(state.heroClass)) {
+        if ("Mage".equals(state.heroClass)) {
             int restored = Math.min(4 + state.level / 2, state.maxMana - state.mana);
             state.mana += restored;
             add(restored > 0 ? "You channel a ward and recover " + restored + " mana." :
@@ -1161,6 +1182,7 @@ final class GameEngine {
         boolean uncommon = roll < 9;
         Item drop = randomEquipmentDrop(uncommon);
         state.inventory.add(drop);
+        pendingLootDiscovery = drop;
         add("Loot found: " + drop.name + " [" + itemQuality(drop) + "].");
     }
 
@@ -2298,9 +2320,41 @@ final class GameEngine {
         if ("Ashweb Matriarch".equals(enemyName))
             return "A piercing shriek rolls through the webbed hollow.";
         if ("Bandit Marauder".equals(enemyName)) return "Drop your gold and I may leave you breathing.";
-        if ("Skeletal Guardian".equals(enemyName)) return "None shall pass the forgotten gate.";
-        if ("Dire Wolf".equals(enemyName)) return "A savage growl rolls through the trees.";
-        return "The creature fixes its gaze on you and prepares to strike.";
+        if ("Skeletal Guardian".equals(enemyName))
+            return "Ancient joints grind as the guardian lowers its rusted blade.";
+        if ("Dire Wolf".equals(enemyName))
+            return "The wolf lowers its head. A savage growl rolls through the trees.";
+        if ("Giant Forest Spider".equals(enemyName) || "Giant Spider".equals(enemyName))
+            return "The spider drums its legs against the web and darts into striking range.";
+        if ("Swamp Serpent".equals(enemyName))
+            return "The serpent coils above the black water, tongue tasting the air.";
+        if ("Armored Boar".equals(enemyName))
+            return "The boar paws the earth, then levels its plated tusks toward you.";
+        if ("Cave Troll".equals(enemyName) || "Troll".equals(enemyName))
+            return "The brute hunches forward and answers your approach with a guttural roar.";
+        return "The enemy fixes its gaze on you and prepares to strike.";
+    }
+
+    /** Encounter copy distinguishes actual speech from readable creature behavior. */
+    static boolean enemyUsesSpeech(String enemyName) {
+        if (enemyName == null) return false;
+        return enemyName.contains("Dragon") ||
+            "Orc Warlord".equals(enemyName) ||
+            "Necromancer".equals(enemyName) ||
+            "Dark Elf Assassin".equals(enemyName) ||
+            "Fallen Knight".equals(enemyName) ||
+            "Cultist Mage".equals(enemyName) ||
+            "Bandit Marauder".equals(enemyName);
+    }
+
+    static String enemyIntroductionRole(Enemy enemy) {
+        if (enemy == null) return "ENCOUNTER";
+        if (enemyUsesSpeech(enemy.name)) {
+            return enemy.tier == 2 ? "BOSS THREAT" :
+                (enemy.tier == 1 ? "ELITE CHALLENGE" : "BATTLE CRY");
+        }
+        return enemy.tier == 2 ? "ANCIENT PRESENCE" :
+            (enemy.tier == 1 ? "ELITE CREATURE" : "CREATURE REACTION");
     }
 
     private static EnemyAction nextEnemyAction(Enemy enemy, int sequence) {
@@ -2855,6 +2909,7 @@ final class GameEngine {
         }
         normalizeLoadedState();
         pendingRelicDiscovery = null;
+        pendingLootDiscovery = null;
         pendingProgressionNotice = null;
         pendingEnemyTurnEvents.clear();
         random = new Random();
@@ -2867,6 +2922,7 @@ final class GameEngine {
         ensureWorldSize();
         if (state.race == null) state.race = "Human";
         if (state.heroClass == null) state.heroClass = "Fighter";
+        state.gender = CharacterArt.normalizeGender(state.gender, state.race, state.heroClass);
         if (state.level < 1) state.level = 1;
         if (state.baseAttack < 1) state.baseAttack = 5;
         if ("Fighter".equals(state.heroClass)) {
@@ -3299,6 +3355,13 @@ final class GameEngine {
         Relic relic = pendingRelicDiscovery;
         pendingRelicDiscovery = null;
         return relic;
+    }
+
+    /** Exposes a combat equipment drop once to the presentation layer. */
+    Item consumeLootDiscovery() {
+        Item item = pendingLootDiscovery;
+        pendingLootDiscovery = null;
+        return item;
     }
 
     String getMapText() {

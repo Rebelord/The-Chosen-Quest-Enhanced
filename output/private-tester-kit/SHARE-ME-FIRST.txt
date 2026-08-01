@@ -1,0 +1,29 @@
+THE CHOSEN QUEST ENHANCED - PRIVATE BETA INVITATION
+
+You are invited to help test The Chosen Quest Enhanced, a modernized version of
+the original turn-based fantasy RPG.
+
+Build: v0.7.0-beta.2
+Download: https://github.com/Rebelord/The-Chosen-Quest-Enhanced/releases/tag/v0.7.0-beta.2
+
+What you will need:
+- Java 8 or newer
+- About 250 MB of free disk space
+- Windows, macOS, Linux, or a Chromebook Linux environment
+- A display resolution of at least 1280 x 720
+
+The download includes simple launchers and a Tester Guide. Please extract the ZIP
+before launching the game.
+
+UPDATE TEST
+- Open Settings and choose Check Updates. This build should initially report
+  v0.7.0-beta.2 as current.
+- Keep this exact folder installed. When the next beta is announced, launch this
+  older copy again and test the in-game update notice and official download handoff.
+
+After playing:
+General feedback: https://forms.gle/GJLCPtzP7LN9PeBeA
+Bug reports: https://forms.gle/F8LtxPn5sKbwPAxX9
+
+Please keep this private beta invitation within the invited testing group. Thank
+you for helping us improve the adventure!

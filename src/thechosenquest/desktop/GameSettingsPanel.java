@@ -26,6 +26,8 @@ final class GameSettingsPanel extends JPanel {
         void onReleaseNotes();
         void onFeedback();
         void onBugReport();
+        default void onCheckForUpdates() { }
+        default void onCopyDiagnostics() { }
     }
 
     private static final long serialVersionUID = 1L;
@@ -153,6 +155,15 @@ final class GameSettingsPanel extends JPanel {
         });
         navigation.add(notes);
         navigation.add(Box.createVerticalStrut(6));
+        JButton updates = navigationButton("CHECK UPDATES",
+            "Check the official GitHub release channel");
+        updates.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                listener.onCheckForUpdates();
+            }
+        });
+        navigation.add(updates);
+        navigation.add(Box.createVerticalStrut(6));
         JButton feedback = navigationButton("FEEDBACK", ProjectLinks.FEEDBACK);
         feedback.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) { listener.onFeedback(); }
@@ -164,6 +175,13 @@ final class GameSettingsPanel extends JPanel {
             public void actionPerformed(ActionEvent event) { listener.onBugReport(); }
         });
         navigation.add(bug);
+        navigation.add(Box.createVerticalStrut(6));
+        JButton diagnostics = navigationButton("COPY DIAGNOSTICS",
+            "Copy privacy-safe version and system details for a bug report");
+        diagnostics.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) { listener.onCopyDiagnostics(); }
+        });
+        navigation.add(diagnostics);
         navigation.add(Box.createVerticalStrut(6));
         JButton credits = navigationButton("CREDITS & LICENSES",
             "View contributors, asset sources, and licenses");

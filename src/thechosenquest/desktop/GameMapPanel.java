@@ -257,16 +257,16 @@ final class GameMapPanel extends JPanel {
             drawSimpleMarker(g, x, y, size, UiTheme.GOLD, true);
             return;
         }
-        String build = state.race.toLowerCase() + "-" +
-            state.heroClass.toLowerCase();
-        BufferedImage marker = load("/assets/map/markers/" + build + ".png");
+        BufferedImage marker = load(
+            CharacterArt.mapMarker(state.race, state.heroClass, state.gender));
         if (marker != null) {
             drawCharacterMarker(g, marker, x, y, size);
             return;
         }
         // Portraits remain a safe fallback for saves that contain a future build
         // whose dedicated map miniature has not been produced yet.
-        drawPortrait(g, load("/assets/avatars/" + build + ".png"), x, y, size,
+        drawPortrait(g, load(CharacterArt.portrait(
+            state.race, state.heroClass, state.gender)), x, y, size,
             UiTheme.GOLD);
     }
 

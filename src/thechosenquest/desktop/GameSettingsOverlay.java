@@ -21,6 +21,8 @@ import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import javax.swing.JTextArea;
 import java.util.List;
@@ -30,6 +32,7 @@ final class GameSettingsOverlay extends JPanel {
     private static final long serialVersionUID = 1L;
     private final GameSettingsPanel settings;
     private final GamePreferences preferences;
+    private final UpdateService updateService = new UpdateService();
     private final JPanel modalHost = new JPanel(new BorderLayout());
     private final JLabel transitionLabel = new JLabel("", SwingConstants.CENTER);
     private Runnable modalDismiss;
@@ -56,8 +59,13 @@ final class GameSettingsOverlay extends JPanel {
             }
             public void onCredits() { showCredits(true); }
             public void onReleaseNotes() { showReleaseNotes(true, null); }
+            public void onCheckForUpdates() { checkForUpdates(true); }
             public void onFeedback() { ProjectLinks.open(ProjectLinks.FEEDBACK); }
             public void onBugReport() { ProjectLinks.open(ProjectLinks.BUG_REPORT); }
+            public void onCopyDiagnostics() {
+                soundManager.play(DiagnosticsReport.copyToClipboard()
+                    ? SoundManager.Cue.UI_CONFIRM : SoundManager.Cue.ERROR);
+            }
         });
         GridBagConstraints centered = new GridBagConstraints();
         centered.gridx = 0;
@@ -153,6 +161,121 @@ final class GameSettingsOverlay extends JPanel {
             new Runnable() {
                 public void run() { ProjectLinks.open(ProjectLinks.BUG_REPORT); }
             }), BorderLayout.CENTER);
+        modalHost.setVisible(true);
+        setVisible(true);
+        revalidate();
+        repaint();
+    }
+
+    /**
+     * Performs the startup update check without blocking Swing or interrupting
+     * offline play. Only an undismissed newer release becomes visible.
+     */
+    void checkForUpdatesQuietly() {
+        checkForUpdates(false);
+    }
+
+    /** Manual checks always report available, current, and offline outcomes. */
+    void checkForUpdates(final boolean returnToSettings) {
+        final boolean manual = returnToSettings;
+        if (manual) showCheckingForUpdates(returnToSettings);
+        new SwingWorker<UpdateService.Result, Void>() {
+            protected UpdateService.Result doInBackground() {
+                return updateService.check(AppVersion.VERSION,
+                    UpdateService.Channel.forVersion(AppVersion.VERSION));
+            }
+
+            protected void done() {
+                UpdateService.Result result;
+                try {
+                    result = get();
+                } catch (Exception exception) {
+                    result = UpdateService.Result.failed(
+                        "Unable to check for updates. You can continue playing offline.");
+                }
+                if (!manual) {
+                    if (result.status != UpdateService.Status.AVAILABLE ||
+                            result.release == null ||
+                            !preferences.shouldNotifyUpdate(result.release.version)) {
+                        return;
+                    }
+                    // A gameplay modal already in use is more important than a
+                    // quiet update notice; the next launch/check can show it.
+                    if (isVisible()) return;
+                }
+                showUpdateResult(result, returnToSettings);
+            }
+        }.execute();
+    }
+
+    private void showCheckingForUpdates(final boolean returnToSettings) {
+        if (transitionTimer != null && transitionTimer.isRunning()) transitionTimer.stop();
+        stopDialogueTimer();
+        settings.setVisible(false);
+        transitionLabel.setVisible(false);
+        modalHost.removeAll();
+        final Runnable close = new Runnable() {
+            public void run() {
+                if (returnToSettings) {
+                    modalHost.setVisible(false);
+                    modalHost.removeAll();
+                    showSettings();
+                } else {
+                    closeModal(null);
+                }
+            }
+        };
+        modalDismiss = close;
+        modalHost.add(UpdatePanel.checking(), BorderLayout.CENTER);
+        modalHost.setVisible(true);
+        setVisible(true);
+        revalidate();
+        repaint();
+    }
+
+    private void showUpdateResult(final UpdateService.Result result,
+                                  final boolean returnToSettings) {
+        settings.setVisible(false);
+        transitionLabel.setVisible(false);
+        modalHost.removeAll();
+        final Runnable close = new Runnable() {
+            public void run() {
+                if (result.release != null &&
+                        result.status == UpdateService.Status.AVAILABLE) {
+                    preferences.dismissUpdate(result.release.version);
+                }
+                if (returnToSettings) {
+                    modalHost.setVisible(false);
+                    modalHost.removeAll();
+                    showSettings();
+                } else {
+                    closeModal(null);
+                }
+            }
+        };
+        final Runnable download = result.release == null ? null : new Runnable() {
+            public void run() {
+                String url = result.release.downloadUrl.length() > 0
+                    ? result.release.downloadUrl : result.release.releaseUrl;
+                ProjectLinks.open(url);
+            }
+        };
+        /*
+         * Keep change review inside the game. Apart from preserving visual
+         * continuity, deferring the panel swap until the current button event
+         * has returned avoids a native AWT crash seen on older macOS Java 8
+         * runtimes when Desktop browsing is initialized from this callback.
+         */
+        final Runnable changes = new Runnable() {
+            public void run() {
+                SwingUtilities.invokeLater(new Runnable() {
+                    public void run() { showReleaseNotes(returnToSettings, null); }
+                });
+            }
+        };
+        modalDismiss = close;
+        modalHost.add(new UpdatePanel(result, close, download, changes),
+            BorderLayout.CENTER);
         modalHost.setVisible(true);
         setVisible(true);
         revalidate();
@@ -507,6 +630,54 @@ final class GameSettingsOverlay extends JPanel {
             "INSPECT IN INVENTORY", inspectInventory, "CONTINUE QUEST", continueQuest);
     }
 
+    /** Presents ordinary combat equipment without diluting the rarer relic moment. */
+    void showLootDiscovery(GameEngine.Item item, String equippedName, int equippedValue,
+                           Runnable inspectInventory, Runnable continueQuest) {
+        String quality = GameEngine.itemQuality(item);
+        Color qualityColor = UiTheme.qualityColor(quality);
+        int value = GameEngine.itemStat(item);
+        int delta = value - equippedValue;
+        String comparison;
+        if (equippedName == null || equippedName.length() == 0) {
+            comparison = "<font color='#6fce78'><b>EMPTY SLOT → +" + value +
+                " " + itemStatLabel(item) + "</b></font>";
+        } else if (delta > 0) {
+            comparison = "<font color='#6fce78'><b>▲ +" + delta +
+                " versus " + html(equippedName) + "</b></font>";
+        } else if (delta < 0) {
+            comparison = "<font color='#d9796f'><b>▼ " + delta +
+                " versus " + html(equippedName) + "</b></font>";
+        } else {
+            comparison = "<font color='#bdaed0'><b>◆ Equal to " +
+                html(equippedName) + "</b></font>";
+        }
+        String copy = "<html><div style='text-align:center'>" +
+            "<font color='#f1c85c' size='+1'><b>LOOT ACQUIRED</b></font><br><br>" +
+            "<font color='" + colorHex(qualityColor) + "' size='+3'><b>" +
+            html(item.name) + "</b></font><br>" +
+            "<font color='" + colorHex(qualityColor) + "'><b>[" + quality +
+            "]</b></font> &nbsp; <font color='#bdaed0'>" + item.type.toUpperCase() +
+            " · +" + value + " " + itemStatLabel(item) + "</font><br><br>" +
+            comparison + "<br><br>" +
+            "<font color='#fff9e5'>Added to your inventory.</font>" +
+            "</div></html>";
+        showGameModal(IconAssets.itemResource(item), copy, qualityColor,
+            "VIEW IN INVENTORY", inspectInventory, "CONTINUE QUEST", continueQuest);
+    }
+
+    private static String itemStatLabel(GameEngine.Item item) {
+        if (item.attack > 0 && item.defense > 0) return "POWER";
+        if ("Armour".equals(item.type)) return "DEF";
+        if ("Offhand".equals(item.type) && item.attack == 0) return "DEF";
+        return "ATK";
+    }
+
+    private static String html(String copy) {
+        if (copy == null) return "";
+        return copy.replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace("\"", "&quot;");
+    }
+
     void showAutoEquipped(GameEngine.Item item, String previousName, int previousValue,
                           Runnable inspectInventory, Runnable continueQuest) {
         String stat = "Weapon".equals(item.type) ? "ATK" : "DEF";
@@ -613,6 +784,13 @@ final class GameSettingsOverlay extends JPanel {
     boolean releaseNotesVisibleForTest() {
         return modalHost.isVisible() && modalHost.getComponentCount() == 1 &&
             modalHost.getComponent(0) instanceof ReleaseNotesPanel;
+    }
+    void showUpdateResultForTest(UpdateService.Result result) {
+        showUpdateResult(result, false);
+    }
+    boolean updateVisibleForTest() {
+        return modalHost.isVisible() && modalHost.getComponentCount() == 1 &&
+            modalHost.getComponent(0) instanceof UpdatePanel;
     }
     boolean worldMapVisibleForTest() {
         return worldMap != null && modalHost.isVisible() && isVisible();

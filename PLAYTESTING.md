@@ -63,6 +63,24 @@ to reveal unclear rules, stuck states, and whether reckless play is still too re
 - [ ] Standard enemies permit recovery from minor mistakes, while elites punish repetition.
 - [ ] An unprepared boss attempt is dangerous without appearing broken or frozen.
 
+## Run D — update-check baseline and handoff
+
+Keep the first update-aware beta installed after the normal playtest. This route
+requires two published prereleases and should be completed in order.
+
+- [ ] In the baseline build, open Settings and choose **Check Updates**.
+- [ ] Before the next beta exists, the baseline reports its own version as current.
+- [ ] Publish the next beta with a higher prerelease number and a matching official ZIP.
+- [ ] Relaunch the older baseline while online; startup remains responsive and a styled
+      update notice appears after the game opens.
+- [ ] **View Changes** opens the official release information.
+- [ ] **Remind Me Later** closes the notice without modifying the installation or save.
+- [ ] A later manual check can show the same available update again.
+- [ ] **Download** opens the exact official GitHub release asset in the system browser.
+- [ ] With networking unavailable, startup and play remain unaffected and no system
+      error dialog appears.
+- [ ] Record the installed version, discovered version, operating system, and result.
+
 ## End-of-run record
 
 Record the final level, current/max health and class resource, equipped weapon/armour/offhand,

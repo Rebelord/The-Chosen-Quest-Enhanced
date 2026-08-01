@@ -14,6 +14,16 @@ final class ProjectLinks {
 
     static boolean open(String url) {
         try {
+            /*
+             * The macOS `open` command avoids initializing the legacy AWT
+             * Desktop bridge. That bridge can crash inside libzip on old
+             * browser-plugin Java 8 installations used by some playtesters.
+             */
+            String os = System.getProperty("os.name", "").toLowerCase();
+            if (os.contains("mac")) {
+                new ProcessBuilder("/usr/bin/open", url).start();
+                return true;
+            }
             if (Desktop.isDesktopSupported()) {
                 Desktop.getDesktop().browse(new URI(url));
                 return true;

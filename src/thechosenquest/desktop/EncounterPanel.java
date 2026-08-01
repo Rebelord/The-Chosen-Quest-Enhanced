@@ -50,7 +50,9 @@ final class EncounterPanel extends JPanel {
      * same names without leaking rendering details into MainWindow.
      */
     enum PlayerAttackStyle {
-        FIGHTER, MAGE, ROGUE, HUNTER, SPELL, FIREBALL, ICE_SPIKE;
+        FIGHTER, MAGE, ROGUE, HUNTER, SPELL, FIREBALL, ICE_SPIKE,
+        SHIELD_BASH, HEAVY_STRIKE, OFFHAND_STRIKE, PINNING_SHOT,
+        WEAPON_MASTERY, EXECUTE, HUNTERS_MARK;
 
         static PlayerAttackStyle forAction(String heroClass, boolean spell) {
             return forAction(heroClass, spell ? "Magic Missile" : null);
@@ -64,6 +66,23 @@ final class EncounterPanel extends JPanel {
             if ("Rogue".equals(heroClass)) return ROGUE;
             if ("Hunter".equals(heroClass)) return HUNTER;
             return FIGHTER;
+        }
+
+        static PlayerAttackStyle forAbility(String heroClass, String ability) {
+            if ("Shield Bash".equals(ability)) return SHIELD_BASH;
+            if ("Stunning Blow".equals(ability)) return SHIELD_BASH;
+            if ("Cleave".equals(ability) || "Power Strike".equals(ability))
+                return HEAVY_STRIKE;
+            if ("Armor Breaker".equals(ability) || "Piercing Bolt".equals(ability))
+                return HEAVY_STRIKE;
+            if ("Offhand Strike".equals(ability)) return OFFHAND_STRIKE;
+            if ("Blade Flurry".equals(ability)) return OFFHAND_STRIKE;
+            if ("Pinning Shot".equals(ability)) return PINNING_SHOT;
+            if ("Volley".equals(ability)) return PINNING_SHOT;
+            if ("Execute".equals(ability)) return EXECUTE;
+            if ("Hunter's Mark".equals(ability)) return HUNTERS_MARK;
+            if ("Mage".equals(heroClass)) return forAction(heroClass, ability);
+            return WEAPON_MASTERY;
         }
     }
 
@@ -89,6 +108,8 @@ final class EncounterPanel extends JPanel {
     private final JLabel enemyIntent = new JLabel();
     private final JLabel turnBeat = new JLabel();
     private final JProgressBar health = new JProgressBar();
+    private final JPanel resourceHost = new JPanel(new BorderLayout());
+    private JProgressBar resourceMeter;
     private final JTextPane battleLog = new JTextPane();
     private final JPanel enemyInformation;
     private final JPanel commandConsole;
@@ -301,15 +322,21 @@ final class EncounterPanel extends JPanel {
         actions.setLayout(new BoxLayout(actions, BoxLayout.Y_AXIS));
         actions.setBackground(CONSOLE);
         actions.setPreferredSize(new Dimension(300, UiTheme.COMMAND_CONSOLE_HEIGHT));
-        actions.setBorder(BorderFactory.createEmptyBorder(22, 24, 22, 16));
+        actions.setBorder(BorderFactory.createEmptyBorder(16, 24, 16, 16));
         JLabel actionHeading = sectionHeading("COMBAT ACTIONS");
         actionHeading.setAlignmentX(LEFT_ALIGNMENT);
         actions.add(actionHeading);
-        actions.add(Box.createVerticalStrut(10));
+        actions.add(Box.createVerticalStrut(7));
+        resourceHost.setOpaque(false);
+        resourceHost.setAlignmentX(LEFT_ALIGNMENT);
+        resourceHost.setPreferredSize(new Dimension(260, 38));
+        resourceHost.setMaximumSize(new Dimension(260, 38));
+        actions.add(resourceHost);
+        actions.add(Box.createVerticalStrut(7));
         actionGrid.setOpaque(false);
         actionGrid.setAlignmentX(LEFT_ALIGNMENT);
-        actionGrid.setPreferredSize(new Dimension(260, 174));
-        actionGrid.setMaximumSize(new Dimension(260, 174));
+        actionGrid.setPreferredSize(new Dimension(260, 150));
+        actionGrid.setMaximumSize(new Dimension(260, 150));
         actions.add(actionGrid);
         actions.add(Box.createVerticalGlue());
         console.add(actions, BorderLayout.WEST);
@@ -425,24 +452,18 @@ final class EncounterPanel extends JPanel {
             } else if ("Hunter".equals(state.heroClass)) {
                 defenseLabel = "Take Aim";
                 defenseTip = "Prepare a stronger guaranteed precision shot";
-            } else if ("Fighter".equals(state.heroClass) &&
-                    GameEngine.usesTwoHandedWeapon(state)) {
-                defenseLabel = "Build Rage";
-                defenseTip = "Forego defense to empower your next heavy strike";
-            } else if ("Fighter".equals(state.heroClass) && state.equippedOffhand != null &&
-                    state.equippedOffhand.contains("Shield")) {
-                defenseLabel = "Raise Shield";
-                defenseTip = "Brace behind your shield and reduce incoming damage";
             }
             ((CombatActionButton) defend).setActionLabel(defenseLabel);
             ((CombatActionButton) defend).setSpeedLabel("FAST");
             defend.setToolTipText(defenseTip);
+            defend.setVisible(!"Fighter".equals(state.heroClass));
             ((CombatActionButton) potion).setActionLabel("Use Potion ×" + state.potions);
             ((CombatActionButton) potion).setSpeedLabel("NORMAL");
             potion.setEnabled(state.potions > 0 && state.health < state.maxHealth);
             configureAbilityButton(spellOne, state, 1);
             configureAbilityButton(spellTwo, state, 2);
             configureAbilityButton(spellThree, state, 3);
+            updateResourceMeter(state);
             rebuildActionGrid(state);
             ((CombatActionButton) attack).setSpeedLabel(GameEngine.attackTempoLabel(state));
             ((CombatActionButton) flee).setSpeedLabel("NORMAL");
@@ -494,7 +515,7 @@ final class EncounterPanel extends JPanel {
     private void rebuildActionGrid(GameEngine.State state) {
         actionGrid.removeAll();
         actionGrid.add(attack);
-        actionGrid.add(defend);
+        if (!"Fighter".equals(state.heroClass)) actionGrid.add(defend);
         if (GameEngine.abilityUnlocked(state, 1)) actionGrid.add(spellOne);
         if (GameEngine.abilityUnlocked(state, 2)) actionGrid.add(spellTwo);
         if (GameEngine.abilityUnlocked(state, 3) &&
@@ -507,6 +528,56 @@ final class EncounterPanel extends JPanel {
         actionGrid.setMaximumSize(size);
         actionGrid.revalidate();
         actionGrid.repaint();
+    }
+
+    /**
+     * Keeps the class combat loop in the primary action area. Status chips remain
+     * useful for duration-bearing effects, but resource readiness should never
+     * require the player to scan a secondary row.
+     */
+    private void updateResourceMeter(GameEngine.State state) {
+        String label;
+        String hint;
+        int value;
+        int maximum;
+        Color color;
+        if ("Mage".equals(state.heroClass)) {
+            label = "MANA";
+            hint = "Channel Ward restores Mana";
+            value = state.mana;
+            maximum = state.maxMana;
+            color = UiTheme.BLUE;
+        } else if ("Rogue".equals(state.heroClass)) {
+            label = "MOMENTUM";
+            hint = "Attack, evade, or enter Stealth";
+            value = state.momentum;
+            maximum = state.maxMomentum;
+            color = new Color(158, 105, 206);
+        } else if ("Hunter".equals(state.heroClass)) {
+            label = "FOCUS";
+            hint = "Aim, hit, or evade enemy attacks";
+            value = state.focus;
+            maximum = state.maxFocus;
+            color = new Color(91, 176, 99);
+        } else {
+            label = "RAGE";
+            hint = "Attack or endure damage";
+            value = state.rage;
+            maximum = state.maxRage;
+            color = new Color(211, 70, 48);
+        }
+        resourceMeter = new StatusBar(color);
+        resourceMeter.setMaximum(Math.max(1, maximum));
+        resourceMeter.setValue(Math.max(0, value));
+        resourceMeter.setString(label + "   " + value + " / " + maximum);
+        resourceMeter.setToolTipText(hint);
+        resourceMeter.getAccessibleContext().setAccessibleName(label + " resource");
+        resourceMeter.getAccessibleContext().setAccessibleDescription(
+            value + " of " + maximum + ". " + hint + ".");
+        resourceHost.removeAll();
+        resourceHost.add(resourceMeter, BorderLayout.CENTER);
+        resourceHost.revalidate();
+        resourceHost.repaint();
     }
 
     private String equippedTraitStatus(GameEngine.State state) {
@@ -682,6 +753,16 @@ final class EncounterPanel extends JPanel {
 
     String defenseActionLabelForTest() {
         return ((CombatActionButton) defend).actionLabel;
+    }
+
+    boolean defenseActionVisibleForTest() { return defend.isVisible(); }
+
+    String resourceMeterTextForTest() {
+        return resourceMeter == null ? "" : resourceMeter.getString();
+    }
+
+    String resourceMeterHelpForTest() {
+        return resourceMeter == null ? "" : resourceMeter.getToolTipText();
     }
 
     String attackSpeedLabelForTest() {
@@ -868,7 +949,7 @@ final class EncounterPanel extends JPanel {
 
     void setCombatActionsEnabled(boolean enabled) {
         attack.setEnabled(enabled);
-        defend.setEnabled(enabled);
+        if (defend.isVisible()) defend.setEnabled(enabled);
         flee.setEnabled(enabled);
         if (!enabled) {
             spellOne.setEnabled(false);
@@ -934,7 +1015,8 @@ final class EncounterPanel extends JPanel {
 
     private enum CombatEffect {
         FIGHTER, MAGE, ROGUE, HUNTER, SPELL, FIREBALL, ICE_SPIKE,
-        ENEMY, DEFEND, EVADE;
+        SHIELD_BASH, HEAVY_STRIKE, OFFHAND_STRIKE, PINNING_SHOT,
+        WEAPON_MASTERY, EXECUTE, HUNTERS_MARK, ENEMY, DEFEND, EVADE;
 
         static CombatEffect forPlayer(PlayerAttackStyle style) {
             return CombatEffect.valueOf(style.name());
@@ -943,7 +1025,10 @@ final class EncounterPanel extends JPanel {
         boolean isPlayerAttack() {
             return this == FIGHTER || this == MAGE || this == ROGUE ||
                 this == HUNTER || this == SPELL || this == FIREBALL ||
-                this == ICE_SPIKE;
+                this == ICE_SPIKE || this == SHIELD_BASH ||
+                this == HEAVY_STRIKE || this == OFFHAND_STRIKE ||
+                this == PINNING_SHOT || this == WEAPON_MASTERY ||
+                this == EXECUTE || this == HUNTERS_MARK;
         }
     }
 
@@ -1135,9 +1220,18 @@ final class EncounterPanel extends JPanel {
                 paintTierShockwave(g);
                 switch (effect) {
                     case FIGHTER: paintFighterSlash(g); break;
+                    case SHIELD_BASH:
+                    case HEAVY_STRIKE:
+                    case WEAPON_MASTERY:
+                    case EXECUTE:
+                        paintFighterSlash(g); break;
                     case MAGE: paintMagePulse(g); break;
                     case ROGUE: paintRogueSlashes(g); break;
+                    case OFFHAND_STRIKE: paintRogueSlashes(g); break;
                     case HUNTER: paintHunterArrow(g); break;
+                    case PINNING_SHOT:
+                    case HUNTERS_MARK:
+                        paintHunterArrow(g); break;
                     case SPELL:
                     case FIREBALL:
                     case ICE_SPIKE: paintSpellProjectile(g); break;
@@ -1145,6 +1239,7 @@ final class EncounterPanel extends JPanel {
                     case DEFEND: paintDefendWard(g); break;
                     default: break;
                 }
+                paintAbilitySignature(g);
                 if (critical && effect.isPlayerAttack()) paintCriticalBurst(g);
                 g.setComposite(AlphaComposite.SrcOver);
 
@@ -1370,6 +1465,51 @@ final class EncounterPanel extends JPanel {
                 g.drawOval(cx - 48, 116, 96, 116);
             }
 
+            /** Lightweight authored overlays keep martial abilities visually distinct. */
+            private void paintAbilitySignature(Graphics2D g) {
+                if (progress < .24d || progress > .84d) return;
+                float alpha = effectAlpha(.24d, .50d, .84d);
+                int cx = getWidth() / 2;
+                int cy = 162;
+                g.setComposite(AlphaComposite.SrcOver.derive(alpha));
+                if (effect == CombatEffect.SHIELD_BASH) {
+                    g.setColor(new Color(116, 196, 235));
+                    g.setStroke(new BasicStroke(7f));
+                    g.drawArc(cx - 54, cy - 62, 108, 124, 205, 130);
+                    g.drawLine(cx, cy - 48, cx, cy + 42);
+                } else if (effect == CombatEffect.HEAVY_STRIKE) {
+                    g.setColor(new Color(255, 178, 74));
+                    g.setStroke(new BasicStroke(9f, BasicStroke.CAP_ROUND,
+                        BasicStroke.JOIN_ROUND));
+                    g.drawLine(cx - 116, cy - 70, cx + 102, cy + 72);
+                } else if (effect == CombatEffect.OFFHAND_STRIKE) {
+                    g.setColor(new Color(192, 137, 236));
+                    g.setStroke(new BasicStroke(4f));
+                    g.drawLine(cx - 104, cy + 70, cx + 80, cy - 68);
+                    g.drawLine(cx - 80, cy + 78, cx + 104, cy - 60);
+                } else if (effect == CombatEffect.PINNING_SHOT ||
+                        effect == CombatEffect.HUNTERS_MARK) {
+                    int radius = effect == CombatEffect.HUNTERS_MARK ? 62 : 42;
+                    g.setColor(new Color(116, 207, 112));
+                    g.setStroke(new BasicStroke(effect == CombatEffect.HUNTERS_MARK ? 6f : 3f));
+                    g.drawOval(cx - radius, cy - radius, radius * 2, radius * 2);
+                    g.drawLine(cx - radius - 16, cy, cx + radius + 16, cy);
+                    g.drawLine(cx, cy - radius - 16, cx, cy + radius + 16);
+                } else if (effect == CombatEffect.EXECUTE) {
+                    g.setColor(new Color(239, 72, 66));
+                    g.setStroke(new BasicStroke(10f, BasicStroke.CAP_ROUND,
+                        BasicStroke.JOIN_ROUND));
+                    g.drawLine(cx - 70, cy - 72, cx + 70, cy + 72);
+                    g.drawLine(cx + 70, cy - 72, cx - 70, cy + 72);
+                } else if (effect == CombatEffect.WEAPON_MASTERY) {
+                    g.setColor(UiTheme.GOLD_LIGHT);
+                    g.setStroke(new BasicStroke(5f));
+                    g.drawOval(cx - 68, cy - 68, 136, 136);
+                    g.drawOval(cx - 48, cy - 48, 96, 96);
+                }
+                g.setComposite(AlphaComposite.SrcOver);
+            }
+
             private float effectAlpha(double start, double peak, double end) {
                 if (progress < start || progress > end) return 0f;
                 if (progress <= peak) return (float) Math.min(1d,
@@ -1385,6 +1525,11 @@ final class EncounterPanel extends JPanel {
                 if (effect == CombatEffect.ICE_SPIKE) return new Color(73, 165, 235);
                 if (effect == CombatEffect.SPELL) return new Color(151, 103, 238);
                 if (effect == CombatEffect.EVADE) return new Color(91, 177, 224);
+                if (effect == CombatEffect.EXECUTE) return new Color(225, 55, 49);
+                if (effect == CombatEffect.SHIELD_BASH) return new Color(87, 164, 214);
+                if (effect == CombatEffect.OFFHAND_STRIKE) return new Color(159, 98, 211);
+                if (effect == CombatEffect.PINNING_SHOT ||
+                        effect == CombatEffect.HUNTERS_MARK) return new Color(88, 177, 92);
                 return new Color(255, 211, 105);
             }
 

@@ -1,12 +1,17 @@
 # The Chosen Quest — Enhanced Edition
 
-Current private-testing build: **0.6.0-beta.1**. See [CHANGELOG.md](CHANGELOG.md) for
+Current private-testing build: **0.7.0-beta.2**. See [CHANGELOG.md](CHANGELOG.md) for
 tester-facing release notes.
+
+The game checks the official GitHub Releases channel in the background and displays
+an in-game notice when a newer beta is available. Manual checks are available under
+Settings → **Check Updates**. This phase opens the official browser download and
+does not replace or execute files automatically.
 
 ## Download the beta
 
-Testers can download the cross-platform package from the
-[Beta 0.6.0 release page](https://github.com/Rebelord/The-Chosen-Quest-Enhanced/releases/tag/v0.6.0-beta.1).
+Once published, testers can download the cross-platform package from the
+[Beta 0.7.0 update-test release](https://github.com/Rebelord/The-Chosen-Quest-Enhanced/releases/tag/v0.7.0-beta.2).
 The ZIP includes macOS, Windows, Linux, and Chromebook Linux launchers plus a
 plain-language setup guide. Java 8 or newer is required.
 

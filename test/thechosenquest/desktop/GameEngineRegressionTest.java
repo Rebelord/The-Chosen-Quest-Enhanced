@@ -43,6 +43,7 @@ public final class GameEngineRegressionTest {
         testDragonVictory();
         testEquipmentRules();
         testVendorInventoryRules();
+        testCombatLootDiscovery();
         testRelicProgression();
         testShopProgressionForEveryClass();
         testClassRestrictions();
@@ -100,6 +101,17 @@ public final class GameEngineRegressionTest {
                     preview.gold == expected.gold && preview.inventory.size() == 2,
                 label + " lightweight character-creation preview");
         }
+        GameEngine masculine = new GameEngine();
+        masculine.newGame("Art A", "Human", "Mage",
+            GameEngine.defaultStarterKit("Mage"), CharacterArt.MALE);
+        GameEngine feminine = new GameEngine();
+        feminine.newGame("Art B", "Human", "Mage",
+            GameEngine.defaultStarterKit("Mage"), CharacterArt.FEMALE);
+        require(masculine.getState().maxHealth == feminine.getState().maxHealth &&
+                masculine.getState().maxMana == feminine.getState().maxMana &&
+                masculine.getAttack() == feminine.getAttack() &&
+                masculine.getDefense() == feminine.getDefense(),
+            "cosmetic gender choice does not alter gameplay statistics");
     }
 
     private static void testWeaponTraits() {
@@ -180,9 +192,11 @@ public final class GameEngineRegressionTest {
         require(state.equippedOffhand == null,
             "equipping a two-handed weapon clears the offhand slot");
         moveToEnemy(engine, 0);
+        int rageBeforeDefend = state.rage;
         engine.defend();
-        require(state.rage > 0 && engine.getHistory().contains("battle cry"),
-            "two-handed fighter defense action builds the Rage resource");
+        require(state.rage == rageBeforeDefend &&
+                engine.getHistory().contains("no defensive setup action"),
+            "fighters cannot passively build Rage through a defense action");
     }
 
     private static void testProceduralWorldGeneration() {
@@ -468,10 +482,12 @@ public final class GameEngineRegressionTest {
         fighter.newGame("Guardian", "Human", "Fighter");
         moveToEnemy(fighter, 0);
         fighter.setRandomSeed(4L);
+        int fighterRage = fighter.getState().rage;
         fighter.defend();
         require(fighter.getState().combatPreparation == null &&
-                fighter.getHistory().contains("You brace for"),
-            "fighter retains the reliable defend action");
+                fighter.getState().rage == fighterRage &&
+                fighter.getHistory().contains("no defensive setup action"),
+            "fighter has no passive defensive setup action");
     }
 
     private static void testProgressiveAbilities() {
@@ -543,6 +559,7 @@ public final class GameEngineRegressionTest {
         require(!GameEngine.abilityAvailable(rogue.getState(), 1),
             "rogue advanced actions begin gated by Momentum");
         int momentumBefore = rogue.getState().momentum;
+        rogue.setRandomSeed(9L);
         rogue.attack();
         require(rogue.getState().momentum > momentumBefore,
             "rogue basic attacks build Momentum");
@@ -654,7 +671,7 @@ public final class GameEngineRegressionTest {
 
     private static void testPersistentCombatStatuses() {
         GameEngine engine = new GameEngine();
-        engine.newGame("Status", "Human", "Fighter");
+        engine.newGame("Status", "Human", "Mage");
         moveToEnemy(engine, 0);
         GameEngine.State state = engine.getState();
         GameEngine.Enemy enemy = engine.currentEnemy();
@@ -752,10 +769,11 @@ public final class GameEngineRegressionTest {
         state.row = enemyRow;
         state.col = enemyCol;
         state.health = 1;
+        wolf.health = 999;
         wolf.speed = 200;
         wolf.combatLevel = 1;
         engine.setRandomSeed(2L);
-        engine.defend();
+        engine.attack();
         require(state.health == 0, "enemy can defeat player");
         engine.move(0, -1);
         require(state.row == enemyRow && state.col == enemyCol, "defeated player cannot move");
@@ -930,6 +948,32 @@ public final class GameEngineRegressionTest {
             require(GameEngine.equipmentRestriction(state.heroClass, reward) == null &&
                     reward.relicReward, "relic reward is usable and marked as special");
         }
+    }
+
+    private static void testCombatLootDiscovery() {
+        for (int seed = 0; seed < 500; seed++) {
+            GameEngine engine = new GameEngine();
+            engine.newGame("Field Scavenger", "Human", "Fighter");
+            moveToEnemy(engine, 0);
+            GameEngine.State state = engine.getState();
+            state.enemies[state.row][state.col] =
+                new GameEngine.Enemy("Loot Test Bandit", 1, 1, 1, 0);
+            int inventoryBefore = state.inventory.size();
+            engine.setRandomSeed(seed);
+            engine.attack();
+            GameEngine.Item loot = engine.consumeLootDiscovery();
+            if (loot == null) continue;
+            require(state.inventory.size() == inventoryBefore + 1 &&
+                    state.inventory.contains(loot),
+                "combat loot notice points to the item actually added to inventory");
+            require("COMMON".equals(GameEngine.itemQuality(loot)) ||
+                    "UNCOMMON".equals(GameEngine.itemQuality(loot)),
+                "standard combat loot preserves its visible quality tier");
+            require(engine.consumeLootDiscovery() == null,
+                "combat loot presentation is consumed exactly once");
+            return;
+        }
+        throw new AssertionError("A deterministic standard combat drop was not found");
     }
 
     private static void testShopProgressionForEveryClass() {

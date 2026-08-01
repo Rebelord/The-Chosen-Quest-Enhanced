@@ -1,7 +1,7 @@
 # The Chosen Quest Enhanced — Living Game Design Document
 
-Last reconciled with the playable build: **2026-07-23**  
-Current private-testing version: **0.6.0-beta.1**  
+Last reconciled with the playable build: **2026-07-31**  
+Current private-testing version: **0.7.0-beta.2**  
 Current save/world schema: **10**
 
 ## How to use this document
@@ -379,6 +379,28 @@ Class-resource presentation:
 - Fighter: red-orange Rage
 - Rogue: violet Momentum
 - Hunter: green Focus
+
+### Shared hero visual identity
+
+The selected race and class resolve one modular `HeroVisualTheme` used throughout
+the game. Class provides the stronger enamel/resource accent; race provides a much
+quieter heraldic motif and material treatment.
+
+Hero identity may appear on the hero rail, inventory profile, player combat
+resources and actions, dialogue responses, progression/reward moments, and outcome
+summaries. Global navigation, maps, shops, NPC panels, enemy presentation, settings,
+and system surfaces remain neutral or context-themed. Quality, danger, health,
+validation, disabled, and accessibility colors always take priority.
+
+This is a shared component system—not sixteen versions of each screen. Race/class
+selection must never change layout geometry, control placement, keyboard order, or
+content density.
+
+The same system is a branding rule. When tester, community, release, portfolio, or
+marketing material features a hero, its class wash and subtle race heraldry must
+match the selected build. General product material uses the neutral painterly Art
+Deco shell or a balanced four-class ensemble. Brand templates remain layered so
+hero art, theme inputs, environment, version, copy, and crop can change independently.
 
 Unavailable abilities remain understandable through tooltip, keyboard focus,
 accessible description, resource requirement, and prerequisite status. Second Wind

@@ -16,6 +16,12 @@ far-right scenery in its 16:9 banner placement. The important title and figures 
 centered. Retain the original source for release announcements and other wide
 promotional placements.
 
+All future Discord banners, announcement cards, tester invitations, and event art
+follow `BRAND-VISUAL-SYSTEM.md`. Use the neutral four-class ensemble treatment for
+general community material. Class- or race-specific test events may use the matching
+`HeroVisualTheme`, but should remain compositions of the same charcoal, parchment,
+antique-gold, painterly Art Deco brand system.
+
 ## Roles
 
 Create these from highest to lowest:

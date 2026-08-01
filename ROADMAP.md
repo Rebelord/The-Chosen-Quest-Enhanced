@@ -54,12 +54,32 @@ Goal: keep the playable build and presentation file aligned and easy to review.
 - `DSG-001` synchronize new loadout and progression components with Figma
 - `DSG-002` restore a curated primary Figma presentation page
 - `CHAR-002` make portrait cropping reliable through masked frame viewports — completed
+- `CHAR-003` refocus character creation around one dominant selected-hero showcase
+  with symbolic race crests and no miniature portraits — completed
+- `CHAR-004` replace thin selectors and the wide summary with class cards and a
+  selected-build dossier — completed
+- `CHAR-005` add cached selection transitions and confirmation polish after the
+  static hierarchy is validated
+- `CHAR-007` establish a modular painterly Art Deco shell with transparent class
+  washes and race motifs before the full creation-screen visual reskin — completed
+- `CHAR-008` close the measured fidelity gap in responsive rhythm, component states,
+  hero framing, typography, and material depth before propagating the system
+- `DSG-003` carry that same hero theme into the hero rail, inventory, combat,
+  dialogue, progression, and outcomes without recoloring context-owned surfaces
+- `MKT-001` use the same modular system for tester kits, Discord/community art,
+  release graphics, Form headers, portfolio imagery, and future store assets
+- `CHAR-006` preserve diorama, idle-animation, rotation, and origin concepts for a
+  later presentation expansion
 - `CHAR-001` add cosmetic character-presentation variants after frame stabilization
+  — completed
 - `TECH-001` formal versioning, changelog, and in-game version placement — completed
 - `REL-001` commit, tag, and publish the stable GitHub beta checkpoint — completed
 - `REL-002` refresh the shareable test build — completed
 - `REL-003` collect opt-in beta-tester credits and maintain a consent roster
 - `TECH-002` profile and optimize UI/audio/save hot paths — completed
+- `UPDATE-001` Phase 1 update checking and official release-page download handoff
+  completed; checksum-verified downloads and the separately tested one-click
+  Update & Restart workflow remain
 
 ## Milestone 4 — A more variable world
 

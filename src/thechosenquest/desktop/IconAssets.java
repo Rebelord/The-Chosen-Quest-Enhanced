@@ -1,7 +1,10 @@
 package thechosenquest.desktop;
 
+import java.awt.BasicStroke;
+import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.Polygon;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -76,7 +79,7 @@ final class IconAssets {
      * of Item preserves compatibility with saves created before artwork existed.
      */
     static String itemResource(GameEngine.Item item) {
-        return item == null ? ARMOUR_SHIELD : itemResource(item.name, item.type);
+        return item == null ? null : itemResource(item.name, item.type);
     }
 
     static String itemResource(String name, String type) {
@@ -88,7 +91,48 @@ final class IconAssets {
     }
 
     static ImageIcon itemIcon(GameEngine.Item item, int size) {
-        return icon(itemResource(item), size);
+        return item == null ? emptySlotIcon(size) : icon(itemResource(item), size);
+    }
+
+    /**
+     * Neutral recessed socket used when an equipment slot has no item. It avoids
+     * implying a shield, weapon, or armour type while remaining visible at rail size.
+     */
+    static ImageIcon emptySlotIcon(int size) {
+        if (size <= 0) return null;
+        String key = "empty-slot@" + size;
+        if (CACHE.containsKey(key)) return CACHE.get(key);
+        BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+            RenderingHints.VALUE_ANTIALIAS_ON);
+        int pad = Math.max(2, Math.round(size * .13f));
+        int far = size - pad - 1;
+        int cut = Math.max(2, Math.round(size * .14f));
+        Polygon socket = new Polygon(
+            new int[] {pad + cut, far - cut, far, far, far - cut,
+                pad + cut, pad, pad},
+            new int[] {pad, pad, pad + cut, far - cut, far,
+                far, far - cut, pad + cut}, 8);
+        graphics.setColor(new Color(18, 15, 13, 205));
+        graphics.fillPolygon(socket);
+        graphics.setStroke(new BasicStroke(Math.max(1f, size / 22f)));
+        graphics.setColor(new Color(126, 111, 91, 185));
+        graphics.drawPolygon(socket);
+        int inset = Math.max(3, Math.round(size * .23f));
+        graphics.setColor(new Color(61, 52, 44, 220));
+        graphics.drawRect(inset, inset, size - inset * 2 - 1,
+            size - inset * 2 - 1);
+        int center = size / 2;
+        int diamond = Math.max(2, Math.round(size * .08f));
+        graphics.setColor(new Color(151, 132, 102, 210));
+        graphics.fillPolygon(new Polygon(
+            new int[] {center, center + diamond, center, center - diamond},
+            new int[] {center - diamond, center, center + diamond, center}, 4));
+        graphics.dispose();
+        ImageIcon result = new ImageIcon(image);
+        CACHE.put(key, result);
+        return result;
     }
 
     static ImageIcon icon(String resource, int size) {

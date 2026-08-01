@@ -57,6 +57,8 @@ public final class GameEngineSmokeTest {
             require(GameEngineSmokeTest.class.getResource(resource) != null,
                 "bundled icon " + resource);
         }
+        require(IconAssets.itemResource((GameEngine.Item) null) == null,
+            "empty equipment must not resolve to a shield resource");
         require(IconAssets.itemResource("Dagger", "Weapon").endsWith("weapon-dagger.png"),
             "named equipment artwork mapping");
         require(IconAssets.itemResource("Unknown Blade", "Weapon")

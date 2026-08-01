@@ -155,19 +155,20 @@ final class InventoryPanel extends JPanel {
         block.add(heading, BorderLayout.NORTH);
         JPanel cards = new JPanel(new GridLayout(1, 3, 12, 0));
         cards.setOpaque(false);
-        cards.add(equippedCard("W", weapon, true));
-        cards.add(equippedCard("A", armour, false));
-        cards.add(equippedCard("O", offhand, false, true));
+        cards.add(equippedCard("W", "WEAPON", weapon, true));
+        cards.add(equippedCard("A", "ARMOUR", armour, false));
+        cards.add(equippedCard("O", "OFFHAND", offhand, false, true));
         block.add(cards, BorderLayout.CENTER);
         return block;
     }
 
-    private JPanel equippedCard(String fallback, JLabel value, boolean weaponSlot) {
-        return equippedCard(fallback, value, weaponSlot, false);
+    private JPanel equippedCard(String fallback, String slot, JLabel value,
+                                boolean weaponSlot) {
+        return equippedCard(fallback, slot, value, weaponSlot, false);
     }
 
-    private JPanel equippedCard(String fallback, JLabel value, boolean weaponSlot,
-                                boolean offhandSlot) {
+    private JPanel equippedCard(String fallback, String slot, JLabel value,
+                                boolean weaponSlot, boolean offhandSlot) {
         JPanel card = new JPanel(new BorderLayout(12, 0));
         card.setBackground(new Color(42, 30, 24));
         card.setBorder(BorderFactory.createCompoundBorder(
@@ -183,6 +184,7 @@ final class InventoryPanel extends JPanel {
         icon.setOpaque(false);
         value.setForeground(UiTheme.TEXT);
         value.setFont(UiTheme.display(14));
+        value.putClientProperty("thechosenquest.equipment.slot", slot);
         card.add(icon, BorderLayout.WEST);
         card.add(value, BorderLayout.CENTER);
         JLabel tag = new JLabel("EQUIPPED");
@@ -326,13 +328,12 @@ final class InventoryPanel extends JPanel {
             GameEngine.proficiencyLabel(GameEngine.equippedWeaponProficiency(state));
         String trait = equippedWeapon == null ? "No weapon trait" :
             GameEngine.weaponTraitName(equippedWeapon);
-        weapon.setText("<html><b>" + safe(state.equippedWeapon, "No weapon") +
-            "</b><br><font color='#d4af37'>" + trait + " · " + proficiency +
-            "</font></html>");
-        armour.setText("<html><b>" + safe(state.equippedArmour, "No armour") +
-            "</b><br><font color='#d4af37'>Current armour</font></html>");
-        offhand.setText("<html><b>" + safe(state.equippedOffhand, "Empty offhand") +
-            "</b><br><font color='#d4af37'>Current offhand</font></html>");
+        weapon.setText(equippedSlotText("WEAPON", state.equippedWeapon,
+            state.equippedWeapon == null ? null : trait + " · " + proficiency));
+        armour.setText(equippedSlotText("ARMOUR", state.equippedArmour,
+            state.equippedArmour == null ? null : "Currently equipped"));
+        offhand.setText(equippedSlotText("OFFHAND", state.equippedOffhand,
+            state.equippedOffhand == null ? null : "Currently equipped"));
         if (offhandTag != null) offhandTag.setText(state.equippedOffhand == null ? "EMPTY" : "EQUIPPED");
         refreshAbilities(state);
         updateEquippedArtwork(weaponArtwork, state.equippedWeapon, "Weapon", "W");
@@ -379,10 +380,26 @@ final class InventoryPanel extends JPanel {
     private void updateEquippedArtwork(JLabel target, String name, String type,
                                        String fallback) {
         if (target == null) return;
-        javax.swing.ImageIcon artwork = name == null ? null :
+        javax.swing.ImageIcon artwork = name == null ? IconAssets.emptySlotIcon(42) :
             IconAssets.icon(IconAssets.itemResource(name, type), 42);
         target.setIcon(artwork);
         target.setText(artwork == null ? fallback : "");
+        target.setToolTipText(name == null ? type + " slot is empty" : name);
+    }
+
+    private String equippedSlotText(String slot, String name, String detail) {
+        StringBuilder text = new StringBuilder("<html><font color='#a6998c'>")
+            .append(slot).append("</font>");
+        if (name != null && !name.trim().isEmpty()) {
+            text.append("<br><b>").append(name).append("</b>");
+            if (detail != null && !detail.isEmpty()) {
+                text.append("<br><font color='#d4af37'>")
+                    .append(detail).append("</font>");
+            }
+        } else {
+            text.append("<br>&nbsp;");
+        }
+        return text.append("</html>").toString();
     }
 
     private void rebuildItems() {
@@ -458,8 +475,8 @@ final class InventoryPanel extends JPanel {
     }
 
     static String heroAsset(String race, String heroClass) {
-        return "/assets/avatars/full-body/" + race.toLowerCase() + "-" +
-            heroClass.toLowerCase() + ".png";
+        return CharacterArt.fullBody(race, heroClass,
+            CharacterArt.defaultGender(race, heroClass));
     }
 
     private final class ItemRenderer extends JLabel implements ListCellRenderer<GameEngine.Item> {

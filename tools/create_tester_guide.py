@@ -2,6 +2,7 @@
 """Generate the release-owned private beta tester guide PDF."""
 
 from pathlib import Path
+import re
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
@@ -29,6 +30,13 @@ OUTPUT = ROOT / "output" / "pdf" / "The-Chosen-Quest-Enhanced-Tester-Guide.pdf"
 BANNER = ROOT / "assets" / "community" / "The-Chosen-Quest-Banner.png"
 TITLE_FONT = ROOT / "assets" / "fonts" / "Cinzel.ttf"
 BODY_FONT = ROOT / "assets" / "fonts" / "CormorantGaramond.ttf"
+VERSION_SOURCE = (
+    ROOT / "src" / "thechosenquest" / "desktop" / "AppVersion.java"
+).read_text(encoding="utf-8")
+VERSION_MATCH = re.search(r'VERSION\s*=\s*"([^"]+)"', VERSION_SOURCE)
+if not VERSION_MATCH:
+    raise RuntimeError("Unable to read AppVersion.VERSION")
+VERSION = VERSION_MATCH.group(1)
 
 PARCHMENT = colors.HexColor("#F3E7CA")
 INK = colors.HexColor("#241A14")
@@ -58,7 +66,7 @@ def page_background(canvas, document):
     canvas.setFont("TCQBody", 9)
     canvas.setFillColor(MUTED)
     canvas.drawString(0.62 * inch, 0.52 * inch,
-                      "The Chosen Quest Enhanced - Private Beta")
+                      f"The Chosen Quest Enhanced - Private Beta v{VERSION}")
     canvas.drawRightString(letter[0] - 0.62 * inch, 0.52 * inch,
                            "Page %d" % document.page)
     canvas.restoreState()
@@ -130,6 +138,13 @@ def route_table(styles):
             Paragraph("Two fights in sequence, save/load, rapid choices and key presses",
                       styles["TableBody"]),
             Paragraph("Stale buttons, missing art, duplicate turns, rewards, or location actions",
+                      styles["TableBody"]),
+        ],
+        [
+            Paragraph("Updates", styles["TableBody"]),
+            Paragraph("Manual check, next-beta notice, release notes, reminder, download, offline launch",
+                      styles["TableBody"]),
+            Paragraph("Blocked startup, repeated notices, wrong version, unsafe handoff, or offline errors",
                       styles["TableBody"]),
         ],
     ]
@@ -204,7 +219,7 @@ def build_pdf():
         bottomMargin=0.72 * inch,
         title="The Chosen Quest Enhanced - Private Beta Tester Guide",
         author="The Chosen Quest Enhanced",
-        subject="v0.6.0-beta.1 private beta instructions and feedback guide",
+        subject=f"v{VERSION} private beta instructions and feedback guide",
     )
     frame = Frame(
         document.leftMargin, document.bottomMargin,
@@ -224,7 +239,7 @@ def build_pdf():
     title_box = Table([[
         [
             Paragraph("PRIVATE BETA TESTER GUIDE", styles["GuideTitle"]),
-            Paragraph("Version 0.6.0-beta.1", styles["GuideSubtitle"]),
+            Paragraph(f"Version {VERSION}", styles["GuideSubtitle"]),
         ]
     ]], colWidths=[7.1 * inch])
     title_box.setStyle(TableStyle([
@@ -264,7 +279,7 @@ def build_pdf():
                 Paragraph("<b>Movement</b><br/>WASD or arrow keys<br/>M: full map<br/>"
                           "Escape: close overlay", styles["BodyTCQ"]),
                 Paragraph("<b>Combat</b><br/>1-7: actions<br/>Mouse: inspect help<br/>"
-                          "Gear: sound and display", styles["BodyTCQ"]),
+                          "Gear: settings and updates", styles["BodyTCQ"]),
             ]
         ], colWidths=[2.35 * inch, 2.35 * inch, 2.4 * inch],
             style=TableStyle([
@@ -322,7 +337,8 @@ def build_pdf():
             "Class-resource pacing; boss difficulty; rapid character switching; two fights "
             "in sequence; map readability; large-screen image cropping; audio repetition; "
             "shop and inventory comparisons; save/load behavior; and any action that can "
-            "be repeated for unlimited healing, gold, experience, or rewards.",
+            "be repeated for unlimited healing, gold, experience, or rewards. Keep this "
+            "baseline installed so the next beta can test the in-game update handoff.",
             GOLD, styles,
         ),
     ]))
@@ -336,7 +352,76 @@ def build_pdf():
         "details as spoilers when discussing them with other testers.",
         styles["BodyTCQ"],
     ))
-    story.append(Spacer(1, 4))
+    story.append(PageBreak())
+    story.append(KeepTogether([
+        Paragraph("UPDATE FEATURE TEST", styles["Section"]),
+        callout(
+            "KEEP THIS BUILD INSTALLED",
+            f"First, open Settings and choose <b>Check Updates</b>; v{VERSION} should "
+            "report as current. When the next beta is announced, launch this older copy "
+            "while online and verify the styled notice, View Changes, Remind Me Later, "
+            "and official Download handoff. An offline launch must remain quiet and fully "
+            "playable. The game must never overwrite files or saves during this phase.",
+            GREEN, styles,
+        ),
+    ]))
+    story.append(Spacer(1, 8))
+    story.append(Paragraph("TWO-BUILD TEST SEQUENCE", styles["Section"]))
+    for text in [
+        f"<b>Baseline:</b> Install v{VERSION}, open Settings, and confirm the manual "
+        "check reports this version as current.",
+        "<b>Preserve:</b> Keep the extracted baseline folder unchanged after the "
+        "normal playtest.",
+        "<b>Discover:</b> After the next beta is published, launch the older baseline "
+        "while online and wait for the non-blocking notice.",
+        "<b>Inspect:</b> Verify View Changes, Remind Me Later, and a later manual "
+        "recheck before choosing Download.",
+        "<b>Handoff:</b> Download must open the exact official GitHub release; it must "
+        "not silently replace the game or touch save data.",
+        "<b>Offline:</b> Launch once without internet access. Startup and gameplay "
+        "must remain normal with no system error dialog.",
+    ]:
+        story.append(Paragraph(text, styles["BulletTCQ"], bulletText="-"))
+    story.append(Spacer(1, 5))
+    story.append(callout(
+        "WHAT TO RECORD",
+        "Installed version, discovered version, operating system, Java version, "
+        "whether the notice appeared after startup, which actions worked, the exact "
+        "release page opened, and any repeated or missing notification behavior.",
+        GOLD, styles,
+    ))
+    story.append(Spacer(1, 8))
+    story.append(Paragraph("RESULT CHECKLIST", styles["Section"]))
+    result_rows = [
+        [Paragraph("<b>Check</b>", styles["TableHead"]),
+         Paragraph("<b>Expected result</b>", styles["TableHead"])],
+        [Paragraph("Manual baseline check", styles["TableBody"]),
+         Paragraph(f"v{VERSION} reports as current", styles["TableBody"])],
+        [Paragraph("Older build startup", styles["TableBody"]),
+         Paragraph("Gameplay opens normally; notice does not block startup", styles["TableBody"])],
+        [Paragraph("Available version", styles["TableBody"]),
+         Paragraph("Notice identifies the exact newer beta", styles["TableBody"])],
+        [Paragraph("View / Remind", styles["TableBody"]),
+         Paragraph("Release details open; reminder closes without file changes", styles["TableBody"])],
+        [Paragraph("Download", styles["TableBody"]),
+         Paragraph("Official GitHub release and matching ZIP open", styles["TableBody"])],
+        [Paragraph("Offline launch", styles["TableBody"]),
+         Paragraph("No system error; game remains fully playable", styles["TableBody"])],
+    ]
+    result_table = Table(result_rows, colWidths=[2.2 * inch, 4.8 * inch])
+    result_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), SURFACE),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#F8EFD9")),
+        ("GRID", (0, 0), (-1, -1), 0.6, colors.HexColor("#B89C6C")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 7),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(result_table)
+    story.append(Spacer(1, 8))
     story.append(Paragraph(
         "<b>Thank you.</b> Thoughtful criticism, confused moments, failed runs, and small "
         "observations all help shape the next version.",

@@ -144,8 +144,8 @@ final class OutcomePanel extends JPanel {
 
     private void setHero(GameEngine.State state) {
         artwork.setCover(true);
-        artwork.setResourceAsync("/assets/avatars/" + state.race.toLowerCase() + "-" +
-            state.heroClass.toLowerCase() + ".png");
+        artwork.setResourceAsync(
+            CharacterArt.portrait(state.race, state.heroClass, state.gender));
         heroName.setText(state.playerName);
         identity.setText("LEVEL " + state.level + " " + state.race.toUpperCase() + " " +
             state.heroClass.toUpperCase() + " · DRAGONSLAYER");
