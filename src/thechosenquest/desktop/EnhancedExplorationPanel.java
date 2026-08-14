@@ -55,6 +55,8 @@ final class EnhancedExplorationPanel extends JPanel {
     private final JLabel heroIdentity = new JLabel();
     private final JLabel heroStatus = new JLabel();
     private final JLabel heroStats = new JLabel();
+    private final JLabel heroGold = new JLabel();
+    private final JLabel heroPotions = new JLabel();
     private final JLabel weapon = new JLabel();
     private final JLabel armour = new JLabel();
     private final JLabel offhand = new JLabel();
@@ -269,43 +271,69 @@ final class EnhancedExplorationPanel extends JPanel {
     }
 
     private JPanel buildHeroRail() {
+        final int contentWidth = UiTheme.HERO_RAIL_WIDTH - 33;
         JPanel rail = new JPanel();
         rail.setLayout(new BoxLayout(rail, BoxLayout.Y_AXIS));
         rail.setBackground(UiTheme.SURFACE_DEEP);
         rail.setPreferredSize(new Dimension(UiTheme.HERO_RAIL_WIDTH, 0));
         rail.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(166, 124, 0)),
-            BorderFactory.createEmptyBorder(20, 20, 20, 20)));
+            BorderFactory.createEmptyBorder(16, 16, 16, 16)));
 
-        heroPortrait.setPreferredSize(new Dimension(240, 240));
-        heroPortrait.setMinimumSize(new Dimension(240, 210));
-        heroPortrait.setMaximumSize(new Dimension(Integer.MAX_VALUE, 240));
-        heroPortrait.setAlignmentX(LEFT_ALIGNMENT);
+        // The authored frame is a 3:4 portrait, so the gameplay rail must retain
+        // that same geometry instead of compressing both frame and hero into a
+        // square. Cover rendering preserves the source image's aspect ratio.
+        heroPortrait.setPreferredSize(new Dimension(240, 320));
+        heroPortrait.setMinimumSize(new Dimension(240, 320));
+        heroPortrait.setMaximumSize(new Dimension(240, 320));
+        heroPortrait.setCropAnchorY(.32d);
+        heroPortrait.setAlignmentX(CENTER_ALIGNMENT);
         heroPortrait.setBorder(new FantasyPortraitBorder("Human", "Fighter"));
-        rail.add(heroPortrait);
-        rail.add(Box.createVerticalStrut(14));
+        JPanel portraitHolder = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        portraitHolder.setOpaque(false);
+        portraitHolder.setAlignmentX(LEFT_ALIGNMENT);
+        portraitHolder.setPreferredSize(new Dimension(contentWidth, 320));
+        portraitHolder.setMinimumSize(new Dimension(contentWidth, 320));
+        portraitHolder.setMaximumSize(new Dimension(Integer.MAX_VALUE, 320));
+        portraitHolder.add(heroPortrait);
+        rail.add(portraitHolder);
+        rail.add(Box.createVerticalStrut(8));
 
         heroName.setForeground(UiTheme.GOLD);
         heroName.setFont(UiTheme.display(24));
         heroName.setAlignmentX(LEFT_ALIGNMENT);
+        heroName.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
         rail.add(heroName);
         heroIdentity.setForeground(UiTheme.TEXT);
         heroIdentity.setFont(UiTheme.body(Font.BOLD, 12));
         heroIdentity.setAlignmentX(LEFT_ALIGNMENT);
+        heroIdentity.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
         rail.add(heroIdentity);
         heroStatus.setText("Exploring");
         heroStatus.setForeground(UiTheme.GREEN);
         heroStatus.setFont(UiTheme.display(12));
         heroStatus.setAlignmentX(LEFT_ALIGNMENT);
+        heroStatus.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
         rail.add(heroStatus);
-        rail.add(Box.createVerticalStrut(18));
+        rail.add(Box.createVerticalStrut(8));
 
         rail.add(health);
-        rail.add(Box.createVerticalStrut(8));
+        rail.add(Box.createVerticalStrut(5));
         rail.add(mana);
-        rail.add(Box.createVerticalStrut(8));
+        rail.add(Box.createVerticalStrut(5));
         rail.add(experience);
-        rail.add(Box.createVerticalStrut(18));
+        rail.add(Box.createVerticalStrut(8));
+
+        JPanel resources = new JPanel(new GridLayout(1, 2, 6, 0));
+        resources.setOpaque(false);
+        resources.setAlignmentX(LEFT_ALIGNMENT);
+        resources.setPreferredSize(new Dimension(contentWidth, 42));
+        resources.setMinimumSize(new Dimension(contentWidth, 42));
+        resources.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        resources.add(resourceChip(heroGold, IconAssets.CURRENCY_PURSE, "Gold"));
+        resources.add(resourceChip(heroPotions, IconAssets.HEALTH_POTION, "Potions"));
+        rail.add(resources);
+        rail.add(Box.createVerticalStrut(8));
 
         rail.add(sectionLabel("EQUIPMENT"));
         weapon.setAlignmentX(LEFT_ALIGNMENT);
@@ -313,13 +341,13 @@ final class EnhancedExplorationPanel extends JPanel {
         offhand.setAlignmentX(LEFT_ALIGNMENT);
         weaponEquipment = equipmentRow(weapon, "WEAPON", IconAssets.WEAPON_SWORD);
         rail.add(weaponEquipment);
-        rail.add(Box.createVerticalStrut(8));
+        rail.add(Box.createVerticalStrut(5));
         armourEquipment = equipmentRow(armour, "ARMOUR", IconAssets.ARMOUR_SHIELD);
         rail.add(armourEquipment);
-        rail.add(Box.createVerticalStrut(8));
+        rail.add(Box.createVerticalStrut(5));
         offhandEquipment = equipmentRow(offhand, "OFFHAND", null);
         rail.add(offhandEquipment);
-        rail.add(Box.createVerticalStrut(18));
+        rail.add(Box.createVerticalStrut(8));
 
         rail.add(sectionLabel("STATISTICS"));
         heroStats.setForeground(UiTheme.TEXT);
@@ -352,6 +380,22 @@ final class EnhancedExplorationPanel extends JPanel {
 
     private EquipmentRow equipmentRow(JLabel value, String slot, String iconResource) {
         return new EquipmentRow(value, slot, iconResource);
+    }
+
+    private JPanel resourceChip(JLabel value, String iconResource, String accessibleName) {
+        JPanel chip = new JPanel(new BorderLayout(6, 0));
+        chip.setBackground(new Color(39, 29, 24));
+        chip.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(78, 62, 45)),
+            BorderFactory.createEmptyBorder(6, 7, 6, 7)));
+        JLabel icon = new JLabel(IconAssets.icon(iconResource, 24));
+        icon.setPreferredSize(new Dimension(26, 26));
+        chip.add(icon, BorderLayout.WEST);
+        value.setForeground(UiTheme.GOLD_LIGHT);
+        value.setFont(UiTheme.body(Font.BOLD, 12));
+        value.getAccessibleContext().setAccessibleName(accessibleName);
+        chip.add(value, BorderLayout.CENTER);
+        return chip;
     }
 
     private JPanel buildScene() {
@@ -795,9 +839,12 @@ final class EnhancedExplorationPanel extends JPanel {
             state.equippedArmour);
         refreshEquipment(offhandEquipment, equippedItem(state, state.equippedOffhand),
             state.equippedOffhand);
-        heroStats.setText("<html>ATK " + engine.getAttack() + " &nbsp;&nbsp; DEF " +
-            engine.getDefense() + "<br>GOLD " + state.gold + " &nbsp;&nbsp; POTIONS " +
-            state.potions + "</html>");
+        heroGold.setText(String.valueOf(state.gold));
+        heroGold.setToolTipText(state.gold + " gold");
+        heroPotions.setText(String.valueOf(state.potions));
+        heroPotions.setToolTipText(state.potions + " health potions");
+        heroStats.setText("ATK " + engine.getAttack() + "   ·   DEF " +
+            engine.getDefense());
 
         headerLocation.setText(engine.currentTile().label + " — " + coordinate);
         String sceneResource =
@@ -921,6 +968,8 @@ final class EnhancedExplorationPanel extends JPanel {
         primaryAction.doClick();
     }
 
+    Dimension heroPortraitSizeForTest() { return heroPortrait.getPreferredSize(); }
+
     GameMapPanel mapForTest() { return map; }
 
     private String titleFor(GameEngine.TileType tile) {
@@ -1026,19 +1075,20 @@ final class EnhancedExplorationPanel extends JPanel {
         private final String fallbackIconResource;
 
         EquipmentRow(JLabel value, String slot, String iconResource) {
-            super(new BorderLayout(8, 0));
+            super(new BorderLayout(10, 0));
             this.value = value;
             this.slot = slot;
             this.fallbackIconResource = iconResource;
             setBackground(new Color(39, 29, 24));
             setAlignmentX(LEFT_ALIGNMENT);
-            setPreferredSize(new Dimension(220, 46));
-            setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
+            setPreferredSize(new Dimension(UiTheme.HERO_RAIL_WIDTH - 33, 52));
+            setMinimumSize(new Dimension(UiTheme.HERO_RAIL_WIDTH - 33, 52));
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, 52));
             icon = new JLabel("", SwingConstants.CENTER);
-            icon.setIcon(iconResource == null ? IconAssets.emptySlotIcon(19) :
-                IconAssets.icon(iconResource, 19));
-            icon.setPreferredSize(new Dimension(22, 20));
-            value.setFont(UiTheme.body(Font.BOLD, 12));
+            icon.setIcon(iconResource == null ? IconAssets.emptySlotIcon(30) :
+                IconAssets.icon(iconResource, 30));
+            icon.setPreferredSize(new Dimension(34, 32));
+            value.setFont(UiTheme.body(Font.BOLD, 11));
             add(icon, BorderLayout.WEST);
             add(value, BorderLayout.CENTER);
             showItem(null, null);
@@ -1050,17 +1100,16 @@ final class EnhancedExplorationPanel extends JPanel {
             String quality = item == null ? "EMPTY" : GameEngine.itemQuality(item);
             Color qualityColor = item == null ? UiTheme.MUTED : UiTheme.qualityColor(quality);
             String name = item == null ? fallbackName : item.name;
-            icon.setIcon(empty ? IconAssets.emptySlotIcon(19) :
-                (item == null ? IconAssets.icon(fallbackIconResource, 19) :
-                    IconAssets.itemIcon(item, 19)));
+            icon.setIcon(empty ? IconAssets.emptySlotIcon(30) :
+                (item == null ? IconAssets.icon(fallbackIconResource, 30) :
+                    IconAssets.itemIcon(item, 30)));
             value.setForeground(qualityColor);
-            value.setText("<html><font size='2'>" + slot +
-                (empty ? "" : " · " + quality) + "</font><br><b>" +
-                (empty ? "&nbsp;" : name) + "</b></html>");
+            value.setText("<html><font color='#a6998c' size='2'>" + slot +
+                "</font><br><b>" + (empty ? "EMPTY" : name) + "</b></html>");
             setToolTipText(empty ? slot + " slot is empty" : name + " [" + quality + "]");
             setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(1, 3, 1, 1, qualityColor),
-                BorderFactory.createEmptyBorder(6, 8, 6, 8)));
+                BorderFactory.createEmptyBorder(6, 9, 6, 9)));
         }
     }
 }

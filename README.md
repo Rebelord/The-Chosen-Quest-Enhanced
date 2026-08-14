@@ -86,6 +86,10 @@ portable [CHATGPT-CONTEXT.md](CHATGPT-CONTEXT.md) when comparing external design
 ideas against the current build. Project direction and prioritized work are tracked
 in [ROADMAP.md](ROADMAP.md) and [BACKLOG.md](BACKLOG.md). Backlog entries include stable IDs, value, expected
 workload, status, collaborator opportunities, and acceptance criteria.
+When moving development to another computer or beginning a fresh assistant session,
+start with [PROJECT-MIGRATION-HANDOFF.md](PROJECT-MIGRATION-HANDOFF.md); it records
+the repository checkpoint, external project links, uncommitted-work warning, setup
+steps, and the latest approved-but-unimplemented design decisions.
 Repeatable beta sessions use [PLAYTESTING.md](PLAYTESTING.md), with reproducible
 observations recorded in [PLAYTEST-FINDINGS.md](PLAYTEST-FINDINGS.md).
 

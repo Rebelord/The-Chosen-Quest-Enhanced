@@ -33,6 +33,9 @@ different across standard, elite, and boss encounters.
 - `BAL-001` deterministic balance harness for all builds and loadouts — completed
 - `BAL-002` level-three boss and relic tuning — completed
 - `BAL-003` human validation of Rage, Momentum, Focus, and gated abilities — in progress
+- `BAL-004` align starting Combat Paths, equipment requirements, and ability names
+- `BAL-005` percentage-scale abilities and rebuild dragon preparation around three
+  identified elite relics — after `BAL-004`
 - `UX-001` ability details and outcome previews — completed
 - `UX-002` multi-action combat timing and status clarity — completed
 - `QA-001` repeatable playtest protocol and findings log — completed
@@ -64,6 +67,8 @@ Goal: keep the playable build and presentation file aligned and easy to review.
   washes and race motifs before the full creation-screen visual reskin — completed
 - `CHAR-008` close the measured fidelity gap in responsive rhythm, component states,
   hero framing, typography, and material depth before propagating the system
+- `CHAR-009` present two prominent Combat Path cards during creation and preserve
+  Origin Path versus equipment-derived Current Style throughout play — after `BAL-004`
 - `DSG-003` carry that same hero theme into the hero rail, inventory, combat,
   dialogue, progression, and outcomes without recoloring context-owned surfaces
 - `MKT-001` use the same modular system for tester kits, Discord/community art,

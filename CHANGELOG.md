@@ -6,6 +6,29 @@ on playtest feedback.
 
 ## Unreleased
 
+- Made development builds replace the runnable JAR atomically instead of rewriting
+  it in place, preventing Java 8 `libzip` SIGBUS crashes when a running game loads
+  later combat music, artwork, or classes while a new build is produced.
+- Rebuilt the persistent hero rail around one shared alignment grid, widened its
+  usable content area, and enlarged the framed 3:4 character portrait without
+  changing the 1440px shell width; meters, resources, equipment, statistics, and
+  Inventory now share consistent left and right edges.
+- Replaced automatic relic-reward equipping with an explicit Equip Now choice after
+  identification; relic gear remains in Inventory when declined and plays a distinct
+  attunement flourish when equipped from either the reward card or Inventory.
+- Reorganized Inventory around the item list itself: removed duplicated character
+  statistics and equipped summaries already visible in the persistent hero rail,
+  replaced the native sort menu with a themed cycling control, tightened item rows,
+  and retained gold beside dedicated purse artwork.
+- Rebalanced the persistent hero rail with a correctly proportioned 3:4 portrait,
+  larger quality-colored equipment artwork, clearer empty slots, and compact icon
+  counters for gold and health potions.
+- Added upgrade-aware acquisition cards for purchased and looted equipment with
+  direct Equip Now and Inventory actions.
+- Made vendor equipment finite per shop and per run: a successful equipment purchase
+  removes that listing immediately and repeat purchase events cannot charge the player;
+  consumable potions remain restockable.
+
 ## 0.7.0-beta.2 — 2026-07-31
 
 Updater validation and presentation-fix prerelease for private testers.

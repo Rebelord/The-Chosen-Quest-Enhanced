@@ -633,10 +633,40 @@ final class GameSettingsOverlay extends JPanel {
     /** Presents ordinary combat equipment without diluting the rarer relic moment. */
     void showLootDiscovery(GameEngine.Item item, String equippedName, int equippedValue,
                            Runnable inspectInventory, Runnable continueQuest) {
+        showAcquiredItem("LOOT ACQUIRED", item, equippedName, equippedValue,
+            null, inspectInventory, continueQuest);
+    }
+
+    void showLootDiscovery(GameEngine.Item item, String equippedName, int equippedValue,
+                           Runnable quickEquip, Runnable inspectInventory,
+                           Runnable continueQuest) {
+        showAcquiredItem("LOOT ACQUIRED", item, equippedName, equippedValue,
+            quickEquip, inspectInventory, continueQuest);
+    }
+
+    void showPurchaseDiscovery(GameEngine.Item item, String equippedName, int equippedValue,
+                               Runnable quickEquip, Runnable inspectInventory,
+                               Runnable continueShopping) {
+        showAcquiredItem("PURCHASE COMPLETE", item, equippedName, equippedValue,
+            quickEquip, inspectInventory, continueShopping);
+    }
+
+    void showRelicAttuned(GameEngine.Item item, String equippedName, int equippedValue,
+                          Runnable quickEquip, Runnable inspectInventory,
+                          Runnable continueQuest) {
+        showAcquiredItem("RELIC ATTUNED", item, equippedName, equippedValue,
+            quickEquip, inspectInventory, continueQuest);
+    }
+
+    private void showAcquiredItem(String heading, GameEngine.Item item,
+                                  String equippedName, int equippedValue,
+                                  Runnable quickEquip, Runnable inspectInventory,
+                                  Runnable continueAction) {
         String quality = GameEngine.itemQuality(item);
         Color qualityColor = UiTheme.qualityColor(quality);
         int value = GameEngine.itemStat(item);
         int delta = value - equippedValue;
+        boolean upgrade = equippedName == null || equippedName.length() == 0 || delta > 0;
         String comparison;
         if (equippedName == null || equippedName.length() == 0) {
             comparison = "<font color='#6fce78'><b>EMPTY SLOT → +" + value +
@@ -652,7 +682,7 @@ final class GameSettingsOverlay extends JPanel {
                 html(equippedName) + "</b></font>";
         }
         String copy = "<html><div style='text-align:center'>" +
-            "<font color='#f1c85c' size='+1'><b>LOOT ACQUIRED</b></font><br><br>" +
+            "<font color='#f1c85c' size='+1'><b>" + heading + "</b></font><br><br>" +
             "<font color='" + colorHex(qualityColor) + "' size='+3'><b>" +
             html(item.name) + "</b></font><br>" +
             "<font color='" + colorHex(qualityColor) + "'><b>[" + quality +
@@ -661,8 +691,17 @@ final class GameSettingsOverlay extends JPanel {
             comparison + "<br><br>" +
             "<font color='#fff9e5'>Added to your inventory.</font>" +
             "</div></html>";
-        showGameModal(IconAssets.itemResource(item), copy, qualityColor,
-            "VIEW IN INVENTORY", inspectInventory, "CONTINUE QUEST", continueQuest);
+        if (upgrade && quickEquip != null) {
+            showGameModal(IconAssets.itemResource(item), copy, qualityColor,
+                "EQUIP NOW", quickEquip, "VIEW INVENTORY", inspectInventory,
+                heading.startsWith("PURCHASE") ? "KEEP SHOPPING" : "CONTINUE QUEST",
+                continueAction);
+        } else {
+            showGameModal(IconAssets.itemResource(item), copy, qualityColor,
+                "VIEW IN INVENTORY", inspectInventory,
+                heading.startsWith("PURCHASE") ? "KEEP SHOPPING" : "CONTINUE QUEST",
+                continueAction);
+        }
     }
 
     private static String itemStatLabel(GameEngine.Item item) {
@@ -676,26 +715,6 @@ final class GameSettingsOverlay extends JPanel {
         if (copy == null) return "";
         return copy.replace("&", "&amp;").replace("<", "&lt;")
             .replace(">", "&gt;").replace("\"", "&quot;");
-    }
-
-    void showAutoEquipped(GameEngine.Item item, String previousName, int previousValue,
-                          Runnable inspectInventory, Runnable continueQuest) {
-        String stat = "Weapon".equals(item.type) ? "ATK" : "DEF";
-        String previous = previousName == null ? "None" : previousName;
-        String copy = "<html><div style='text-align:center'>" +
-            "<font color='#f1c85c' size='+1'><b>RELIC ATTUNED</b></font><br><br>" +
-            "<font color='#c795ff' size='+3'><b>" + item.name + "</b></font><br>" +
-            "<font color='#c795ff'><b>[RELIC]</b></font> &nbsp; " +
-            "<font color='#6fce78'><b>AUTO-EQUIPPED</b></font><br><br>" +
-            "<font color='#bdaed0'>" + previous + " (" + previousValue + " " + stat + ")</font>" +
-            " <font color='#f1c85c'>→</font> " +
-            "<font color='#fff9e5'><b>" + item.name + " (" + GameEngine.itemStat(item) +
-            " " + stat + ")</b></font><br>" +
-            "<font color='#6fce78'><b>▲ +" + (GameEngine.itemStat(item) - previousValue) +
-            " upgrade</b></font>" +
-            "</div></html>";
-        showGameModal(IconAssets.itemResource(item), copy, UiTheme.QUALITY_RELIC,
-            "VIEW IN INVENTORY", inspectInventory, "CONTINUE QUEST", continueQuest);
     }
 
     void showProgression(GameEngine.ProgressionNotice notice, Runnable inspectCharacter,
@@ -716,6 +735,14 @@ final class GameSettingsOverlay extends JPanel {
     private void showGameModal(String artworkResource, String copy, Color accent,
                                String primaryLabel, final Runnable primary,
                                String secondaryLabel, final Runnable secondary) {
+        showGameModal(artworkResource, copy, accent, primaryLabel, primary,
+            secondaryLabel, secondary, null, null);
+    }
+
+    private void showGameModal(String artworkResource, String copy, Color accent,
+                               String primaryLabel, final Runnable primary,
+                               String secondaryLabel, final Runnable secondary,
+                               String tertiaryLabel, final Runnable tertiary) {
         if (transitionTimer != null && transitionTimer.isRunning()) transitionTimer.stop();
         settings.setVisible(false);
         transitionLabel.setVisible(false);
@@ -739,7 +766,8 @@ final class GameSettingsOverlay extends JPanel {
         message.setFont(UiTheme.body(Font.PLAIN, 13));
         card.add(message, BorderLayout.CENTER);
 
-        JPanel actions = new JPanel(new java.awt.GridLayout(1, 2, 12, 0));
+        JPanel actions = new JPanel(new java.awt.GridLayout(1,
+            tertiaryLabel == null ? 2 : 3, 12, 0));
         actions.setOpaque(false);
         JButton inspect = UiTheme.button(primaryLabel, true);
         inspect.addActionListener(new AbstractAction() {
@@ -753,9 +781,17 @@ final class GameSettingsOverlay extends JPanel {
         });
         actions.add(inspect);
         actions.add(continueButton);
+        if (tertiaryLabel != null) {
+            JButton tertiaryButton = UiTheme.button(tertiaryLabel, false);
+            tertiaryButton.addActionListener(new AbstractAction() {
+                private static final long serialVersionUID = 1L;
+                public void actionPerformed(ActionEvent event) { closeModal(tertiary); }
+            });
+            actions.add(tertiaryButton);
+        }
         card.add(actions, BorderLayout.SOUTH);
 
-        modalDismiss = secondary;
+        modalDismiss = tertiaryLabel == null ? secondary : tertiary;
         modalHost.add(card, BorderLayout.CENTER);
         modalHost.setVisible(true);
         setVisible(true);

@@ -27,6 +27,7 @@ final class IconAssets {
     static final String MAGIC_ZAP = "/assets/icons/magic-zap.png";
 
     static final String HEALTH_POTION = "/assets/icons/items/consumable-health-potion.png";
+    static final String CURRENCY_PURSE = "/assets/icons/items/currency-coin-purse.png";
     static final String REGIONAL_MAP = "/assets/icons/items/quest-regional-map.png";
     static final String UNIDENTIFIED_RELIC = "/assets/icons/items/quest-unidentified-relic.png";
     static final String IDENTIFIED_RELIC = "/assets/icons/items/quest-identified-relic.png";

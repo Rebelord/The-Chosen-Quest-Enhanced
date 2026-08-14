@@ -647,6 +647,10 @@ public final class EnhancedUiSmokeTest {
         moveToTile(engine.getState(), GameEngine.TileType.TAVERN, false, false);
         engine.getState().health = 7;
         exploration.refresh();
+        java.awt.Dimension gameplayPortrait = exploration.heroPortraitSizeForTest();
+        if (gameplayPortrait.width * 4 != gameplayPortrait.height * 3) {
+            throw new AssertionError("Gameplay hero framing must retain a 3:4 portrait ratio");
+        }
         if (!"ENTER TAVERN".equals(exploration.primaryActionLabelForTest())) {
             throw new AssertionError("Tavern primary action must be labeled ENTER TAVERN");
         }
@@ -670,13 +674,6 @@ public final class EnhancedUiSmokeTest {
         if (!inventory.relicSummaryForTest().contains("Sealed Soulglass") ||
                 !inventory.relicSummaryForTest().contains("Alchemist")) {
             throw new AssertionError("Inventory must preserve relic identity and vendor hint");
-        }
-        String progression = inventory.abilitySummaryForTest();
-        if (!progression.contains("Core Training:LEVEL 1 · READY") ||
-                !progression.contains("UNLOCKS LEVEL 2") ||
-                !progression.contains("UNLOCKS LEVEL 3")) {
-            throw new AssertionError(
-                "Character sheet must communicate ready and upcoming abilities");
         }
         File inventoryOutput = render(inventory, 760, 720, output.getParentFile(),
             "inventory-preview.png");
@@ -924,12 +921,27 @@ public final class EnhancedUiSmokeTest {
         creditsOverlay.setSize(900, 700);
         creditsOverlay.showLootDiscovery(previewLoot, "Iron Mace", 6,
             new Runnable() { public void run() { } },
+            new Runnable() { public void run() { } },
             new Runnable() { public void run() { } });
-        if (findButtonByText(creditsOverlay, "VIEW IN INVENTORY") == null) {
-            throw new AssertionError("Combat loot must provide direct Inventory access");
+        if (findButtonByText(creditsOverlay, "EQUIP NOW") == null ||
+                findButtonByText(creditsOverlay, "VIEW INVENTORY") == null) {
+            throw new AssertionError(
+                "Upgrade loot must offer quick equip and direct Inventory access");
         }
         File lootOutput = render(creditsOverlay, 900, 700, output.getParentFile(),
             "loot-discovery-preview.png", 18000L);
+        creditsOverlay.hideSettings();
+        GameEngine.Item previewRelicReward = new GameEngine.Item(
+            "Moonsteel Blade", "Weapon", 11, 0, 0, "Fighter", true);
+        creditsOverlay.showRelicAttuned(previewRelicReward, "Iron Mace", 6,
+            new Runnable() { public void run() { } },
+            new Runnable() { public void run() { } },
+            new Runnable() { public void run() { } });
+        if (findButtonByText(creditsOverlay, "EQUIP NOW") == null ||
+                findButtonByText(creditsOverlay, "VIEW INVENTORY") == null) {
+            throw new AssertionError(
+                "Attuned relic rewards must wait for an explicit equip choice");
+        }
         creditsOverlay.hideSettings();
         creditsOverlay.showReleaseNotes(false, null);
         if (!creditsOverlay.releaseNotesVisibleForTest()) {

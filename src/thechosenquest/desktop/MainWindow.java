@@ -121,7 +121,8 @@ final class MainWindow {
             soundManager.play(equalsText(weapon, state.equippedWeapon) &&
                 equalsText(armour, state.equippedArmour) &&
                 equalsText(offhand, state.equippedOffhand) ? SoundManager.Cue.ERROR :
-                SoundManager.Cue.EQUIP);
+                (item.relicReward ? SoundManager.Cue.RELIC_EQUIPPED :
+                    SoundManager.Cue.EQUIP));
             refresh();
         }
 
@@ -131,7 +132,26 @@ final class MainWindow {
         public void onBuy(Object selection) {
             int gold = engine.getState().gold;
             if (selection instanceof GameEngine.Item) {
-                engine.buyItem((GameEngine.Item) selection);
+                final GameEngine.Item item = (GameEngine.Item) selection;
+                GameEngine.State before = engine.getState();
+                final String equippedName = "Weapon".equals(item.type)
+                    ? before.equippedWeapon : ("Offhand".equals(item.type)
+                        ? before.equippedOffhand : before.equippedArmour);
+                final int equippedValue = equippedValue(before, item.type);
+                engine.buyItem(item);
+                boolean purchased = engine.getState().gold < gold;
+                soundManager.play(purchased ? SoundManager.Cue.PURCHASE :
+                    SoundManager.Cue.ERROR);
+                refresh();
+                if (purchased) {
+                    settingsOverlay.showPurchaseDiscovery(item, equippedName,
+                        equippedValue, quickEquipAction(item), new Runnable() {
+                            public void run() { showInventory(); }
+                        }, new Runnable() {
+                            public void run() { refresh(); }
+                        });
+                }
+                return;
             } else if (selection instanceof GameEngine.Relic) {
                 GameEngine.Relic relic = (GameEngine.Relic) selection;
                 GameEngine.State before = engine.getState();
@@ -146,14 +166,11 @@ final class MainWindow {
                 refresh();
                 if (succeeded) {
                     final GameEngine.Item reward = inventoryItem(relic.rewardName);
-                    GameEngine.State after = engine.getState();
-                    boolean autoEquipped = reward != null &&
-                        (("Weapon".equals(reward.type) && !equalsText(previousWeapon, after.equippedWeapon)) ||
-                         ("Armour".equals(reward.type) && !equalsText(previousArmour, after.equippedArmour)));
-                    if (autoEquipped) {
-                        settingsOverlay.showAutoEquipped(reward,
+                    if (reward != null) {
+                        settingsOverlay.showRelicAttuned(reward,
                             "Weapon".equals(reward.type) ? previousWeapon : previousArmour,
                             "Weapon".equals(reward.type) ? previousWeaponValue : previousArmourValue,
+                            quickEquipAction(reward, SoundManager.Cue.RELIC_EQUIPPED),
                             new Runnable() {
                                 public void run() { showInventory(); }
                             }, new Runnable() {
@@ -1264,11 +1281,34 @@ final class MainWindow {
         String equippedName = "Weapon".equals(item.type) ? state.equippedWeapon :
             ("Offhand".equals(item.type) ? state.equippedOffhand : state.equippedArmour);
         settingsOverlay.showLootDiscovery(item, equippedName,
-            equippedValue(state, item.type), new Runnable() {
+            equippedValue(state, item.type), quickEquipAction(item), new Runnable() {
                 public void run() { showInventory(); }
             }, new Runnable() {
                 public void run() { refresh(); }
             });
+    }
+
+    private Runnable quickEquipAction(final GameEngine.Item item) {
+        return quickEquipAction(item, SoundManager.Cue.EQUIP);
+    }
+
+    private Runnable quickEquipAction(final GameEngine.Item item,
+                                      final SoundManager.Cue successCue) {
+        return new Runnable() {
+            public void run() {
+                GameEngine.State before = engine.getState();
+                String weapon = before.equippedWeapon;
+                String armour = before.equippedArmour;
+                String offhand = before.equippedOffhand;
+                engine.equipItem(item);
+                GameEngine.State after = engine.getState();
+                boolean changed = !equalsText(weapon, after.equippedWeapon) ||
+                    !equalsText(armour, after.equippedArmour) ||
+                    !equalsText(offhand, after.equippedOffhand);
+                soundManager.play(changed ? successCue : SoundManager.Cue.ERROR);
+                refresh();
+            }
+        };
     }
 
     private void showProgression(GameEngine.ProgressionNotice notice,

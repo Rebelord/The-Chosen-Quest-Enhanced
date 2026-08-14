@@ -168,11 +168,69 @@ Use this response format:
 
 ## Current development priorities
 
-1. Human validation of the new class-resource combat balance
-2. Figma synchronization for class resources and ability prerequisites
-3. Cohesive old-school fantasy audio and distinctive ability effects
-4. Uniform equipment/relic artwork
-5. Continued larger-world and finite-source development after combat stabilizes
+1. Align starting Combat Paths, equipment requirements, and ability names (`BAL-004`)
+2. Make Origin Path and equipment-derived Current Style prominent in the interface
+   (`CHAR-009`)
+3. Convert overtuned abilities to bounded percentage scaling and rebuild the dragon
+   route around three identified elite relics (`BAL-005`)
+4. Human validation of the revised Knight, Berserker, Assassin, and Skirmisher loops
+5. Synchronize settled Combat Path and progression components with Figma (`DSG-001`)
+6. Continue cohesive old-school fantasy audio, distinctive ability effects, and
+   uniform equipment/relic artwork
+
+## Approved next design wave (not yet implemented)
+
+Treat this section as an approved target rather than current playable behavior.
+Implementation order and acceptance criteria live in `BACKLOG.md`.
+
+### Combat Path presentation
+
+- Use two prominent **Combat Path** cards per class instead of a branching skill tree.
+- Each card communicates fantasy, starting equipment, resource loop, a compact
+  three-node progression, strength, and tradeoff.
+- **Origin Path** preserves the character-creation decision.
+- **Current Style** derives from equipped weapon/offhand requirements and may change
+  without rewriting Origin Path.
+- A custom `COMBAT STYLE CHANGED` notice explains technique changes caused by gear.
+- The flattened Rogue visual reference is stored at
+  `assets/design-references/combat-path-cards-rogue-concept-v1.png`.
+
+### Fighter/Warrior path correction
+
+- Replace internal Vanguard/Breaker presentation with **Knight** and **Berserker**.
+- Knight starts with a one-handed sword, shield, and chain armour.
+- Berserker starts with a two-handed weapon, leather armour, and an empty offhand.
+- One-handed + shield supports Shield Bash and one combined guard/counter technique;
+  its final player-facing name is still open and should not be `Riposte`.
+- Two-handed weapons support Heavy Strike and mastery. One-handed weapons without a
+  shield retain Power Strike as a fallback.
+- Reserve `Cleave` for future multi-target combat.
+- Rage should reward attacks, taking damage, and successful counters rather than a
+  passive Defend action.
+- Keep armour as simple Defense for now; do not add weight-based subsystems solely
+  to justify different starting armour.
+- `Fighter` versus `Warrior` remains an unresolved display-name decision.
+
+### Rogue path correction
+
+- **Assassin**: single dagger and empty offhand; patient Stealth/Vanish/Ambush/Execute
+  burst play.
+- **Skirmisher**: dual weapons; Twin Strike/Evasive Strike/Blade Flurry hit-and-run
+  play.
+- Both use Momentum through distinct build/spend loops.
+- No path may promise an action that its starting equipment cannot perform.
+
+### Ability and boss balance
+
+- Scale damaging abilities from a bounded percentage of relevant combat power plus
+  small flat utility modifiers; do not scale ordinary attacks from enemy maximum HP.
+- Treat 100% Attack as the basic-attack baseline. Any numerical multiplier remains a
+  test hypothesis until simulation and human play confirm it.
+- Require level 3 and three identified elite relics before the dragon can be unsealed.
+- Show explicit relic progress such as `0/3` in objectives.
+- Remove large additive per-relic dragon damage and post-armour flat protection;
+  identified relic equipment and ward removal should provide the preparation value.
+- Re-test boss offense and outcomes at zero, one, two, and three identified relics.
 
 ## Proposal to evaluate
 
@@ -186,4 +244,3 @@ specific numbers only if they are important to the concept.
 **Desired feeling:**
 
 **Rules or numbers already being considered:**
-

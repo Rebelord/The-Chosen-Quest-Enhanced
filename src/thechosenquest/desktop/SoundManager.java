@@ -103,6 +103,8 @@ final class SoundManager {
             new int[] {75, 75, 85, 120, 260}, false),
         RELIC_IDENTIFIED(new double[] {392, 523, 659, 784, 1047},
             new int[] {80, 80, 90, 110, 240}, false),
+        RELIC_EQUIPPED(new double[] {523, 784, 1047, 1319, 1568},
+            new int[] {55, 65, 85, 115, 250}, false),
         VICTORY(new double[] {523, 659, 784, 1047}, new int[] {120, 120, 140, 300}, false),
         DEFEAT(new double[] {392, 294, 196}, new int[] {180, 190, 330}, false),
         DRAGON_ROAR(new double[] {92, 73, 58}, new int[] {220, 250, 380}, true,

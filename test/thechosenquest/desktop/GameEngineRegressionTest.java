@@ -804,10 +804,18 @@ public final class GameEngineRegressionTest {
         require(state.inventory.size() == inventorySize, "cannot buy equipment away from shop");
 
         moveToShop(engine, true);
-        state.gold = plate.cost;
+        state.gold = 100;
         engine.buyItem(plate);
         require(state.inventory.contains(plate), "shop equipment purchase");
-        require(state.gold == 0, "purchase deducts exact cost");
+        require(state.gold == 100 - plate.cost, "purchase deducts exact cost");
+        int inventoryAfterPurchase = state.inventory.size();
+        int goldAfterPurchase = state.gold;
+        require(!containsShopItem(engine, "Plate Armour"),
+            "purchased equipment leaves this shop's finite stock");
+        engine.buyItem(plate);
+        require(state.inventory.size() == inventoryAfterPurchase &&
+                state.gold == goldAfterPurchase,
+            "repeat purchase events cannot duplicate finite shop equipment");
         engine.equipItem(plate);
         require("Plate Armour".equals(state.equippedArmour), "purchased armour equips");
         require(engine.getDefense() == state.baseDefense + plate.defense,
@@ -938,6 +946,8 @@ public final class GameEngineRegressionTest {
             moveToVendor(engine, relic.vendor);
             int gold = state.gold;
             int equipment = state.inventory.size();
+            String equippedWeapon = state.equippedWeapon;
+            String equippedArmour = state.equippedArmour;
             engine.identifyRelic(relic);
             require(relic.identified && engine.identifiedRelicCount() == 1,
                 "correct vendor identifies " + relic.name);
@@ -947,6 +957,13 @@ public final class GameEngineRegressionTest {
             GameEngine.Item reward = state.inventory.get(state.inventory.size() - 1);
             require(GameEngine.equipmentRestriction(state.heroClass, reward) == null &&
                     reward.relicReward, "relic reward is usable and marked as special");
+            require(equippedWeapon.equals(state.equippedWeapon) &&
+                    equippedArmour.equals(state.equippedArmour),
+                "identification leaves relic equipment for the player to equip");
+            engine.equipItem(reward);
+            require(("Weapon".equals(reward.type) && reward.name.equals(state.equippedWeapon)) ||
+                    ("Armour".equals(reward.type) && reward.name.equals(state.equippedArmour)),
+                "identified relic reward can be equipped explicitly");
         }
     }
 

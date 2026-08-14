@@ -22,6 +22,8 @@ this file records why an item matters and how difficult it is expected to be.
 | BAL-001 | Simulate all 16 race/class builds and both class loadouts | High | Large | Completed | Play runs and compare human outcomes with the generated baseline |
 | BAL-002 | Tune level-three bosses, elite relic power, and potion pressure | High | Medium | Completed | Test Shadow Dragon attempts and flag unfair turns |
 | BAL-003 | Validate Rage, Momentum, Focus, and gated class abilities in human play | High | Medium | In Progress | Compare cautious and attack-spam runs across Fighter, Rogue, and Hunter |
+| BAL-004 | Align starting paths, equipment requirements, and ability names | High | Medium | Ready | Verify that each creation-screen promise matches the first-turn combat options |
+| BAL-005 | Convert ability scaling and rebuild three-relic dragon preparation | High | Medium | Ready | Compare level-two ability spikes and level-three dragon attempts after three elite routes |
 | QA-001 | Create a repeatable playtest checklist and findings log | High | Small | Completed | Run the checklist with different player styles |
 | DOC-001 | Create a living GDD and portable external-design context packet | High | Small | Completed | Compare new ideas against the documented current build |
 | UX-001 | Add ability tooltips with cost, speed, effect, and estimated outcome | High | Medium | Completed | Review wording for clarity without revealing every formula |
@@ -43,6 +45,7 @@ this file records why an item matters and how difficult it is expected to be.
 | CHAR-006 | Preserve advanced creation concepts for a later presentation expansion | Medium | Large | Later | Develop idle-animation, diorama, rotation, and origin concepts without changing current balance |
 | CHAR-007 | Build the painterly Art Deco creation theme from modular race/class layers | High | Large | Completed | Review representative builds and keep race motifs quieter than class identity |
 | CHAR-008 | Close the remaining character-creation fidelity gap against the approved Art Deco mockup | High | Medium | In Progress | Compare standard and large previews for clipping, dead space, readability, and material depth |
+| CHAR-009 | Make Combat Path choice prominent in creation and persistent during play | High | Medium | Ready after BAL-004 | Review whether Origin Path and Current Style remain understandable after equipment changes |
 | DSG-003 | Carry the shared hero visual theme through appropriate gameplay surfaces | High | Medium | Ready | Check that hero identity is visible without recoloring shops, maps, enemies, or global navigation |
 | MKT-001 | Apply the shared Art Deco hero system to tester, community, release, and portfolio templates | High | Medium | In Progress | Review tester assets at actual Discord, Form, PDF, and GitHub crop sizes |
 | CHAR-001 | Add a cosmetic character-presentation choice and counterpart art | Medium–High | Large | Completed | Approve counterpart art and presentation wording |
@@ -422,6 +425,85 @@ Baseline findings from 1,152 trials:
 - A tactically played level-three hero with an appropriate identified relic has a
   credible path to victory against the Shadow Dragon.
 - Shops help defeat elites but do not replace elite relic progression.
+
+### BAL-004 — Starting-path and equipment alignment
+
+- Status: **Ready**
+- Rename the displayed and internal Fighter starting paths from Vanguard and Breaker
+  to Knight and Berserker, while safely migrating legacy save values.
+- Knight starts with a one-handed sword, modest shield, and chain armour; Berserker
+  starts with a two-handed weapon, leather armour, and no offhand.
+- Equipment configuration—not the original path selection—controls available
+  techniques: shield techniques require a one-handed weapon and shield, heavy
+  techniques require a two-handed weapon, and Power Strike remains the fallback
+  for a one-handed weapon without a shield.
+- Combine Guard and the intended counterattack behavior into a clearly named shield
+  technique without calling it Riposte. Rage comes from the resulting counterattack,
+  not merely from selecting a defensive action.
+- Rename the current single-target two-handed Cleave to Heavy Strike and reserve
+  Cleave for a future encounter system with multiple simultaneous targets.
+- Replace the Rogue paths with the approved Assassin and Skirmisher identities.
+  Assassin uses a single dagger, Stealth, Vanish, Ambush, and Execute; Skirmisher
+  uses dual weapons, Twin Strike, Evasive Strike, and Blade Flurry. Both use
+  Momentum differently, and no technique may require equipment the path does not
+  actually provide.
+- Rename or mechanically redesign Spellblade so its name matches its wand, tome,
+  armour, and combat loop; differentiate it from Channeler without adding a broad
+  armour-weight system in this wave.
+- Make the Marksman opening-shot promise and Hunter's Mark relationship mechanically
+  true rather than relying only on creation-screen copy.
+- Keep armour as straightforward Defense during this task. Add weight, speed, Mana,
+  or efficiency tradeoffs only after human testing demonstrates a universal heavy-
+  armour problem.
+- Update character creation, combat help, Inventory, documentation, simulations,
+  and later Figma synchronization from the same authoritative equipment rules.
+
+### CHAR-009 — Combat Path selection and persistent identity
+
+- Status: **Ready after BAL-004**
+- Present each class's two starting builds as large **Combat Path** cards rather
+  than narrow loadout buttons or a traditional branching skill tree.
+- Each card shows path name, concise fantasy, starting weapon/offhand/armour,
+  resource loop, three-node progression, strength, and tradeoff. Selection uses
+  the class theme, a restrained authored highlight, and a distinct sound without
+  allowing decoration to obscure comparison text.
+- Character creation prominently displays the chosen Origin Path beneath the hero's
+  race/class identity. The approved Rogue paths are **Assassin** and **Skirmisher**.
+- Preserve two separate concepts during play: **Origin Path** records the creation
+  choice, while **Current Style** is calculated from equipped weapon configuration.
+  Equipment may unlock another style without rewriting the hero's origin.
+- Show a short custom `COMBAT STYLE CHANGED` notification when equipment changes
+  Current Style, listing newly available techniques without using a system modal.
+- Add a compact linear three-node progression track to the character profile and
+  relevant Inventory presentation. Do not introduce skill points or permanent
+  branching until the game supports mutually exclusive ability choices.
+- Use `assets/design-references/combat-path-cards-rogue-concept-v1.png` as the
+  approved hierarchy and mood reference. Rebuild cards from modular UI components;
+  do not embed the flattened concept image as the functional interface.
+- Acceptance checks cover 1280×720, 1440×900, and larger displays; keyboard focus,
+  hover, selected, pressed, and disabled states; long translated path copy; and a
+  gear swap that changes Current Style and can be reversed safely.
+
+### BAL-005 — Percentage ability scaling and dragon preparation
+
+- Status: **Ready after BAL-004**
+- Replace oversized flat martial ability bonuses with bounded percentages of the
+  relevant combat power plus small utility modifiers; keep enemy-health percentage
+  damage out of ordinary player abilities.
+- Rebalance Power Strike and Heavy Strike through percentage, resource cost, and
+  action tempo so level-two progression feels meaningful without trivializing elites.
+- Require level 3 and three identified elite relics to unseal the dragon encounter.
+  Objectives and lair feedback show explicit `0/3` recovery and identification
+  progress and explain what remains before the seal can be broken.
+- Remove the current large per-relic dragon damage bonus and post-armour flat damage
+  reduction. Relic equipment and breaking the dragon's ward become the preparation
+  reward instead of runaway stacking combat modifiers.
+- Retune dragon offense after removing relic guard so its attacks remain legible,
+  threatening, and comparable to player ability turns without relying on surprise
+  one-shots.
+- Extend deterministic coverage across zero, one, two, and three identified relics,
+  each class path, and representative ordinary/elite/boss checkpoints. Human runs
+  remain authoritative for satisfaction, perceived danger, and tactical clarity.
 - Victory does not require repeated critical hits or a single exact build.
 - Extra enemy turns remain dangerous but are clearly communicated.
 

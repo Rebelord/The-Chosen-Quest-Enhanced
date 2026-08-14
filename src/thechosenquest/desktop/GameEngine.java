@@ -10,6 +10,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 
@@ -266,6 +267,7 @@ final class GameEngine {
         ArrayList<Relic> relics = new ArrayList<Relic>();
         ArrayList<String> spells = new ArrayList<String>();
         HashMap<String, Integer> weaponProficiency = new HashMap<String, Integer>();
+        HashSet<String> purchasedShopStock = new HashSet<String>();
         String selectedSpell;
         int row;
         int col;
@@ -2470,6 +2472,13 @@ final class GameEngine {
             items.add(new Item("Carved Totem", "Offhand", 2, 0, 20, "Mage", false,
                 "UNCOMMON", false));
         }
+        if (currentTile() == TileType.SHOP && state.purchasedShopStock != null) {
+            for (int index = items.size() - 1; index >= 0; index--) {
+                if (state.purchasedShopStock.contains(shopStockKey(items.get(index)))) {
+                    items.remove(index);
+                }
+            }
+        }
         return items;
     }
 
@@ -2481,13 +2490,21 @@ final class GameEngine {
                 " does not stock " + item.name + ".");
         } else if (equipmentRestriction(state.heroClass, item) != null) {
             add(equipmentRestriction(state.heroClass, item));
+        } else if (state.purchasedShopStock.contains(shopStockKey(item))) {
+            add("The " + item.name + " has already been purchased from this shop.");
         } else if (state.gold < item.cost) {
             add("You cannot afford the " + item.name + ".");
         } else {
             state.gold -= item.cost;
             state.inventory.add(item);
+            state.purchasedShopStock.add(shopStockKey(item));
             add("You purchase the " + item.name + " for " + item.cost + " gold.");
         }
+    }
+
+    /** Each authored equipment listing is a single physical item per shop. */
+    private String shopStockKey(Item item) {
+        return state.row + "," + state.col + ":" + (item == null ? "" : item.name);
     }
 
     String sellRestriction(Item item) {
@@ -2554,7 +2571,7 @@ final class GameEngine {
         add("The " + vendor + " identifies the " + relic.name + " for free.");
         add("Its power becomes " + reward.name + ", attuned to your " +
             state.heroClass + " training.");
-        equipIfUpgrade(reward);
+        add("The " + reward.name + " is added to your inventory for you to equip.");
         add("Identified relics grant class-attuned dragon damage and " +
             "reduce dragon damage taken.");
     }
@@ -2587,19 +2604,6 @@ final class GameEngine {
             0, 0, heroClass, true);
         return new Item(moon ? "Moonbow" : "Warlord Recurve", "Weapon",
             moon ? 12 : 11, 0, 0, heroClass, true);
-    }
-
-    private void equipIfUpgrade(Item reward) {
-        Item current = findItem("Weapon".equals(reward.type)
-            ? state.equippedWeapon : state.equippedArmour);
-        int currentValue = current == null ? 0 :
-            ("Weapon".equals(reward.type) ? current.attack : current.defense);
-        int rewardValue = "Weapon".equals(reward.type) ? reward.attack : reward.defense;
-        if (rewardValue > currentValue) {
-            if ("Weapon".equals(reward.type)) state.equippedWeapon = reward.name;
-            else state.equippedArmour = reward.name;
-            add("You equip the " + reward.name + ".");
-        }
     }
 
     String currentVendor() {
@@ -2953,6 +2957,7 @@ final class GameEngine {
         if (state.relics == null) state.relics = new ArrayList<Relic>();
         if (state.mapJournal == null) state.mapJournal = new ArrayList<String>();
         if (state.spells == null) state.spells = new ArrayList<String>();
+        if (state.purchasedShopStock == null) state.purchasedShopStock = new HashSet<String>();
         if (state.blacksmithShops == null) {
             state.blacksmithShops = new boolean[SIZE][SIZE];
             for (int row = 0; row < SIZE; row++) {

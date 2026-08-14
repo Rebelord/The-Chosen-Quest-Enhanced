@@ -41,8 +41,8 @@ final class UiTheme {
     static final int SHELL_HEIGHT = 900;
     static final int HEADER_HEIGHT = 64;
     static final int BODY_HEIGHT = 836;
-    static final int HERO_RAIL_WIDTH = 280;
-    static final int CENTER_WIDTH = 840;
+    static final int HERO_RAIL_WIDTH = 304;
+    static final int CENTER_WIDTH = 816;
     static final int MAP_RAIL_WIDTH = 320;
     static final int COMBAT_STAGE_HEIGHT = 350;
     static final int ENEMY_INFO_HEIGHT = 190;
