@@ -1,6 +1,6 @@
 # The Chosen Quest Enhanced — Project Migration Handoff
 
-Last updated: **2026-08-13**
+Last updated: **2026-08-24**
 
 This is the practical handoff for moving development to another computer or
 starting a fresh Codex/ChatGPT thread. The durable rules remain in
@@ -11,11 +11,10 @@ should begin with `CHATGPT-CONTEXT.md`.
 
 - GitHub: `git@github.com:Rebelord/The-Chosen-Quest-Enhanced.git`
 - Branch: `main`
-- Previous published base before this migration checkpoint:
-  `c1181f9 Record successful updater validation`
-- Current application version: `0.7.0-beta.2`
+- Current release checkpoint: `v0.8.0-beta.1`
+- Current application version: `0.8.0-beta.1`
 - Published beta:
-  https://github.com/Rebelord/The-Chosen-Quest-Enhanced/releases/tag/v0.7.0-beta.2
+  https://github.com/Rebelord/The-Chosen-Quest-Enhanced/releases/tag/v0.8.0-beta.1
 - Figma design:
   https://www.figma.com/design/eQ5UREjfLHuuyq19bjeilY/Untitled?node-id=0-1
 - Feedback form: https://forms.gle/GJLCPtzP7LN9PeBeA
@@ -24,15 +23,12 @@ should begin with `CHATGPT-CONTEXT.md`.
 Dropbox is no longer the routine distribution path. GitHub Releases and the
 in-game update checker are the intended tester workflow.
 
-## Important migration warning
+## Release checkpoint and generated files
 
-At the time of this handoff, the working tree contains substantial **uncommitted
-changes**. A fresh clone alone will not contain them. Before retiring the current
-computer, either:
-
-1. review, commit, and push the current changes to GitHub; or
-2. copy the complete `TheChosenQuest-Desktop` directory, including untracked files,
-   to the new computer and verify it before deleting the original.
+The `v0.8.0-beta.1` tag is the portable source checkpoint for this release. A fresh
+clone contains the source, release notes, generator scripts, and tracked tester PDFs.
+Generated game archives, checksums, portfolio handoff files, and versioned invitation
+kit ZIPs are intentionally not required for source restoration and may remain local.
 
 Run these before migration:
 
@@ -42,7 +38,8 @@ git diff --check
 ./test.sh
 ```
 
-Do not use destructive Git cleanup commands while this working tree is dirty.
+Do not use destructive Git cleanup commands when local generated artifacts or later
+uncommitted work must be preserved.
 
 ## Setup on the new computer
 
@@ -74,10 +71,9 @@ The build script creates a temporary JAR and atomically swaps it into place. Kee
 this behavior: Java 8 can crash in native `libzip` with `SIGBUS` if a running JAR is
 rewritten in place while later music, artwork, or classes are being loaded.
 
-## Implemented locally after the last committed checkpoint
+## 0.8.0-beta.1 release scope
 
-These changes were implemented and passed the complete automated suite locally,
-but must be confirmed in `git status` because they may not yet be committed:
+These changes are part of the tagged release and passed the complete automated suite:
 
 - Finite per-shop equipment stock; purchased equipment disappears and cannot charge
   the player twice. Repeatable consumables remain available.
@@ -95,9 +91,9 @@ but must be confirmed in `git status` because they may not yet be committed:
 The last full local suite reported passing engine, regression, updater, 32-build
 balance, exploration, performance, and enhanced UI smoke tests.
 
-## Approved next combat direction
+## Implemented Combat Path direction
 
-The next mechanical wave is `BAL-004`, followed by `BAL-005`.
+`BAL-004`, `BAL-005`, `CHAR-009`, and `DSG-003` are implemented in this release.
 
 ### Combat Paths instead of hidden loadouts
 
@@ -123,16 +119,15 @@ Approved build names:
 - **Knight**: one-handed sword, starter shield, chain armour; shield techniques.
 - **Berserker**: two-handed weapon, leather armour, empty offhand; heavy techniques.
 
-The display name **Fighter** versus **Warrior** remains a final naming decision.
-Internal path identifiers should move from `VANGUARD`/`BREAKER` to
-`KNIGHT`/`BERSERKER`, with a trivial loader migration for old saves.
+The class display name remains **Fighter**. Internal path identifiers migrated from
+`VANGUARD`/`BREAKER` to `KNIGHT`/`BERSERKER` with compatibility for older saves.
 
 Equipment rules:
 
 - One-handed weapon + shield: Shield Bash and a combined Guard/counter technique.
 - Two-handed weapon: Heavy Strike and weapon mastery.
 - One-handed weapon without shield: Power Strike fallback.
-- Do not call the combined shield counter `Riposte`; the final name remains open.
+- The combined shield counter is named **Shield Counter**.
 - Reserve `Cleave` for future multi-target combat rather than a single-target hit.
 - Rage should come from aggression, damage, or a successful counter—not merely
   selecting a passive defensive action.
@@ -154,18 +149,15 @@ Approved replacement for Duelist/Quick Knives:
 Both paths retain Momentum but build/spend it through different loops. No ability
 may require equipment absent from its starting path.
 
-### Mage and Hunter review
+### Mage and Hunter paths
 
-Recommended but not fully approved:
+Implemented decisions:
 
-- Mage: **Channeler** and **Battlemage**. Current `Spellblade` carries a wand and
-  tome and therefore contradicts its name. The two paths also need real mechanical
-  differentiation rather than one being a stronger equipment package.
-- Hunter: **Ranger** and **Marksman** names remain good. Marksman still needs its
-  promised heavy opening shot and a meaningful Hunter's Mark relationship;
-  Piercing Bolt should likely require/consume the mark as Volley does.
+- Mage: **Channeler** and **Arcanist**, with different starter gear and technique loops.
+- Hunter: **Ranger** and **Marksman**; Marksman receives its promised opening-shot
+  bonus and both paths retain meaningful Mark/Volley relationships.
 
-## Approved ability and boss balance direction
+## Implemented ability and boss balance direction
 
 - Use hybrid ability scaling: a bounded percentage of relevant combat power plus
   small flat utility modifiers, then defense. Do not use ordinary enemy-health
@@ -199,11 +191,8 @@ and reaching the boss did not require enough elite preparation.
 
 ## Recommended first steps after migration
 
-1. Confirm the dirty work was committed and appears on the new computer.
-2. Run `./test.sh` before changing mechanics.
-3. Implement `BAL-004` engine rules and save migration before redesigning cards.
-4. Re-run simulations and conduct human checks for Knight, Berserker, Assassin, and
-   Skirmisher.
-5. Implement `CHAR-009` Combat Path cards and persistent Origin/Current Style UI.
-6. Implement `BAL-005` scaling and three-relic dragon gate.
-7. Sync the settled components to Figma through `DSG-001`.
+1. Check out tag `v0.8.0-beta.1` or current `main` and run `./test.sh`.
+2. Use the retained `0.7.0-beta.2` build to verify updater discovery and save migration.
+3. Conduct human checks across the eight Combat Paths, relic decisions, and finite vendors.
+4. Continue `DSG-001` and `DSG-002` Figma presentation synchronization.
+5. Continue custom VFX/audio work and the planned Classic/browser preservation tracks.

@@ -1,21 +1,24 @@
-PRIVATE TESTER CHECKLIST - v0.7.0-beta.2
+PRIVATE TESTER CHECKLIST - v0.8.0-beta.1
 
 BEFORE PLAYING
-[ ] Download the build from: https://github.com/Rebelord/The-Chosen-Quest-Enhanced/releases/tag/v0.7.0-beta.2
+[ ] If available, launch retained v0.7.0-beta.2 online and confirm it offers v0.8.0-beta.1.
+[ ] Download the build from: https://github.com/Rebelord/The-Chosen-Quest-Enhanced/releases/tag/v0.8.0-beta.1
 [ ] Extract the ZIP to a normal folder.
 [ ] Confirm Java 8 or newer is installed.
 [ ] Read the included Quick Reference or full Tester Guide.
-[ ] Open Settings > Check Updates and confirm v0.7.0-beta.2 is reported as current.
+[ ] Open Settings > Check Updates and confirm v0.8.0-beta.1 is reported as current.
 [ ] Keep this exact build folder for the next-beta update test.
 
 DURING PLAY
-[ ] Note your race, class, starting loadout, and current level.
-[ ] Try exploration, vendors, inventory, rumors, combat, and the world map.
+[ ] Note your race, class, Origin Path, Current Style, and current level.
+[ ] If available, load a v0.7.0-beta.2 save and verify equipment and hero identity.
+[ ] Change gear and confirm Current Style can change without replacing Origin Path.
+[ ] Test exploration, finite vendor gear, relic Equip Now, inventory, combat, and the map.
 [ ] Record clear steps when anything unexpected happens.
 [ ] Capture only the game window if a screenshot would help.
 
 AFTER THE NEXT BETA IS ANNOUNCED
-[ ] Launch this older v0.7.0-beta.2 copy while online.
+[ ] Launch this older v0.8.0-beta.1 copy while online.
 [ ] Confirm a styled update notice appears without delaying game startup.
 [ ] Confirm View Changes opens release information.
 [ ] Confirm Remind Me Later closes the notice without changing game files.

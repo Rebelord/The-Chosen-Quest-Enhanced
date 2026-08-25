@@ -20,8 +20,8 @@ import javax.swing.JPanel;
 public final class EnhancedUiSmokeTest {
     public static void main(String[] args) throws Exception {
         System.setProperty("java.awt.headless", "true");
-        if (!"0.7.0-beta.2".equals(AppVersion.VERSION) ||
-                !"v0.7.0-beta.2".equals(AppVersion.TAG)) {
+        if (!"0.8.0-beta.1".equals(AppVersion.VERSION) ||
+                !"v0.8.0-beta.1".equals(AppVersion.TAG)) {
             throw new AssertionError("Public beta version and release tag must stay aligned");
         }
         if (EnhancedUiSmokeTest.class.getResource("/assets/fonts/Cinzel.ttf") == null ||
@@ -100,6 +100,7 @@ public final class EnhancedUiSmokeTest {
             sceneMusic.close();
         }
         final boolean[] randomizedName = {false};
+        final boolean[] combatPathSoundRequested = {false};
         CharacterCreationPanel panel = new CharacterCreationPanel(new CharacterCreationPanel.Listener() {
             public void onBegin(String name, String race, String heroClass) {
             }
@@ -109,6 +110,10 @@ public final class EnhancedUiSmokeTest {
 
             public void onRandomizeName() {
                 randomizedName[0] = true;
+            }
+
+            public void onCombatPathSelected(String path) {
+                combatPathSoundRequested[0] = path != null && path.length() > 0;
             }
         });
         panel.setSize(1440, 900);
@@ -162,8 +167,35 @@ public final class EnhancedUiSmokeTest {
             throw new AssertionError(
                 "Gender choice must load the authored counterpart without changing the build");
         }
+        for (int card = 0; card < 2; card++) {
+            String copy = panel.combatPathCardCopyForTest(card);
+            String accessible = panel.combatPathCardAccessibleCopyForTest(card);
+            if (!copy.contains("Tradeoff:") || !copy.contains("→") ||
+                    accessible == null || !accessible.contains("Tradeoff:")) {
+                throw new AssertionError(
+                    "Combat Path cards must expose progression and tradeoff visually and accessibly");
+            }
+        }
+        panel.activateCombatPathForTest(1);
+        if (!combatPathSoundRequested[0]) {
+            throw new AssertionError("Combat Path selection must request its dedicated sound cue");
+        }
         for (String race : GameEngine.RACES) {
             for (String heroClass : GameEngine.CLASSES) {
+                for (String gender : new String[] {
+                        CharacterArt.FEMALE, CharacterArt.MALE}) {
+                    String fullBodyResource =
+                        CharacterArt.fullBody(race, heroClass, gender);
+                    BufferedImage fullBody = ImageIO.read(
+                        EnhancedUiSmokeTest.class.getResource(fullBodyResource));
+                    if (fullBody == null ||
+                            fullBody.getWidth() * 4 != fullBody.getHeight() * 3 ||
+                            opaqueBottomRatio(fullBody) < .95d) {
+                        throw new AssertionError(
+                            "Full-body character art must be 3:4 and fill its lower edge: " +
+                            fullBodyResource);
+                    }
+                }
                 String counterpartGender = CharacterArt.MALE.equals(
                     CharacterArt.defaultGender(race, heroClass))
                     ? CharacterArt.FEMALE : CharacterArt.MALE;
@@ -210,6 +242,10 @@ public final class EnhancedUiSmokeTest {
             "character-creation-large-preview.png", 100000L);
         File compactCharacterOutput = render(panel, 1280, 720, output.getParentFile(),
             "character-creation-1280x720-preview.png", 70000L);
+        if (!panel.compactProfileFitsForTest()) {
+            throw new AssertionError(
+                "Character creation copy, equipment, and actions must fit at 1280x720");
+        }
         JPanel frameIdentifiers = new JPanel(new GridLayout(1, 4, 12, 0));
         frameIdentifiers.setBackground(UiTheme.BACKGROUND);
         for (String heroClass : GameEngine.CLASSES) {
@@ -542,6 +578,22 @@ public final class EnhancedUiSmokeTest {
         if (!shortcutPanel.hasStatusChipForTest("SECOND WIND · ARMED")) {
             throw new AssertionError("Armed fighter death-save status must be visible in combat");
         }
+        for (String race : GameEngine.RACES) {
+            for (String heroClass : GameEngine.CLASSES) {
+                GameEngine themed = new GameEngine();
+                themed.newGame("Theme " + heroClass, race, heroClass,
+                    GameEngine.defaultStarterKit(heroClass));
+                shortcutPanel.setEncounter(new GameEngine.Enemy("Skeleton", 24, 9, 10), "",
+                    themed.getState());
+                HeroVisualTheme expected = HeroVisualTheme.forBuild(race, heroClass);
+                if (!expected.classAccent().equals(shortcutPanel.heroActionAccentForTest()) ||
+                        !expected.resourceColor().equals(shortcutPanel.resourceColorForTest())) {
+                    throw new AssertionError(
+                        "All sixteen builds must reuse the shared hero theme in combat: " +
+                        race + " " + heroClass);
+                }
+            }
+        }
 
         SoundManager dialogueSound = new SoundManager();
         GameSettingsOverlay dialogueOverlay = new GameSettingsOverlay(dialogueSound,
@@ -567,6 +619,15 @@ public final class EnhancedUiSmokeTest {
         layoutTree(dialogueOverlay);
         File progressionOutput = render(dialogueOverlay, 1100, 720,
             output.getParentFile(), "progression-preview.png", 12000L);
+        dialogueOverlay.showNotice("COMBAT STYLE CHANGED · SKIRMISHER · ORIGIN ASSASSIN PRESERVED",
+            HeroVisualTheme.forBuild("Elf", "Rogue").classAccent(), 2000);
+        if (!dialogueOverlay.noticeVisibleForTest() ||
+                !dialogueOverlay.noticeTextForTest().contains("ORIGIN ASSASSIN PRESERVED") ||
+                dialogueOverlay.contains(10, 10)) {
+            throw new AssertionError(
+                "Combat Style changes must use a non-modal, input-transparent notice");
+        }
+        dialogueOverlay.hideSettings();
         dialogueSound.shutdown();
 
         // A killing blow disables controls during its animation. The reused
@@ -671,6 +732,13 @@ public final class EnhancedUiSmokeTest {
             "Sealed Soulglass", "Necromancer", "Alchemist");
         engine.getState().relics.add(previewRelic);
         inventory.setState(engine.getState(), engine.getAttack(), engine.getDefense());
+        if (!inventory.heroPathForTest().contains("ORIGIN") ||
+                !inventory.heroPathForTest().contains("CURRENT STYLE") ||
+                !inventory.heroProgressionForTest().contains("PROGRESSION") ||
+                !inventory.heroProgressionForTest().contains("→")) {
+            throw new AssertionError(
+                "Inventory must keep Origin, Current Style, and progression visible together");
+        }
         if (!inventory.relicSummaryForTest().contains("Sealed Soulglass") ||
                 !inventory.relicSummaryForTest().contains("Alchemist")) {
             throw new AssertionError("Inventory must preserve relic identity and vendor hint");
@@ -698,6 +766,9 @@ public final class EnhancedUiSmokeTest {
         location.selectTab("ALL");
         File locationOutput = render(location, 760, 720, output.getParentFile(),
             "shop-preview.png");
+        if (!location.textFitsForTest()) {
+            throw new AssertionError("Shop NPC labels and ware rows must fit their layout boxes");
+        }
         engine.getState().health = 21;
         engine.getState().mana = 9;
         location.showHaven(engine.getState(), GameEngine.TileType.TAVERN);
@@ -708,6 +779,9 @@ public final class EnhancedUiSmokeTest {
         location.selectTab("ALL");
         File tavernOutput = render(location, 760, 720, output.getParentFile(),
             "tavern-preview.png");
+        if (!location.textFitsForTest()) {
+            throw new AssertionError("Haven NPC labels and ware rows must fit their layout boxes");
+        }
 
         OutcomePanel outcome = new OutcomePanel(new OutcomePanel.Listener() {
             public void onNewQuest() { }
@@ -904,9 +978,9 @@ public final class EnhancedUiSmokeTest {
         File releaseNotesOutput = render(releaseNotes, 780, 660, output.getParentFile(),
             "release-notes-preview.png");
         UpdateService.Release updateRelease = new UpdateService.Release(
-            "0.7.0-beta.2", "v0.7.0-beta.2",
-            "The Chosen Quest Enhanced — Beta 0.7.0 Update Test",
-            "## Highlights\n- Safer updates\n- New interface refinements",
+            "0.8.0-beta.1", "v0.8.0-beta.1",
+            "The Chosen Quest Enhanced — Beta 0.8.0 Combat Paths",
+            "## Highlights\n- Combat Paths\n- Persistent hero identity",
             ProjectLinks.RELEASES, ProjectLinks.RELEASES,
             "sha256:test", true);
         UpdateService.Result updateResult = UpdateService.Result.available(updateRelease);
@@ -1035,6 +1109,18 @@ public final class EnhancedUiSmokeTest {
             }
         }
         return false;
+    }
+
+    private static double opaqueBottomRatio(BufferedImage image) {
+        int opaque = 0;
+        int samples = image.getWidth() * Math.max(1, image.getHeight() / 50);
+        int startY = image.getHeight() - Math.max(1, image.getHeight() / 50);
+        for (int y = startY; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                if (((image.getRGB(x, y) >>> 24) & 255) >= 250) opaque++;
+            }
+        }
+        return opaque / (double) samples;
     }
 
     private static String buttonStateName(int state) {

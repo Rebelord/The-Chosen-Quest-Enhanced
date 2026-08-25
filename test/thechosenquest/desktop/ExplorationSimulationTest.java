@@ -109,7 +109,14 @@ public final class ExplorationSimulationTest {
                 trial.pathFailures++;
                 return;
             }
+            int previousRow = engine.getState().row;
+            int previousCol = engine.getState().col;
             move(engine, trial, step[0], step[1]);
+            if (engine.getState().row == previousRow &&
+                    engine.getState().col == previousCol) {
+                trial.pathFailures++;
+                return;
+            }
         }
     }
 
@@ -286,7 +293,20 @@ public final class ExplorationSimulationTest {
                 trial.pathFailures++;
                 return;
             }
+            int previousRow = engine.getState().row;
+            int previousCol = engine.getState().col;
             move(engine, trial, step[0], step[1]);
+            if (engine.getState().row == previousRow &&
+                    engine.getState().col == previousCol) {
+                if (row == engine.getState().dragonLairRow &&
+                        col == engine.getState().dragonLairCol &&
+                        !engine.dragonSealReady()) {
+                    trial.sealBlocked = true;
+                } else {
+                    trial.pathFailures++;
+                }
+                return;
+            }
             // Let the caller capture boss-entry resources before combat begins.
             if (engine.getState().row == row && engine.getState().col == col) return;
             if (engine.currentEnemy() != null) {
@@ -568,6 +588,7 @@ public final class ExplorationSimulationTest {
         boolean won;
         boolean survived;
         boolean timeout;
+        boolean sealBlocked;
 
         Trial(String race, String heroClass, String kit, Strategy strategy) {
             this.race = race;

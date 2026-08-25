@@ -21,6 +21,7 @@ import javax.swing.JScrollPane;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
+import javax.swing.BoxLayout;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
@@ -35,6 +36,9 @@ final class InventoryPanel extends JPanel {
     private final JLabel slots = new JLabel();
     private final JLabel goldSummary = new JLabel();
     private final JLabel relics = new JLabel();
+    private final JLabel heading = new JLabel("Inventory");
+    private final JLabel heroPath = new JLabel();
+    private final JLabel heroProgression = new JLabel();
     private final DefaultListModel<GameEngine.Item> items = new DefaultListModel<GameEngine.Item>();
     private final JList<GameEngine.Item> itemList = new JList<GameEngine.Item>(items);
     private static final String[] SORT_MODES = {
@@ -54,14 +58,21 @@ final class InventoryPanel extends JPanel {
 
         JPanel top = new JPanel(new BorderLayout(0, 3));
         top.setOpaque(false);
-        JLabel heading = new JLabel("Inventory");
         heading.setForeground(UiTheme.GOLD);
         heading.setFont(UiTheme.display(30));
         top.add(heading, BorderLayout.NORTH);
-        JLabel guidance = new JLabel("Choose gear to compare it with the equipped slot shown at left.");
-        guidance.setForeground(UiTheme.MUTED);
-        guidance.setFont(UiTheme.body(Font.PLAIN, 12));
-        top.add(guidance, BorderLayout.SOUTH);
+        heroPath.setForeground(UiTheme.MUTED);
+        heroPath.setFont(UiTheme.body(Font.BOLD, 11));
+        JPanel identity = new JPanel();
+        identity.setLayout(new BoxLayout(identity, BoxLayout.Y_AXIS));
+        identity.setOpaque(false);
+        heroPath.setAlignmentX(LEFT_ALIGNMENT);
+        identity.add(heroPath);
+        heroProgression.setForeground(UiTheme.MUTED);
+        heroProgression.setFont(UiTheme.body(Font.PLAIN, 10));
+        heroProgression.setAlignmentX(LEFT_ALIGNMENT);
+        identity.add(heroProgression);
+        top.add(identity, BorderLayout.SOUTH);
         add(top, BorderLayout.NORTH);
 
         add(buildInventoryList(), BorderLayout.CENTER);
@@ -179,6 +190,17 @@ final class InventoryPanel extends JPanel {
 
     void setState(GameEngine.State state, int attack, int defense) {
         currentState = state;
+        HeroVisualTheme theme = HeroVisualTheme.forBuild(state.race, state.heroClass);
+        heading.setForeground(theme.metalAccent());
+        heroPath.setForeground(theme.raceAccent());
+        heroPath.setText("ORIGIN " + GameEngine.originPath(state) + "   ·   CURRENT STYLE " +
+            GameEngine.currentCombatStyle(state) +
+            "   ·   Choose gear to preview technique changes.");
+        String progression = "PROGRESSION   " + GameEngine.currentProgressionTrack(state);
+        heroProgression.setText(progression);
+        heroProgression.setToolTipText(progression);
+        heroProgression.getAccessibleContext().setAccessibleDescription(progression);
+        equipButton.putClientProperty("thechosenquest.button.accent", theme.classAccent());
         int relicCount = state.relics == null ? 0 : state.relics.size();
         slots.setText(state.inventory.size() + " equipment · " + relicCount + " relics");
         goldSummary.setText(state.gold + " GOLD");
@@ -286,6 +308,9 @@ final class InventoryPanel extends JPanel {
     String relicSummaryForTest() {
         return relics.getText();
     }
+
+    String heroPathForTest() { return heroPath.getText(); }
+    String heroProgressionForTest() { return heroProgression.getText(); }
 
     static String heroAsset(String race, String heroClass) {
         return CharacterArt.fullBody(race, heroClass,

@@ -1,6 +1,7 @@
 package thechosenquest.desktop;
 
 import java.awt.Color;
+import java.awt.AlphaComposite;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Insets;
@@ -18,6 +19,7 @@ import java.util.concurrent.Future;
 import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 
 final class AssetImagePanel extends JPanel {
     private static final long serialVersionUID = 1L;
@@ -50,6 +52,13 @@ final class AssetImagePanel extends JPanel {
     // 0 keeps the source's top edge visible, .5 is a conventional centered crop.
     private double cropAnchorY = .5d;
     private boolean flipHorizontal;
+    private boolean animatedTransitions;
+    private float transitionOpacity = 1f;
+    private final Timer transitionTimer = new Timer(24, event -> {
+        transitionOpacity = Math.min(1f, transitionOpacity + .12f);
+        repaint();
+        if (transitionOpacity >= 1f) ((Timer) event.getSource()).stop();
+    });
     private String requestedResource;
     private String displayedResource;
     private Future<?> pendingLoad;
@@ -111,6 +120,7 @@ final class AssetImagePanel extends JPanel {
             renderedCropAnchorY = targetCropAnchorY;
             renderedFlipHorizontal = targetFlipHorizontal;
             pendingLoad = null;
+            startTransition();
             repaint();
             return;
         }
@@ -144,6 +154,7 @@ final class AssetImagePanel extends JPanel {
                             renderedCropAnchorY = targetCropAnchorY;
                             renderedFlipHorizontal = targetFlipHorizontal;
                             pendingLoad = null;
+                            startTransition();
                             repaint();
                         }
                     }
@@ -232,6 +243,23 @@ final class AssetImagePanel extends JPanel {
         flipHorizontal = value;
         clearRendered();
         repaint();
+    }
+
+    void setAnimatedTransitions(boolean value) {
+        animatedTransitions = value;
+        if (!value) {
+            transitionTimer.stop();
+            transitionOpacity = 1f;
+        }
+    }
+
+    private void startTransition() {
+        if (!animatedTransitions) {
+            transitionOpacity = 1f;
+            return;
+        }
+        transitionOpacity = .4f;
+        transitionTimer.restart();
     }
 
     private static BufferedImage load(String resource) {
@@ -382,6 +410,7 @@ final class AssetImagePanel extends JPanel {
             renderedFlipHorizontal = flipHorizontal;
         }
         Graphics2D imageGraphics = (Graphics2D) graphics.create();
+        imageGraphics.setComposite(AlphaComposite.SrcOver.derive(transitionOpacity));
         if (getBorder() instanceof FantasyPortraitBorder) {
             FantasyPortraitBorder frame = (FantasyPortraitBorder) getBorder();
             int left = imageInsets.left;

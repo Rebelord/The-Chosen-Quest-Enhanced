@@ -1,5 +1,5 @@
 THE CHOSEN QUEST — ENHANCED EDITION
-PRIVATE BETA PLAYTEST BUILD — v0.7.0-beta.2
+PRIVATE BETA PLAYTEST BUILD — v0.8.0-beta.1
 
 Thank you for testing The Chosen Quest Enhanced, a standalone modernization of the
 original student RPG.
@@ -8,7 +8,7 @@ SYSTEM REQUIREMENTS
 
 - A desktop or Chromebook capable of running Java
 - Java 8 or newer installed from https://adoptium.net/
-- About 250 MB of free disk space
+- About 400 MB of free disk space
 - A display resolution of at least 1280 × 720 (1440 × 900 recommended)
 
 START THE GAME
@@ -45,7 +45,7 @@ PLAYTESTING
 
 Please report:
 - Operating system and Java version
-- Character race, class, and starting loadout
+- Character race, class, Origin Path, Current Style, and important equipment
 - What you were doing when a problem occurred
 - Whether loading the latest save reproduces it
 - A screenshot when the issue is visual
@@ -61,12 +61,14 @@ checklist, and privacy guidance.
 
 UPDATE FEATURE TEST
 
-1. Keep an extracted v0.7.0-beta.1 folder for the end-to-end updater test.
+1. Keep an extracted v0.7.0-beta.2 folder for the updater and migration test.
 2. Launch that older copy online and choose Settings > Check Updates.
-3. Verify it offers v0.7.0-beta.2 and that View Changes stays inside the game.
+3. Verify it offers v0.8.0-beta.1 and that View Changes stays inside the game.
 4. Verify Remind Me Later and the official Download handoff. The game does not
    replace files automatically in this phase.
-5. Launch this v0.7.0-beta.2 build offline and confirm the game remains usable.
+5. Extract v0.8.0-beta.1 separately and load a beta.2 save. Confirm equipment,
+   Origin Path, and Current Style remain coherent.
+6. Launch this v0.8.0-beta.1 build offline and confirm the game remains usable.
 
 This is a beta. Combat balance, effects, sounds, and interface details will continue
 to improve from tester feedback.

@@ -19,7 +19,7 @@ permission remain optional.
 - Game version/build:
 - Operating system and Java version:
 - World seed, if known:
-- Race / class / starting loadout:
+- Race / class / Origin Path / Current Style:
 - Player familiarity: new / returning / developer:
 - Input method: mouse / keyboard / mixed:
 
@@ -35,7 +35,7 @@ visit useful services, compare equipment, and prepare before approaching the dra
 - [ ] An elite reward is visually obvious and its identification hint is actionable.
 - [ ] Ability hover and keyboard focus explain cost, tempo, effect, and estimated outcome.
 - [ ] Multi-attack turns are perceptible and the combat log explains their order.
-- [ ] Level, loadout, equipment, potions, and identified relics feel sufficient for a fair boss attempt.
+- [ ] Level, Origin Path, Current Style, equipment, potions, and identified relics feel sufficient for a fair boss attempt.
 - [ ] Victory or defeat explains what happened and offers a clear next action.
 
 ## Run B — exploratory play

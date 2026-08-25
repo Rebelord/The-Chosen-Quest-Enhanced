@@ -47,7 +47,7 @@ Use this response format:
 - Primary authored progression curve: levels 1–3
 - Four races: Human, Dwarf, Elf, Halfling
 - Four classes: Fighter, Mage, Rogue, Hunter
-- Two starting loadouts per class
+- Two starting Combat Paths per class
 - Standard enemies, elites with unidentified relics, and one dragon boss
 - Fog of war, rumors, maps, roaming biome-compatible enemies, shops, tavern,
   alchemist encampment, and a finite Spider Nest
@@ -57,7 +57,7 @@ Use this response format:
 ## Design pillars
 
 - Readable tactics and combat feedback
-- Distinct race/class/loadout identities
+- Distinct race/class/path identities
 - Preparation and relic progression matter
 - Finite progression without grinding or farming
 - Authored visual/audio presentation
@@ -78,8 +78,8 @@ Use this response format:
 - Resource: Rage, maximum 100, resets each encounter
 - Builds from basic attacks, incoming damage, and two-handed Battle Cry
 - Tactical ability costs 30; mastered technique costs 50
-- Shield build supports defense and Shield Bash
-- Two-handed build supports Battle Cry and Cleave
+- Knight-style equipment supports Shield Counter and defense
+- Berserker-style equipment supports Battle Cry and Heavy Strike
 - Second Wind is a level-three passive: once per encounter, a fatal hit leaves
   1 health, fills Rage, and empowers the next basic attack
 - Second Wind is not healing and is not a clickable ability
@@ -96,8 +96,9 @@ Use this response format:
 
 - Resource: Momentum, maximum 100, resets each encounter
 - Builds from basic attacks, entering Stealth, and successful Stealth evasion
-- Offhand Strike costs 30; mastered technique 55; Execute 70
-- Fastest class cadence; dual-wield and critical-strike identity
+- Assassin uses Ambush, Vanish, and Execute; Skirmisher uses Twin Strike,
+  Evasive Strike, and Blade Flurry
+- Fastest class cadence; Stealth burst and dual-wield pressure identities
 - Execute is strongest against targets at or below 35% health
 
 ### Hunter
@@ -140,6 +141,8 @@ Use this response format:
 - Each relic identifies a required specialist vendor
 - Discovery uses a custom popup, chime, inventory entry, and hint
 - Identified relic equipment is expected preparation for dragons
+- Level 3 and all three identified relics are required to unseal the dragon lair
+- Relics do not add large flat boss damage or post-armour guard bonuses
 - Bosses should be dangerous without requiring a single exact build
 - Quest rushing should remain a poor boss strategy
 
@@ -168,20 +171,16 @@ Use this response format:
 
 ## Current development priorities
 
-1. Align starting Combat Paths, equipment requirements, and ability names (`BAL-004`)
-2. Make Origin Path and equipment-derived Current Style prominent in the interface
-   (`CHAR-009`)
-3. Convert overtuned abilities to bounded percentage scaling and rebuild the dragon
-   route around three identified elite relics (`BAL-005`)
-4. Human validation of the revised Knight, Berserker, Assassin, and Skirmisher loops
-5. Synchronize settled Combat Path and progression components with Figma (`DSG-001`)
-6. Continue cohesive old-school fantasy audio, distinctive ability effects, and
+1. Human validation of the revised Knight, Berserker, Assassin, and Skirmisher loops
+2. Synchronize settled Combat Path and progression components with Figma (`DSG-001`)
+3. Complete the remaining character-creation material and race-heraldry fidelity work
+4. Continue cohesive old-school fantasy audio, distinctive ability effects, and
    uniform equipment/relic artwork
 
-## Approved next design wave (not yet implemented)
+## Implemented Combat Path and balance wave
 
-Treat this section as an approved target rather than current playable behavior.
-Implementation order and acceptance criteria live in `BACKLOG.md`.
+The following rules are current playable behavior. Human playtesting remains the
+next authority for feel and tuning; acceptance criteria live in `BACKLOG.md`.
 
 ### Combat Path presentation
 
@@ -192,16 +191,18 @@ Implementation order and acceptance criteria live in `BACKLOG.md`.
 - **Current Style** derives from equipped weapon/offhand requirements and may change
   without rewriting Origin Path.
 - A custom `COMBAT STYLE CHANGED` notice explains technique changes caused by gear.
+- The notice is non-modal, remains readable with reduced motion, and explicitly
+  confirms that Origin Path was preserved. Creation cards include accessible
+  fantasy, equipment, resource-loop, progression, and tradeoff copy.
 - The flattened Rogue visual reference is stored at
   `assets/design-references/combat-path-cards-rogue-concept-v1.png`.
 
 ### Fighter/Warrior path correction
 
-- Replace internal Vanguard/Breaker presentation with **Knight** and **Berserker**.
+- Fighter paths are **Knight** and **Berserker**; legacy values migrate safely.
 - Knight starts with a one-handed sword, shield, and chain armour.
 - Berserker starts with a two-handed weapon, leather armour, and an empty offhand.
-- One-handed + shield supports Shield Bash and one combined guard/counter technique;
-  its final player-facing name is still open and should not be `Riposte`.
+- One-handed + shield supports the combined **Shield Counter** guard/counter technique.
 - Two-handed weapons support Heavy Strike and mastery. One-handed weapons without a
   shield retain Power Strike as a fallback.
 - Reserve `Cleave` for future multi-target combat.
@@ -209,7 +210,7 @@ Implementation order and acceptance criteria live in `BACKLOG.md`.
   passive Defend action.
 - Keep armour as simple Defense for now; do not add weight-based subsystems solely
   to justify different starting armour.
-- `Fighter` versus `Warrior` remains an unresolved display-name decision.
+- The player-facing class name remains **Fighter**.
 
 ### Rogue path correction
 

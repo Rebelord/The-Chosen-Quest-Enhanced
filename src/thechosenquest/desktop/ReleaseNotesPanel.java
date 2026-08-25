@@ -36,36 +36,35 @@ final class ReleaseNotesPanel extends JPanel {
         content.setBorder(BorderFactory.createEmptyBorder(22, 24, 26, 24));
         content.add(intro());
         content.add(Box.createVerticalStrut(18));
-        content.add(section("CHARACTER CREATION & VISUAL IDENTITY",
-            "Character creation now centers one live hero showcase with cosmetic artwork " +
-            "choice, race crests, starting loadouts, build guidance, a fantasy name die, " +
-            "and modular painterly Art Deco class and race theming. Authored borders, app " +
-            "iconography, meters, and interaction states now share one product language."));
+        content.add(section("COMBAT PATHS & HERO IDENTITY",
+            "Every class now offers two named Combat Paths with clear equipment, resource " +
+            "loop, technique, strength, and tradeoff guidance. Origin Path remains part of " +
+            "the hero's identity while equipped gear determines Current Style across " +
+            "exploration, Inventory, combat, saved games, and outcome screens."));
         content.add(Box.createVerticalStrut(12));
         content.add(section("COMBAT, EQUIPMENT & PROGRESSION",
-            "Rage, Momentum, Focus, and Mana give every class a distinct tactical loop. " +
-            "Weapon traits, proficiency, status feedback, specialized vendors, equipment " +
-            "comparison, loot tiers, and identified elite relics make preparation clearer. " +
-            "Boss protection and level gates remain consistent across all attack types."));
+            "Starter gear and techniques now match each path's promises. Martial bonuses " +
+            "use bounded scaling, while dragon preparation centers on level 3 and three " +
+            "identified relics. Relic rewards, purchases, and useful loot offer explicit " +
+            "Equip Now choices without silently replacing the player's equipment."));
         content.add(Box.createVerticalStrut(12));
-        content.add(section("WORLD, MAP & ENCOUNTERS",
-            "The larger fog-aware world supports scrolling, detail zoom, a full M-key map, " +
-            "rumors, objectives, biome placement, roaming threats, and landscape scenes. " +
-            "The finite Ashweb Nest ends with the elite Ashweb Matriarch, while fleeing " +
-            "returns the hero to a nearby valid tile."));
+        content.add(section("INTERFACE & VISUAL QUALITY",
+            "The persistent hero rail now follows one alignment grid with a larger 3:4 " +
+            "portrait and clearer equipment. Inventory centers the item list and uses a " +
+            "themed sort control. All 32 portraits and representative text bounds were " +
+            "audited for gaps, clipping, and compact-height behavior."));
         content.add(Box.createVerticalStrut(12));
-        content.add(section("UPDATES, AUDIO & TESTING",
-            "The game now checks official GitHub Releases without blocking startup. A " +
-            "styled overlay offers Download, View Changes, and Remind Me Later, while " +
-            "Settings provides a manual check from both the title screen and adventure. " +
-            "Release names wrap safely, View Changes remains inside the game, and macOS " +
-            "download links use the operating system browser handoff."));
+        content.add(section("MOTION, REWARDS & STABILITY",
+            "Hero-art crossfades and the Begin Journey confirmation respect reduced motion. " +
+            "Vendor equipment is finite per shop, repeat purchase events cannot charge the " +
+            "hero twice, and upgrade cards connect directly to equipment decisions. Save " +
+            "schema 11 safely migrates heroes created in earlier beta builds."));
         content.add(Box.createVerticalStrut(12));
         content.add(section("WHAT WE NEED FROM TESTERS",
-            "Keep an extracted v0.7.0-beta.1 folder, launch it online, and use Settings > " +
-            "Check Updates. Confirm it offers v0.7.0-beta.2, View Changes opens these notes " +
-            "inside the game without a crash, and the reminder and official download actions " +
-            "work. Also verify offline launch remains fully playable."));
+            "Use a retained v0.7.0-beta.2 copy to discover this release, then load an older " +
+            "save and verify equipment, Origin Path, and Current Style. Compare Combat Paths, " +
+            "change style through gear, test relic and vendor choices, and report clipped " +
+            "copy, portrait gaps, confusing actions, balance spikes, or migration problems."));
 
         JScrollPane scroll = new JScrollPane(content,
             ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
@@ -110,9 +109,9 @@ final class ReleaseNotesPanel extends JPanel {
     }
 
     private JTextArea intro() {
-        JTextArea copy = text("This prerelease completes the first end-to-end updater test " +
-            "and packages the latest stability, loot-feedback, equipment-slot, and interface " +
-            "refinements. Human playtesting remains the purpose of this build, so feedback " +
+        JTextArea copy = text("This prerelease introduces Combat Paths, carries hero identity " +
+            "throughout the game, and packages the latest interface, reward, balance, and " +
+            "stability work. Human playtesting remains the purpose of this build, so feedback " +
             "is part of the quest.",
             13, UiTheme.TEXT);
         copy.setRows(3);

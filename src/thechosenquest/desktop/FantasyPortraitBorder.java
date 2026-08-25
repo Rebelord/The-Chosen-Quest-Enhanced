@@ -62,8 +62,12 @@ final class FantasyPortraitBorder extends AbstractBorder {
     Insets viewportInsets(int width, int height) {
         if (compact) return new Insets(5, 5, 5, 5);
         int horizontal = Math.max(18, Math.round(width * .135f));
-        int vertical = Math.max(22, Math.round(height * .128f));
-        return new Insets(vertical, horizontal, vertical, horizontal);
+        int top = Math.max(22, Math.round(height * .128f));
+        // The authored crown is deeper than the lower jewel mount. Matching the
+        // two insets left a visible band beneath the portrait even though the
+        // metal opening continues farther down.
+        int bottom = Math.max(16, Math.round(height * .09f));
+        return new Insets(top, horizontal, bottom, horizontal);
     }
 
     @Override

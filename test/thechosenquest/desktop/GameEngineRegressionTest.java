@@ -6,21 +6,21 @@ import java.util.Random;
 
 public final class GameEngineRegressionTest {
     private static final HeroExpectation[] HEROES = {
-        hero("Human", "Fighter", 70, 0, 13, 6, 20),
+        hero("Human", "Fighter", 70, 0, 13, 8, 20),
         hero("Human", "Mage", 55, 30, 11, 1, 20),
-        hero("Human", "Rogue", 55, 0, 15, 3, 40),
+        hero("Human", "Rogue", 55, 0, 14, 3, 40),
         hero("Human", "Hunter", 63, 0, 15, 2, 20),
-        hero("Dwarf", "Fighter", 80, 0, 12, 8, 20),
+        hero("Dwarf", "Fighter", 80, 0, 12, 10, 20),
         hero("Dwarf", "Mage", 65, 30, 10, 3, 20),
-        hero("Dwarf", "Rogue", 65, 0, 14, 5, 40),
+        hero("Dwarf", "Rogue", 65, 0, 13, 5, 40),
         hero("Dwarf", "Hunter", 73, 0, 14, 4, 20),
-        hero("Elf", "Fighter", 65, 8, 13, 6, 20),
+        hero("Elf", "Fighter", 65, 8, 13, 8, 20),
         hero("Elf", "Mage", 50, 38, 11, 1, 20),
-        hero("Elf", "Rogue", 50, 8, 15, 3, 40),
+        hero("Elf", "Rogue", 50, 8, 14, 3, 40),
         hero("Elf", "Hunter", 58, 8, 15, 2, 20),
-        hero("Halfling", "Fighter", 63, 0, 12, 7, 30),
+        hero("Halfling", "Fighter", 63, 0, 12, 9, 30),
         hero("Halfling", "Mage", 48, 30, 10, 2, 30),
-        hero("Halfling", "Rogue", 48, 0, 14, 4, 50),
+        hero("Halfling", "Rogue", 48, 0, 13, 4, 50),
         hero("Halfling", "Hunter", 56, 0, 14, 3, 30)
     };
 
@@ -86,7 +86,8 @@ public final class GameEngineRegressionTest {
             require(engine.getAttack() == expected.attack, label + " attack");
             require(engine.getDefense() == expected.defense, label + " defense");
             require(state.gold == expected.gold, label + " gold");
-            require(state.inventory.size() == 2, label + " starting equipment");
+            int expectedItems = "Fighter".equals(expected.heroClass) ? 3 : 2;
+            require(state.inventory.size() == expectedItems, label + " starting equipment");
             require(state.equippedWeapon != null && state.equippedArmour != null,
                 label + " equipped loadout");
             require(state.spells.isEmpty() == !"Mage".equals(expected.heroClass),
@@ -98,7 +99,7 @@ public final class GameEngineRegressionTest {
                     preview.maxMana == expected.mana &&
                     engine.getAttack() == expected.attack &&
                     engine.getDefense() == expected.defense &&
-                    preview.gold == expected.gold && preview.inventory.size() == 2,
+                    preview.gold == expected.gold && preview.inventory.size() == expectedItems,
                 label + " lightweight character-creation preview");
         }
         GameEngine masculine = new GameEngine();
@@ -135,8 +136,17 @@ public final class GameEngineRegressionTest {
     }
 
     private static void testStarterLoadoutsAndSelling() {
+        for (String heroClass : GameEngine.CLASSES) {
+            for (String path : GameEngine.starterKitsFor(heroClass)) {
+                require(!GameEngine.combatPathFantasy(path).isEmpty() &&
+                        !GameEngine.combatPathResourceLoop(heroClass, path).isEmpty() &&
+                        GameEngine.combatPathTrack(path).contains("→") &&
+                        !GameEngine.combatPathTradeoff(path).isEmpty(),
+                    "every Combat Path exposes fantasy, resource, progression, and tradeoff copy");
+            }
+        }
         GameEngine engine = new GameEngine();
-        engine.newGame("Breaker", "Human", "Fighter", "BREAKER");
+        engine.newGame("Berserker", "Human", "Fighter", "BERSERKER");
         GameEngine.State state = engine.getState();
         require("Greatsword".equals(state.equippedWeapon) &&
             "Leather Armour".equals(state.equippedArmour),
@@ -147,11 +157,10 @@ public final class GameEngineRegressionTest {
             "COMMON".equals(GameEngine.itemQuality(state.inventory.get(0))),
             "starter equipment is protected common gear");
         String breakerPath = GameEngine.abilityProgressionSummary(state);
-        require(breakerPath.contains("L2 Cleave") &&
+        require(breakerPath.contains("L2 Heavy Strike") &&
                 breakerPath.contains("L3 Armor Breaker") &&
                 breakerPath.contains("Second Wind"),
             "starter loadout previews its loadout-aware ability path");
-
         moveToShop(engine, true);
         int startingGold = state.gold;
         engine.sellItem(state.inventory.get(0));
@@ -167,36 +176,48 @@ public final class GameEngineRegressionTest {
         require(state.gold == afterPurchase + expectedSale && !state.inventory.contains(dagger),
             "purchased gear can be sold using vendor pricing");
 
-        engine.newGame("Spellblade", "Elf", "Mage", "SPELLBLADE");
+        engine.newGame("Arcanist", "Elf", "Mage", "ARCANIST");
         require("Apprentice Wand".equals(engine.getState().equippedWeapon) &&
             "Apprentice Tome".equals(engine.getState().equippedOffhand),
             "mage alternate starter loadout is applied");
-        engine.newGame("Knives", "Halfling", "Rogue", "QUICK KNIVES");
+        engine.newGame("Skirmisher", "Halfling", "Rogue", "SKIRMISHER");
         require("FAST".equals(GameEngine.attackTempoLabel(engine.getState())) &&
             "Offhand Dagger".equals(engine.getState().equippedOffhand),
             "quick-knives starter loadout attacks quickly");
 
         engine.newGame("Shield", "Human", "Fighter");
         state = engine.getState();
-        GameEngine.Item shield = item(engine, "Iron Shield");
-        state.inventory.add(shield);
+        GameEngine.Item shield = inventoryItem(state, "Iron Shield");
         int defense = engine.getDefense();
-        engine.equipItem(shield);
         require("Iron Shield".equals(state.equippedOffhand) &&
-            engine.getDefense() == defense + 2,
+            engine.getDefense() == defense,
             "fighter shields occupy the offhand and improve defense");
         GameEngine.Item greatsword = new GameEngine.Item("Greatsword", "Weapon", 9, 0, 15,
             "Fighter", false);
         state.inventory.add(greatsword);
         engine.equipItem(greatsword);
-        require(state.equippedOffhand == null,
+        require(state.equippedOffhand == null &&
+                "HEAVY ASSAULT".equals(GameEngine.currentCombatStyle(state)) &&
+                engine.consumeCombatStyleNotice().contains("Heavy Strike"),
             "equipping a two-handed weapon clears the offhand slot");
+        GameEngine.Item longSword = inventoryItem(state, "Long Sword");
+        engine.equipItem(longSword);
+        engine.consumeCombatStyleNotice();
+        engine.equipItem(shield);
+        String restoredNotice = engine.consumeCombatStyleNotice();
+        require("SHIELD GUARD".equals(GameEngine.currentCombatStyle(state)) &&
+                "KNIGHT".equals(GameEngine.originPath(state)) &&
+                restoredNotice != null && restoredNotice.contains("Shield Counter"),
+            "gear can reverse Current Style without rewriting Origin Path");
         moveToEnemy(engine, 0);
         int rageBeforeDefend = state.rage;
         engine.defend();
         require(state.rage == rageBeforeDefend &&
                 engine.getHistory().contains("no defensive setup action"),
             "fighters cannot passively build Rage through a defense action");
+        engine.newGame("Legacy", "Human", "Fighter", "VANGUARD");
+        require("KNIGHT".equals(GameEngine.originPath(engine.getState())),
+            "legacy Fighter path labels migrate to the canonical origin");
     }
 
     private static void testProceduralWorldGeneration() {
@@ -492,14 +513,14 @@ public final class GameEngineRegressionTest {
 
     private static void testProgressiveAbilities() {
         GameEngine fighter = new GameEngine();
-        fighter.newGame("Learner", "Human", "Fighter", "BREAKER");
+        fighter.newGame("Learner", "Human", "Fighter", "BERSERKER");
         GameEngine.State fighterState = fighter.getState();
         require(!GameEngine.abilityUnlocked(fighterState, 1) &&
                 "UNLOCKS LEVEL 2".equals(GameEngine.abilityRequirement(fighterState, 1)),
             "fighter combat begins with only core actions");
         fighterState.level = 2;
         require(GameEngine.abilityUnlocked(fighterState, 1) &&
-                "Cleave".equals(GameEngine.abilityName(fighterState, 1)),
+                "Heavy Strike".equals(GameEngine.abilityName(fighterState, 1)),
             "level two fighter unlock follows the equipped two-handed style");
         GameEngine.Relic earlyRelic =
             new GameEngine.Relic("Early Test Relic", "Warlord", "Blacksmith");
@@ -520,7 +541,7 @@ public final class GameEngineRegressionTest {
         fighter.useAbility(1);
         require(fighter.currentEnemy().health < beforeCleave &&
                 fighter.getHistory().contains("spend 30 Rage") &&
-                fighter.getHistory().contains("You use Cleave"),
+                fighter.getHistory().contains("You use Heavy Strike"),
             "fighter tactical ability spends Rage and resolves through combat rules");
         fighterState.level = 3;
         fighterState.weaponProficiency.put("HEAVY BLADE", Integer.valueOf(3));
@@ -551,9 +572,9 @@ public final class GameEngineRegressionTest {
             "Second Wind adrenaline empowers the fighter's next basic attack");
 
         GameEngine rogue = new GameEngine();
-        rogue.newGame("Learner", "Halfling", "Rogue", "QUICK KNIVES");
+        rogue.newGame("Learner", "Halfling", "Rogue", "SKIRMISHER");
         rogue.getState().level = 2;
-        require("Offhand Strike".equals(GameEngine.abilityName(rogue.getState(), 1)),
+        require("Twin Strike".equals(GameEngine.abilityName(rogue.getState(), 1)),
             "rogue level two unlock uses the dual-wield identity");
         moveToEnemy(rogue, 0);
         require(!GameEngine.abilityAvailable(rogue.getState(), 1),
@@ -780,6 +801,30 @@ public final class GameEngineRegressionTest {
     }
 
     private static void testDragonVictory() {
+        GameEngine sealed = new GameEngine();
+        sealed.newGame("Unprepared", "Human", "Fighter");
+        GameEngine.State sealedState = sealed.getState();
+        int lairRow = sealedState.dragonLairRow;
+        int lairCol = sealedState.dragonLairCol;
+        int approachCol = lairCol > 0 ? lairCol - 1 : lairCol + 1;
+        sealedState.row = lairRow;
+        sealedState.col = approachCol;
+        sealedState.enemies[lairRow][approachCol] = null;
+        sealed.move(0, lairCol - approachCol);
+        require(sealedState.col == approachCol &&
+                sealed.getHistory().contains("three elite relics (0/3)"),
+            "dragon seal blocks an unprepared quest rush with explicit progress");
+        sealedState.level = 3;
+        for (int index = 0; index < 3; index++) {
+            GameEngine.Relic relic = new GameEngine.Relic(
+                "Seal Relic " + index, "Elite", "Blacksmith");
+            relic.identified = true;
+            sealedState.relics.add(relic);
+        }
+        sealed.move(0, lairCol - approachCol);
+        require(sealedState.col == lairCol && sealed.dragonSealReady(),
+            "level three and three identified relics unseal the dragon encounter");
+
         GameEngine engine = new GameEngine();
         engine.newGame("Chosen", "Elf", "Mage");
         GameEngine.State state = engine.getState();
@@ -818,7 +863,7 @@ public final class GameEngineRegressionTest {
             "repeat purchase events cannot duplicate finite shop equipment");
         engine.equipItem(plate);
         require("Plate Armour".equals(state.equippedArmour), "purchased armour equips");
-        require(engine.getDefense() == state.baseDefense + plate.defense,
+        require(engine.getDefense() == state.baseDefense + plate.defense + 2,
             "equipped armour changes defense");
     }
 
@@ -1100,6 +1145,13 @@ public final class GameEngineRegressionTest {
         throw new AssertionError("Missing shop item: " + name);
     }
 
+    private static GameEngine.Item inventoryItem(GameEngine.State state, String name) {
+        for (GameEngine.Item item : state.inventory) {
+            if (name.equals(item.name)) return item;
+        }
+        throw new AssertionError("Missing inventory item: " + name);
+    }
+
     private static boolean containsShopItem(GameEngine engine, String name) {
         for (GameEngine.Item item : engine.shopItems()) {
             if (name.equals(item.name)) return true;
@@ -1212,7 +1264,7 @@ public final class GameEngineRegressionTest {
                     state.discovery[GameEngine.SIZE - 1][GameEngine.SIZE - 1] ==
                         GameEngine.DiscoveryState.UNKNOWN,
                 "legacy 5x5 saves expand without losing known tiles");
-            require(state.generationVersion == 10, "expanded saves advance to schema 10");
+            require(state.generationVersion == 11, "expanded saves advance to schema 11");
             require(state.spiderNestRow >= 0 && state.spiderNestRemaining == 3 &&
                     state.tiles[state.spiderNestRow][state.spiderNestCol] ==
                         GameEngine.TileType.SPIDER_NEST,

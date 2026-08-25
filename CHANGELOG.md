@@ -6,6 +6,29 @@ on playtest feedback.
 
 ## Unreleased
 
+## 0.8.0-beta.1 — 2026-08-24
+
+- Replaced legacy starting-loadout identities with Combat Paths: Knight/Berserker,
+  Channeler/Arcanist, Assassin/Skirmisher, and Ranger/Marksman, including safe schema
+  11 migration for existing saves.
+- Added prominent Combat Path cards, persistent Origin Path and equipment-derived
+  Current Style labels, and a custom style-change notice when gear unlocks a different
+  technique set. Cards now include fantasy, equipment, resource loop, progression,
+  tradeoff, accessible descriptions, and a dedicated selection sound; the notice is
+  non-modal and explicitly confirms that Origin Path is preserved.
+- Aligned starter equipment and techniques with their promises: Shield Counter and
+  Heavy Strike for Fighters, complete Assassin/Skirmisher kits for Rogues, and a real
+  opening-shot bonus for Marksman Hunters.
+- Converted martial ability bonuses to bounded percentage scaling and rebuilt dragon
+  preparation around level 3 plus three identified relics; relics now break the seal
+  instead of stacking large flat boss damage and guard bonuses.
+- Extended the shared hero theme through exploration identity, resource meters,
+  Inventory actions, combat actions, and outcome framing while leaving world-,
+  enemy-, quality-, danger-, health-, and vendor-owned surfaces neutral.
+- Added cached hero-art crossfades and a short Begin Journey confirmation delay,
+  both bypassed immediately when reduced motion is enabled.
+- Audited UI text bounds and all 32 character portraits; corrected portrait-bottom
+  framing and expanded automated smoke coverage for clipping and artwork dimensions.
 - Made development builds replace the runnable JAR atomically instead of rewriting
   it in place, preventing Java 8 `libzip` SIGBUS crashes when a running game loads
   later combat music, artwork, or classes while a new build is produced.

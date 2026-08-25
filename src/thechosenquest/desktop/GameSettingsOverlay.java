@@ -35,14 +35,17 @@ final class GameSettingsOverlay extends JPanel {
     private final UpdateService updateService = new UpdateService();
     private final JPanel modalHost = new JPanel(new BorderLayout());
     private final JLabel transitionLabel = new JLabel("", SwingConstants.CENTER);
+    private final JLabel noticeLabel = new JLabel("", SwingConstants.CENTER);
     private Runnable modalDismiss;
     private Timer transitionTimer;
+    private Timer noticeTimer;
     private Timer dialogueTimer;
     private JTextArea dialogueCopy;
     private GameMapPanel worldMap;
     private String fullDialogueText;
     private Color transitionColor = Color.BLACK;
     private float transitionOpacity;
+    private boolean noticeOnly;
 
     GameSettingsOverlay(SoundManager soundManager, GamePreferences preferences,
                         final Runnable onApplied) {
@@ -78,6 +81,17 @@ final class GameSettingsOverlay extends JPanel {
         transitionLabel.setFont(UiTheme.title(java.awt.Font.BOLD, 32));
         transitionLabel.setVisible(false);
         add(transitionLabel, centered);
+        GridBagConstraints notice = new GridBagConstraints();
+        notice.gridx = 0;
+        notice.gridy = 0;
+        notice.anchor = GridBagConstraints.NORTH;
+        notice.insets = new java.awt.Insets(34, 0, 0, 0);
+        noticeLabel.setOpaque(true);
+        noticeLabel.setBackground(new Color(34, 27, 24));
+        noticeLabel.setForeground(UiTheme.TEXT);
+        noticeLabel.setFont(UiTheme.body(Font.BOLD, 12));
+        noticeLabel.setVisible(false);
+        add(noticeLabel, notice);
         addMouseListener(new MouseAdapter() { });
         getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(
             KeyStroke.getKeyStroke("ESCAPE"), "closeSettings");
@@ -92,6 +106,7 @@ final class GameSettingsOverlay extends JPanel {
     }
 
     void showSettings() {
+        hideNotice();
         modalHost.setVisible(false);
         transitionLabel.setVisible(false);
         settings.setVisible(true);
@@ -101,6 +116,7 @@ final class GameSettingsOverlay extends JPanel {
     }
 
     void hideSettings() {
+        hideNotice();
         stopDialogueTimer();
         worldMap = null;
         settings.setVisible(false);
@@ -110,6 +126,7 @@ final class GameSettingsOverlay extends JPanel {
 
     /** Opens the release-owned credits without falling back to a system dialog. */
     void showCredits(final boolean returnToSettings) {
+        hideNotice();
         if (transitionTimer != null && transitionTimer.isRunning()) transitionTimer.stop();
         stopDialogueTimer();
         settings.setVisible(false);
@@ -136,6 +153,7 @@ final class GameSettingsOverlay extends JPanel {
 
     /** Opens the current tester-release summary as a reusable in-game reference. */
     void showReleaseNotes(final boolean returnToSettings, final Runnable afterClose) {
+        hideNotice();
         if (transitionTimer != null && transitionTimer.isRunning()) transitionTimer.stop();
         stopDialogueTimer();
         settings.setVisible(false);
@@ -284,6 +302,7 @@ final class GameSettingsOverlay extends JPanel {
 
     /** Opens the complete 13x13 world without exposing undiscovered information. */
     void showWorldMap(GameEngine engine) {
+        hideNotice();
         if (transitionTimer != null && transitionTimer.isRunning()) transitionTimer.stop();
         stopDialogueTimer();
         settings.setVisible(false);
@@ -528,6 +547,7 @@ final class GameSettingsOverlay extends JPanel {
      */
     void showDialogue(String artworkResource, String speaker, String role,
                       String message, Color accent, final Runnable afterClose) {
+        hideNotice();
         if (transitionTimer != null && transitionTimer.isRunning()) transitionTimer.stop();
         stopDialogueTimer();
         settings.setVisible(false);
@@ -743,6 +763,7 @@ final class GameSettingsOverlay extends JPanel {
                                String primaryLabel, final Runnable primary,
                                String secondaryLabel, final Runnable secondary,
                                String tertiaryLabel, final Runnable tertiary) {
+        hideNotice();
         if (transitionTimer != null && transitionTimer.isRunning()) transitionTimer.stop();
         settings.setVisible(false);
         transitionLabel.setVisible(false);
@@ -868,6 +889,7 @@ final class GameSettingsOverlay extends JPanel {
     }
 
     void playTransition(String label, Color color, int duration, final Runnable midpoint) {
+        hideNotice();
         if (transitionTimer != null && transitionTimer.isRunning()) transitionTimer.stop();
         settings.setVisible(false);
         modalHost.setVisible(false);
@@ -904,6 +926,52 @@ final class GameSettingsOverlay extends JPanel {
         });
         transitionTimer.start();
     }
+
+    /** Shows a readable, non-modal status banner without blocking gameplay input. */
+    void showNotice(String text, Color accent, int duration) {
+        hideNotice();
+        if (text == null || text.trim().isEmpty()) return;
+        if (transitionTimer != null && transitionTimer.isRunning()) transitionTimer.stop();
+        transitionOpacity = 0.0f;
+        transitionLabel.setVisible(false);
+        settings.setVisible(false);
+        modalHost.setVisible(false);
+        Color safeAccent = accent == null ? UiTheme.GOLD : accent;
+        noticeLabel.setText("  " + text + "  ");
+        noticeLabel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(safeAccent, 2),
+            BorderFactory.createEmptyBorder(10, 16, 10, 16)));
+        noticeLabel.getAccessibleContext().setAccessibleName(text);
+        noticeLabel.setVisible(true);
+        noticeOnly = true;
+        setVisible(true);
+        revalidate();
+        repaint();
+        noticeTimer = new Timer(Math.max(1200, duration), new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+            public void actionPerformed(ActionEvent event) { hideNotice(); }
+        });
+        noticeTimer.setRepeats(false);
+        noticeTimer.start();
+    }
+
+    private void hideNotice() {
+        if (noticeTimer != null && noticeTimer.isRunning()) noticeTimer.stop();
+        noticeLabel.setVisible(false);
+        noticeOnly = false;
+        if (!settings.isVisible() && !modalHost.isVisible() &&
+                !transitionLabel.isVisible()) setVisible(false);
+    }
+
+    @Override
+    public boolean contains(int x, int y) {
+        if (noticeOnly && noticeLabel.isVisible() && !settings.isVisible() &&
+                !modalHost.isVisible() && !transitionLabel.isVisible()) return false;
+        return super.contains(x, y);
+    }
+
+    boolean noticeVisibleForTest() { return noticeLabel.isVisible(); }
+    String noticeTextForTest() { return noticeLabel.getText(); }
 
     @Override
     protected void paintComponent(Graphics graphics) {

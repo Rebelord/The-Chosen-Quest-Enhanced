@@ -28,6 +28,7 @@ import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.Scrollable;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
@@ -56,17 +57,19 @@ final class CharacterCreationPanel extends JPanel {
         default void onRandomizeName() { }
         default void onRaceSelected(String race) { }
         default void onClassSelected(String heroClass) { }
+        default void onCombatPathSelected(String path) { }
         default void onGenderSelected(String gender) { }
     }
 
     private final Listener listener;
+    private final boolean reducedMotion = new GamePreferences().isReducedMotion();
     private final GameEngine previewEngine = new GameEngine();
     private final JTextField name = new JTextField("Aelindra");
     private final ChoiceCard[] raceCards = new ChoiceCard[GameEngine.RACES.length];
     private final ChoiceCard[] classCards = new ChoiceCard[GameEngine.CLASSES.length];
     private final JButton[] starterKitButtons = new JButton[2];
     private final JButton[] genderButtons = new JButton[2];
-    private final AssetImagePanel previewImage = new AssetImagePanel(null, false);
+    private final AssetImagePanel previewImage = new AssetImagePanel(null, true);
     private final JLabel playerNameTitle = new JLabel();
     private final ArtDecoProfileNamePanel playerNamePlate =
         new ArtDecoProfileNamePanel(playerNameTitle);
@@ -80,11 +83,11 @@ final class CharacterCreationPanel extends JPanel {
     private final JLabel equipmentArmour = new JLabel();
     private final JLabel classDescription = new JLabel();
     private final JLabel buildEyebrow = new JLabel();
-    private final JLabel buildSummary = new JLabel();
-    private final JLabel combatStyle = new JLabel();
-    private final JLabel buildTraits = new JLabel();
-    private final JLabel abilityPath = new JLabel();
-    private final JLabel startingProfile = new JLabel();
+    private final JTextArea buildSummary = wrappingCopy();
+    private final JTextArea combatStyle = wrappingCopy();
+    private final JTextArea buildTraits = wrappingCopy();
+    private final JTextArea abilityPath = wrappingCopy();
+    private final JTextArea startingProfile = wrappingCopy();
     private JPanel buildGuidePanel;
     private JPanel previewPanel;
     private CreationThemePanel creationShell;
@@ -114,6 +117,7 @@ final class CharacterCreationPanel extends JPanel {
         });
         artworkTimer.setRepeats(false);
         setLayout(new BorderLayout());
+        previewImage.setAnimatedTransitions(!reducedMotion);
         setBackground(UiTheme.BACKGROUND);
         setBorder(ArtDecoBorder.shell(UiTheme.GOLD, 7));
         add(buildHeader(), BorderLayout.NORTH);
@@ -345,11 +349,13 @@ final class CharacterCreationPanel extends JPanel {
         }
         selection.add(classes);
         selection.add(verticalGap(6, 12, 22));
-        selection.add(sectionLabel("STARTING LOADOUT"));
+        selection.add(sectionLabel("COMBAT PATH"));
         JPanel kits = new JPanel(new GridLayout(1, 2, 12, 0));
         kits.setOpaque(false);
         kits.setAlignmentX(LEFT_ALIGNMENT);
-        kits.setMaximumSize(new Dimension(Integer.MAX_VALUE, 52));
+        kits.setPreferredSize(new Dimension(600, 118));
+        kits.setMinimumSize(new Dimension(240, 108));
+        kits.setMaximumSize(new Dimension(Integer.MAX_VALUE, 126));
         for (int i = 0; i < starterKitButtons.length; i++) {
             final int index = i;
             starterKitButtons[i] = UiTheme.button("", false);
@@ -359,6 +365,7 @@ final class CharacterCreationPanel extends JPanel {
                 public void actionPerformed(ActionEvent event) {
                     selectedStarterKit = GameEngine.starterKitsFor(selectedClass)[index];
                     refreshSelection();
+                    if (listener != null) listener.onCombatPathSelected(selectedStarterKit);
                 }
             });
             kits.add(starterKitButtons[i]);
@@ -407,15 +414,17 @@ final class CharacterCreationPanel extends JPanel {
         buildSummary.setForeground(UiTheme.TEXT);
         buildSummary.setFont(UiTheme.displayBold(15));
         buildSummary.setAlignmentX(LEFT_ALIGNMENT);
+        buildSummary.setRows(2);
+        buildSummary.setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
         guide.add(buildSummary);
         guide.add(verticalGap(6, 10, 18));
 
         JPanel details = new JPanel(new GridLayout(2, 2, 18, 12));
         details.setOpaque(false);
         details.setAlignmentX(LEFT_ALIGNMENT);
-        details.setPreferredSize(new Dimension(600, 160));
-        details.setMinimumSize(new Dimension(240, 144));
-        details.setMaximumSize(new Dimension(Integer.MAX_VALUE, 214));
+        details.setPreferredSize(new Dimension(600, 184));
+        details.setMinimumSize(new Dimension(240, 184));
+        details.setMaximumSize(new Dimension(Integer.MAX_VALUE, 230));
         details.add(buildGuideColumn("COMBAT LOOP", combatStyle));
         details.add(buildGuideColumn("RACE & CLASS TRAITS", buildTraits));
         details.add(buildGuideColumn("ABILITY PROGRESSION", abilityPath));
@@ -424,7 +433,7 @@ final class CharacterCreationPanel extends JPanel {
         return guide;
     }
 
-    private JPanel buildGuideColumn(String title, JLabel copy) {
+    private JPanel buildGuideColumn(String title, JTextArea copy) {
         JPanel column = new JPanel(new BorderLayout(0, 4));
         column.setOpaque(false);
         JLabel heading = new JLabel(title);
@@ -448,7 +457,7 @@ final class CharacterCreationPanel extends JPanel {
         // Full-body portraits are 3:4. Keep the framed component at that same
         // ratio so the border follows the artwork instead of framing side bars.
         previewImage.setPreferredSize(new Dimension(420, 560));
-        previewImage.setMinimumSize(new Dimension(195, 260));
+        previewImage.setMinimumSize(new Dimension(150, 200));
         previewImage.setMaximumSize(new Dimension(420, 560));
         // The authored frame has a stepped silhouette. Let the themed profile
         // surface show through outside that silhouette instead of painting the
@@ -459,7 +468,7 @@ final class CharacterCreationPanel extends JPanel {
         portraitRow.setOpaque(false);
         portraitRow.setAlignmentX(CENTER_ALIGNMENT);
         portraitRow.setPreferredSize(new Dimension(440, 560));
-        portraitRow.setMinimumSize(new Dimension(240, 260));
+        portraitRow.setMinimumSize(new Dimension(200, 200));
         portraitRow.setMaximumSize(new Dimension(440, 560));
         preview.add(portraitRow);
         preview.add(verticalGap(8, 14, 22));
@@ -469,7 +478,7 @@ final class CharacterCreationPanel extends JPanel {
         profile.setOpaque(false);
         profile.setAlignmentX(CENTER_ALIGNMENT);
         profile.setPreferredSize(new Dimension(440, 326));
-        profile.setMinimumSize(new Dimension(240, 306));
+        profile.setMinimumSize(new Dimension(240, 298));
         profile.setMaximumSize(new Dimension(440, 340));
 
         playerNameTitle.setForeground(UiTheme.GOLD_LIGHT);
@@ -491,6 +500,11 @@ final class CharacterCreationPanel extends JPanel {
         previewTitle.setAlignmentX(CENTER_ALIGNMENT);
         previewTitle.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
         profile.add(previewTitle);
+        classDescription.setFont(UiTheme.body(Font.BOLD, 10));
+        classDescription.setHorizontalAlignment(SwingConstants.CENTER);
+        classDescription.setAlignmentX(CENTER_ALIGNMENT);
+        classDescription.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
+        profile.add(classDescription);
         profile.add(verticalGap(6, 10, 16));
         health.setAlignmentX(CENTER_ALIGNMENT);
         health.setPreferredSize(new Dimension(440, 26));
@@ -516,8 +530,11 @@ final class CharacterCreationPanel extends JPanel {
         equipment.setBackground(UiTheme.SURFACE_DEEP);
         equipment.setBorder(new ArtDecoBorder(UiTheme.GOLD, 12));
         equipment.setAlignmentX(CENTER_ALIGNMENT);
-        equipment.setPreferredSize(new Dimension(440, 94));
-        equipment.setMaximumSize(new Dimension(Integer.MAX_VALUE, 94));
+        // The Art Deco border consumes 24 vertical pixels. A 102 px strip leaves
+        // all three 40 px icons and two text lines fully visible inside it.
+        equipment.setPreferredSize(new Dimension(440, 102));
+        equipment.setMinimumSize(new Dimension(240, 102));
+        equipment.setMaximumSize(new Dimension(Integer.MAX_VALUE, 102));
         configureEquipmentLabel(equipmentWeapon);
         configureEquipmentLabel(equipmentOffhand);
         configureEquipmentLabel(equipmentArmour);
@@ -533,11 +550,13 @@ final class CharacterCreationPanel extends JPanel {
         actions.setOpaque(false);
         actions.setAlignmentX(CENTER_ALIGNMENT);
         actions.setPreferredSize(new Dimension(392, 44));
+        actions.setMinimumSize(new Dimension(240, 44));
         actions.setMaximumSize(new Dimension(392, 44));
         JButton back = UiTheme.button("BACK", false);
         decorateButton(back, UiTheme.GOLD, false);
         back.setFont(UiTheme.displayBold(15));
         back.setPreferredSize(new Dimension(190, 44));
+        back.setMinimumSize(new Dimension(100, 44));
         back.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) { listener.onBack(); }
         });
@@ -545,10 +564,23 @@ final class CharacterCreationPanel extends JPanel {
         decoratePrimaryButton(begin, UiTheme.GOLD_LIGHT);
         begin.setFont(UiTheme.displayBold(15));
         begin.setPreferredSize(new Dimension(190, 44));
+        begin.setMinimumSize(new Dimension(100, 44));
         begin.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) {
-                listener.onBegin(name.getText(), selectedRace, selectedClass,
-                    selectedStarterKit, selectedGender);
+                if (reducedMotion) {
+                    listener.onBegin(name.getText(), selectedRace, selectedClass,
+                        selectedStarterKit, selectedGender);
+                    return;
+                }
+                begin.setEnabled(false);
+                Timer confirmation = new Timer(180, new ActionListener() {
+                    public void actionPerformed(ActionEvent ignored) {
+                        listener.onBegin(name.getText(), selectedRace, selectedClass,
+                            selectedStarterKit, selectedGender);
+                    }
+                });
+                confirmation.setRepeats(false);
+                confirmation.start();
             }
         });
         actions.add(back);
@@ -639,8 +671,26 @@ final class CharacterCreationPanel extends JPanel {
         for (int i = 0; i < starterKitButtons.length; i++) {
             String kit = kits[i];
             boolean active = kit.equals(selectedStarterKit);
-            starterKitButtons[i].setText("<html><center>" + kit + "<br><font size='3'>" +
-                GameEngine.starterKitDescription(selectedClass, kit) + "</font></center></html>");
+            String cardCopy = "<html><center><b>" + kit + "</b><br>" +
+                "<font size='3'>" + GameEngine.combatPathFantasy(kit) + "</font><br>" +
+                "<font size='2'>" + GameEngine.starterKitDescription(selectedClass, kit) +
+                "<br>" + GameEngine.combatPathResourceLoop(selectedClass, kit) +
+                "<br>" + GameEngine.combatPathTrack(kit) +
+                "<br><i>Tradeoff: " + GameEngine.combatPathTradeoff(kit) +
+                "</i></font></center></html>";
+            starterKitButtons[i].setText(cardCopy);
+            starterKitButtons[i].setToolTipText("<html><b>" + kit + "</b><br>" +
+                GameEngine.combatPathFantasy(kit) + "<br>" +
+                GameEngine.starterKitDescription(selectedClass, kit) + "<br>" +
+                GameEngine.combatPathResourceLoop(selectedClass, kit) + "<br>" +
+                GameEngine.combatPathTrack(kit) + "<br>Tradeoff: " +
+                GameEngine.combatPathTradeoff(kit) + "</html>");
+            starterKitButtons[i].getAccessibleContext().setAccessibleDescription(
+                kit + ". " + GameEngine.combatPathFantasy(kit) + ". " +
+                GameEngine.starterKitDescription(selectedClass, kit) + ". " +
+                GameEngine.combatPathResourceLoop(selectedClass, kit) + ". " +
+                GameEngine.combatPathTrack(kit) + ". Tradeoff: " +
+                GameEngine.combatPathTradeoff(kit));
             UiTheme.setButtonActive(starterKitButtons[i], active);
             decorateButton(starterKitButtons[i],
                 active ? classAccent : heroTheme.metalAccent(), active);
@@ -702,7 +752,8 @@ final class CharacterCreationPanel extends JPanel {
             "Offhand", itemFor(state, state.equippedOffhand));
         setEquipmentLabel(equipmentArmour, state.equippedArmour, "Armour",
             itemFor(state, state.equippedArmour));
-        classDescription.setText(descriptionForClass(selectedClass));
+        classDescription.setText("ORIGIN  " + GameEngine.originPath(state) +
+            "   ·   CURRENT STYLE  " + GameEngine.currentCombatStyle(state));
         refreshBuildGuide();
         revalidate();
         repaint();
@@ -733,15 +784,31 @@ final class CharacterCreationPanel extends JPanel {
     private void refreshBuildGuide() {
         buildEyebrow.setText("SELECTED BUILD  ·  " +
             selectedRace.toUpperCase() + " " + selectedClass.toUpperCase());
-        buildSummary.setText("<html>" + buildSummaryFor(selectedRace, selectedClass) + "</html>");
-        combatStyle.setText("<html>" + combatStyleFor(selectedClass) + "</html>");
-        buildTraits.setText("<html>" + raceTraitFor(selectedRace, selectedClass) + "<br>" +
-            classTraitFor(selectedClass) + "</html>");
+        buildSummary.setText(buildSummaryFor(selectedRace, selectedClass));
+        combatStyle.setText(plainLines(combatStyleFor(selectedClass)));
+        buildTraits.setText(raceTraitFor(selectedRace, selectedClass) + "\n" +
+            classTraitFor(selectedClass));
         GameEngine.State preview = previewEngine.getState();
-        abilityPath.setText("<html>" + GameEngine.abilityProgressionSummary(preview) + "</html>");
-        startingProfile.setText("<html>" + classResource(selectedClass) + " resource · " +
-            difficultyFor(selectedClass) + "<br>" +
-            GameEngine.starterKitDescription(selectedClass, selectedStarterKit) + "</html>");
+        abilityPath.setText(plainLines(GameEngine.abilityProgressionSummary(preview)));
+        startingProfile.setText(classResource(selectedClass) + " resource · " +
+            difficultyFor(selectedClass) + "\n" +
+            GameEngine.starterKitDescription(selectedClass, selectedStarterKit));
+    }
+
+    private static JTextArea wrappingCopy() {
+        JTextArea copy = new JTextArea();
+        copy.setEditable(false);
+        copy.setFocusable(false);
+        copy.setOpaque(false);
+        copy.setBorder(null);
+        copy.setLineWrap(true);
+        copy.setWrapStyleWord(true);
+        copy.setRows(4);
+        return copy;
+    }
+
+    private static String plainLines(String value) {
+        return value == null ? "" : value.replace("<br>", "\n");
     }
 
     private String buildSummaryFor(String race, String heroClass) {
@@ -814,6 +881,17 @@ final class CharacterCreationPanel extends JPanel {
         if ("Rogue".equals(heroClass)) return "MOMENTUM · FAST FINISHER";
         if ("Hunter".equals(heroClass)) return "FOCUS · RANGED CONTROL";
         return "RAGE · FRONT-LINE PRESSURE";
+    }
+
+    private static String pathIdentityFor(String heroClass, String path) {
+        if ("KNIGHT".equals(path)) return "Guard · Shield Counter · Second Wind";
+        if ("BERSERKER".equals(path)) return "Heavy Strike · armour break · Rage";
+        if ("CHANNELER".equals(path)) return "Reliable casting · mana control";
+        if ("ARCANIST".equals(path)) return "Wand + tome · focused spell power";
+        if ("ASSASSIN".equals(path)) return "Ambush · Vanish · Execute";
+        if ("SKIRMISHER".equals(path)) return "Twin Strike · Evasive Strike · Flurry";
+        if ("MARKSMAN".equals(path)) return "Opening shot · mark · precision";
+        return "Aim · mobile fire · ranged control";
     }
 
     private String classResource(String heroClass) {
@@ -892,6 +970,44 @@ final class CharacterCreationPanel extends JPanel {
     String playerNameForTest() { return name.getText(); }
 
     String displayedProfileNameForTest() { return playerNameTitle.getText(); }
+
+    String combatPathCardCopyForTest(int index) {
+        return starterKitButtons[index].getText();
+    }
+
+    String combatPathCardAccessibleCopyForTest(int index) {
+        return starterKitButtons[index].getAccessibleContext().getAccessibleDescription();
+    }
+
+    void activateCombatPathForTest(int index) { starterKitButtons[index].doClick(); }
+
+    boolean compactProfileFitsForTest() {
+        return equipment.getHeight() >= 102 &&
+            findButtonHeight(this, "BACK") >= 44 &&
+            findButtonHeight(this, "BEGIN JOURNEY") >= 44 &&
+            copyFits(buildSummary) && copyFits(combatStyle) &&
+            copyFits(buildTraits) && copyFits(abilityPath) &&
+            copyFits(startingProfile);
+    }
+
+    private static boolean copyFits(JTextArea copy) {
+        if (copy.getWidth() <= 0 || copy.getHeight() <= 0) return false;
+        return copy.getPreferredSize().height <= copy.getHeight() + 2;
+    }
+
+    private static int findButtonHeight(java.awt.Container container, String text) {
+        for (java.awt.Component component : container.getComponents()) {
+            if (component instanceof JButton &&
+                    text.equals(((JButton) component).getText())) {
+                return component.getHeight();
+            }
+            if (component instanceof java.awt.Container) {
+                int nested = findButtonHeight((java.awt.Container) component, text);
+                if (nested >= 0) return nested;
+            }
+        }
+        return -1;
+    }
 
     boolean racePortraitsSquareForTest() {
         for (ChoiceCard card : raceCards) {

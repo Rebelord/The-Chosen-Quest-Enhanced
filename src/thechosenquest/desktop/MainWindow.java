@@ -117,6 +117,7 @@ final class MainWindow {
             String armour = engine.getState().equippedArmour;
             String offhand = engine.getState().equippedOffhand;
             engine.equipItem(item);
+            String styleNotice = engine.consumeCombatStyleNotice();
             GameEngine.State state = engine.getState();
             soundManager.play(equalsText(weapon, state.equippedWeapon) &&
                 equalsText(armour, state.equippedArmour) &&
@@ -124,6 +125,7 @@ final class MainWindow {
                 (item.relicReward ? SoundManager.Cue.RELIC_EQUIPPED :
                     SoundManager.Cue.EQUIP));
             refresh();
+            showCombatStyleNotice(styleNotice);
         }
 
         public void onBack() { showStory(); }
@@ -462,6 +464,10 @@ final class MainWindow {
 
             public void onClassSelected(String heroClass) {
                 soundManager.playSelection(SoundManager.cueForClass(heroClass));
+            }
+
+            public void onCombatPathSelected(String path) {
+                soundManager.playSelection(SoundManager.Cue.PATH_SELECT);
             }
 
             public void onGenderSelected(String gender) {
@@ -1301,14 +1307,24 @@ final class MainWindow {
                 String armour = before.equippedArmour;
                 String offhand = before.equippedOffhand;
                 engine.equipItem(item);
+                String styleNotice = engine.consumeCombatStyleNotice();
                 GameEngine.State after = engine.getState();
                 boolean changed = !equalsText(weapon, after.equippedWeapon) ||
                     !equalsText(armour, after.equippedArmour) ||
                     !equalsText(offhand, after.equippedOffhand);
                 soundManager.play(changed ? successCue : SoundManager.Cue.ERROR);
                 refresh();
+                showCombatStyleNotice(styleNotice);
             }
         };
+    }
+
+    private void showCombatStyleNotice(String notice) {
+        if (notice == null || notice.length() == 0) return;
+        GameEngine.State state = engine.getState();
+        HeroVisualTheme theme = HeroVisualTheme.forBuild(state.race, state.heroClass);
+        settingsOverlay.showNotice(notice + " · ORIGIN " + GameEngine.originPath(state) +
+            " PRESERVED", theme.classAccent(), preferences.isReducedMotion() ? 2200 : 2800);
     }
 
     private void showProgression(GameEngine.ProgressionNotice notice,

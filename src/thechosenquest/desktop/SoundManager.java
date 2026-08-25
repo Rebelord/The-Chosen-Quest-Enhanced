@@ -61,6 +61,7 @@ final class SoundManager {
         CLASS_MAGE(new double[] {440, 659, 988}, new int[] {60, 70, 130}, false),
         CLASS_ROGUE(new double[] {523, 392, 294}, new int[] {40, 45, 80}, true),
         CLASS_HUNTER(new double[] {392, 587}, new int[] {75, 135}, false),
+        PATH_SELECT(new double[] {330, 494, 659}, new int[] {45, 55, 95}, false),
         ADVENTURE_BEGIN(new double[] {392, 523, 659, 784, 1047},
             new int[] {70, 70, 85, 105, 220}, false),
         ERROR(new double[] {180, 145}, new int[] {90, 130}, true,

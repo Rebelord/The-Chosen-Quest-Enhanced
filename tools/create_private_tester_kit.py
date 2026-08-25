@@ -39,6 +39,7 @@ VERSION_MATCH = re.search(r'VERSION\s*=\s*"([^"]+)"', VERSION_SOURCE)
 if not VERSION_MATCH:
     raise RuntimeError("Unable to read AppVersion.VERSION")
 VERSION = VERSION_MATCH.group(1)
+PREVIOUS_VERSION = "0.7.0-beta.2"
 RELEASE_URL = (
     "https://github.com/Rebelord/The-Chosen-Quest-Enhanced/"
     f"releases/tag/v{VERSION}"
@@ -429,7 +430,7 @@ def create_quick_reference_pdf():
     y = paragraph(
         canvas,
         "<b>Java 8 or newer</b> - install from adoptium.net if needed<br/>"
-        "About <b>250 MB</b> free disk space<br/>"
+        "About <b>400 MB</b> free disk space<br/>"
         "<b>1280 x 720</b> minimum; 1440 x 900 recommended<br/>"
         "Desktop Windows, macOS, Linux, or Chromebook Linux environment",
         margin,
@@ -454,10 +455,10 @@ def create_quick_reference_pdf():
     y = section_title(canvas, "4. What to test", margin, y, left_w)
     paragraph(
         canvas,
-        "Try different race, class, and starting weapon combinations. Explore the "
-        "fog-aware map, follow rumors, visit vendors, clear the Spider Nest, identify "
-        "relics, and challenge elite and boss encounters. Note anything confusing, "
-        "too easy, too punishing, slow, visually broken, or unexpectedly fun.",
+        "Try different races, classes, and Combat Paths. Change gear and compare Origin "
+        "Path with Current Style. Test vendors, relic Equip Now choices, exploration, "
+        "and combat. Note anything confusing, too easy, too punishing, clipped, visually "
+        "broken, or unexpectedly fun.",
         margin,
         y,
         left_w,
@@ -467,9 +468,10 @@ def create_quick_reference_pdf():
     y = section_title(canvas, "5. Suggested 30-minute route", margin, y, left_w)
     paragraph(
         canvas,
-        "Create a new hero and note the starting build. Explore until you reach a "
+        "Create a hero and note the Combat Path. Explore until you reach a "
         "vendor and one standard fight. Test inventory sorting and equipment "
-        "comparison. Follow a rumor or map clue. Open the full world map with M. "
+        "comparison; equip alternate-path gear and check Current Style. Follow a rumor "
+        "or map clue. Open the full world map with M. "
         "Attempt one elite objective or the Spider Nest. Finish by submitting the "
         "feedback form, even if nothing broke.",
         margin,
@@ -527,7 +529,8 @@ def create_quick_reference_pdf():
     y2 = section_title(canvas, "A useful report includes", right_x, y2, right_w)
     y2 = paragraph(
         canvas,
-        "Operating system and Java version; race, class, level, and loadout; exact "
+        "Operating system and Java version; race, class, level, Origin Path, and Current "
+        "Style; exact "
         "steps before the problem; what you expected; what happened; whether a reload "
         "reproduces it; and a game-window screenshot for visual issues.",
         right_x,
@@ -536,13 +539,13 @@ def create_quick_reference_pdf():
         body,
     )
     y2 -= 8
-    y2 = section_title(canvas, "Update feature baseline", right_x, y2, right_w)
+    y2 = section_title(canvas, "Update and save migration", right_x, y2, right_w)
     y2 = paragraph(
         canvas,
-        "In Settings, choose <b>Check Updates</b>. Before the next patch exists, this "
-        f"build should report <b>v{VERSION}</b> as current. Keep this copy installed. "
-        "After the next beta is published, relaunch it and verify the update notice, "
-        "View Changes, Remind Me Later, and official Download handoff.",
+        f"From retained <b>v{PREVIOUS_VERSION}</b>, verify the updater offers "
+        f"<b>v{VERSION}</b>. Extract the new build separately and load the older save. "
+        "Confirm equipment, Origin Path, and Current Style; then Check Updates in the "
+        "new build and keep it for the next test.",
         right_x,
         y2,
         right_w,
@@ -584,7 +587,7 @@ Download: {RELEASE_URL}
 
 What you will need:
 - Java 8 or newer
-- About 250 MB of free disk space
+- About 400 MB of free disk space
 - Windows, macOS, Linux, or a Chromebook Linux environment
 - A display resolution of at least 1280 x 720
 
@@ -592,10 +595,11 @@ The download includes simple launchers and a Tester Guide. Please extract the ZI
 before launching the game.
 
 UPDATE TEST
-- Open Settings and choose Check Updates. This build should initially report
-  v{VERSION} as current.
-- Keep this exact folder installed. When the next beta is announced, launch this
-  older copy again and test the in-game update notice and official download handoff.
+- If you retained v{PREVIOUS_VERSION}, launch it online and confirm it offers v{VERSION}.
+- Extract v{VERSION} separately and load the older save. Confirm equipment, Origin Path,
+  and Current Style remain coherent.
+- In v{VERSION}, Check Updates should report this build as current. Keep the folder for
+  the next update test.
 
 After playing:
 General feedback: {FEEDBACK_URL}
@@ -617,10 +621,9 @@ Download the beta and Tester Guide here:
 Java 8 or newer is required. After playing, please share general feedback at
 {FEEDBACK_URL} or report reproducible bugs at {BUG_URL}.
 
-Please keep this exact build installed for the update test. It should initially
-report v{VERSION} as current under Settings > Check Updates. After the next beta
-is announced, relaunch this older build and verify that its update notice opens
-the official release download.
+If you retained v{PREVIOUS_VERSION}, launch it online and confirm it offers v{VERSION}.
+Extract the new build separately, load the older save, and verify equipment and hero
+identity. Keep v{VERSION} installed for the next update test.
 
 Please keep this build within the invited testing group. Thank you for helping
 shape the adventure!
@@ -633,21 +636,21 @@ Subject: Your invitation to test The Chosen Quest Enhanced
 Hello,
 
 I would love your help testing The Chosen Quest Enhanced, a modernized version
-of our original turn-based fantasy RPG. This private beta focuses on combat
-balance, exploration, character builds, vendors, relic progression, audio, and
+of our original turn-based fantasy RPG. This private beta focuses on Combat Paths,
+equipment-driven styles, save migration, vendors, relic decisions, balance, and
 interface clarity.
 
 Download v{VERSION}:
 {RELEASE_URL}
 
-You will need Java 8 or newer, about 250 MB of free space, and a Windows, macOS,
+You will need Java 8 or newer, about 400 MB of free space, and a Windows, macOS,
 Linux, or Chromebook Linux desktop environment. Extract the ZIP before using the
 included launcher. A one-page Quick Reference and full Tester Guide are included.
 
-Please keep this exact build folder after testing. In Settings, choose Check Updates
-and confirm v{VERSION} is current. When the next beta is announced, launch this
-older build again and test its update notice, View Changes, Remind Me Later, and
-official Download handoff.
+If you retained v{PREVIOUS_VERSION}, launch it online and verify that it discovers
+v{VERSION}. Extract the new build separately and load the older save. Confirm equipment,
+Origin Path, and Current Style remain coherent. Check Updates in v{VERSION}, then keep
+this new folder for the next update test.
 
 When you finish:
 - General feedback: {FEEDBACK_URL}
@@ -667,6 +670,7 @@ Thank you for helping shape The Chosen Quest Enhanced.
     checklist = f"""PRIVATE TESTER CHECKLIST - v{VERSION}
 
 BEFORE PLAYING
+[ ] If available, launch retained v{PREVIOUS_VERSION} online and confirm it offers v{VERSION}.
 [ ] Download the build from: {RELEASE_URL}
 [ ] Extract the ZIP to a normal folder.
 [ ] Confirm Java 8 or newer is installed.
@@ -675,8 +679,10 @@ BEFORE PLAYING
 [ ] Keep this exact build folder for the next-beta update test.
 
 DURING PLAY
-[ ] Note your race, class, starting loadout, and current level.
-[ ] Try exploration, vendors, inventory, rumors, combat, and the world map.
+[ ] Note your race, class, Origin Path, Current Style, and current level.
+[ ] If available, load a v{PREVIOUS_VERSION} save and verify equipment and hero identity.
+[ ] Change gear and confirm Current Style can change without replacing Origin Path.
+[ ] Test exploration, finite vendor gear, relic Equip Now, inventory, combat, and the map.
 [ ] Record clear steps when anything unexpected happens.
 [ ] Capture only the game window if a screenshot would help.
 

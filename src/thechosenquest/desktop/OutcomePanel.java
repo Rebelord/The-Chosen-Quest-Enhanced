@@ -143,11 +143,18 @@ final class OutcomePanel extends JPanel {
     }
 
     private void setHero(GameEngine.State state) {
+        HeroVisualTheme theme = HeroVisualTheme.forBuild(state.race, state.heroClass);
         artwork.setCover(true);
         artwork.setResourceAsync(
             CharacterArt.portrait(state.race, state.heroClass, state.gender));
+        artwork.setBorder(new FantasyPortraitBorder(state.race, state.heroClass));
         heroName.setText(state.playerName);
+        heroName.setForeground(theme.metalAccent());
+        card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(theme.metalAccent(), 2),
+            BorderFactory.createEmptyBorder(24, 48, 24, 48)));
         identity.setText("LEVEL " + state.level + " " + state.race.toUpperCase() + " " +
-            state.heroClass.toUpperCase() + " · DRAGONSLAYER");
+            state.heroClass.toUpperCase() + " · ORIGIN " + GameEngine.originPath(state) +
+            " · " + GameEngine.currentCombatStyle(state));
     }
 }

@@ -22,8 +22,8 @@ this file records why an item matters and how difficult it is expected to be.
 | BAL-001 | Simulate all 16 race/class builds and both class loadouts | High | Large | Completed | Play runs and compare human outcomes with the generated baseline |
 | BAL-002 | Tune level-three bosses, elite relic power, and potion pressure | High | Medium | Completed | Test Shadow Dragon attempts and flag unfair turns |
 | BAL-003 | Validate Rage, Momentum, Focus, and gated class abilities in human play | High | Medium | In Progress | Compare cautious and attack-spam runs across Fighter, Rogue, and Hunter |
-| BAL-004 | Align starting paths, equipment requirements, and ability names | High | Medium | Ready | Verify that each creation-screen promise matches the first-turn combat options |
-| BAL-005 | Convert ability scaling and rebuild three-relic dragon preparation | High | Medium | Ready | Compare level-two ability spikes and level-three dragon attempts after three elite routes |
+| BAL-004 | Align starting paths, equipment requirements, and ability names | High | Medium | Completed | Verify that each creation-screen promise matches the first-turn combat options |
+| BAL-005 | Convert ability scaling and rebuild three-relic dragon preparation | High | Medium | Completed | Compare level-two ability spikes and level-three dragon attempts after three elite routes |
 | QA-001 | Create a repeatable playtest checklist and findings log | High | Small | Completed | Run the checklist with different player styles |
 | DOC-001 | Create a living GDD and portable external-design context packet | High | Small | Completed | Compare new ideas against the documented current build |
 | UX-001 | Add ability tooltips with cost, speed, effect, and estimated outcome | High | Medium | Completed | Review wording for clarity without revealing every formula |
@@ -41,12 +41,12 @@ this file records why an item matters and how difficult it is expected to be.
 | CHAR-002 | Rebuild portrait frames with masked artwork viewports | High | Medium | Completed | Check every frame size for edge bleed and crop quality |
 | CHAR-003 | Refocus character creation around one dominant live hero showcase | High | Medium | Completed | Verify the screen contains exactly one character image at every supported size |
 | CHAR-004 | Replace thin selectors and the wide summary with class cards and a build dossier | High | Medium | Completed | Review resource, role, difficulty, strengths, and progression wording |
-| CHAR-005 | Add cached character-selection transitions and confirmation polish | Medium–High | Medium | Planned | Suggest subtle class particles, transition cues, and reduced-motion behavior |
+| CHAR-005 | Add cached character-selection transitions and confirmation polish | Medium–High | Medium | Completed | Suggest subtle class particles, transition cues, and reduced-motion behavior |
 | CHAR-006 | Preserve advanced creation concepts for a later presentation expansion | Medium | Large | Later | Develop idle-animation, diorama, rotation, and origin concepts without changing current balance |
 | CHAR-007 | Build the painterly Art Deco creation theme from modular race/class layers | High | Large | Completed | Review representative builds and keep race motifs quieter than class identity |
 | CHAR-008 | Close the remaining character-creation fidelity gap against the approved Art Deco mockup | High | Medium | In Progress | Compare standard and large previews for clipping, dead space, readability, and material depth |
-| CHAR-009 | Make Combat Path choice prominent in creation and persistent during play | High | Medium | Ready after BAL-004 | Review whether Origin Path and Current Style remain understandable after equipment changes |
-| DSG-003 | Carry the shared hero visual theme through appropriate gameplay surfaces | High | Medium | Ready | Check that hero identity is visible without recoloring shops, maps, enemies, or global navigation |
+| CHAR-009 | Make Combat Path choice prominent in creation and persistent during play | High | Medium | Completed | Review whether Origin Path and Current Style remain understandable after equipment changes |
+| DSG-003 | Carry the shared hero visual theme through appropriate gameplay surfaces | High | Medium | Completed | Check that hero identity is visible without recoloring shops, maps, enemies, or global navigation |
 | MKT-001 | Apply the shared Art Deco hero system to tester, community, release, and portfolio templates | High | Medium | In Progress | Review tester assets at actual Discord, Form, PDF, and GitHub crop sizes |
 | CHAR-001 | Add a cosmetic character-presentation choice and counterpart art | Medium–High | Large | Completed | Approve counterpart art and presentation wording |
 | TECH-001 | Establish public versioning, changelog, and in-game version label | High | Small | Completed | Review version naming at the next milestone |
@@ -185,7 +185,7 @@ this file records why an item matters and how difficult it is expected to be.
 
 ### CHAR-005 — Lightweight selection and confirmation transitions
 
-- Status: **Planned** after `CHAR-003` and `CHAR-004`
+- Status: **Completed**
 - Add a short cached crossfade or class-colored overlay when the selected hero art
   changes; avoid frame-by-frame character animation that requires new viewpoints.
 - Give each class a restrained particle or lighting accent that does not obscure the
@@ -222,7 +222,7 @@ this file records why an item matters and how difficult it is expected to be.
 
 ### DSG-003 — Shared hero identity across gameplay
 
-- Status: **Ready**, after the `CHAR-007` creation-screen foundation.
+- Status: **Completed**
 - Resolve one `HeroVisualTheme` from the saved race/class selection and reuse it
   across hero-owned surfaces.
 - Apply class identity to resource meters, selected quick actions, compatible item
@@ -234,6 +234,14 @@ this file records why an item matters and how difficult it is expected to be.
 - No gameplay panel may fork into sixteen race/class-specific layouts.
 - Verify all sixteen builds in character creation, exploration, inventory, combat,
   dialogue, and outcome previews.
+- Figma now includes a token-bound Mage identity surface on the representative
+  Inventory screen, keeping the hero theme local to hero-owned content while the
+  surrounding navigation, equipment quality, and world surfaces remain neutral.
+- Combat actions, class resources, Inventory equipment actions, exploration identity,
+  profile framing, and outcomes now resolve through the same `HeroVisualTheme`.
+  Automated UI coverage checks the combat action/resource contract for all sixteen
+  race/class builds while enemy threat, health, loot quality, vendors, maps, and
+  global navigation retain their own established color language.
 
 ### CHAR-008 — Art Deco fidelity refinement
 
@@ -428,7 +436,7 @@ Baseline findings from 1,152 trials:
 
 ### BAL-004 — Starting-path and equipment alignment
 
-- Status: **Ready**
+- Status: **Completed**
 - Rename the displayed and internal Fighter starting paths from Vanguard and Breaker
   to Knight and Berserker, while safely migrating legacy save values.
 - Knight starts with a one-handed sword, modest shield, and chain armour; Berserker
@@ -460,7 +468,7 @@ Baseline findings from 1,152 trials:
 
 ### CHAR-009 — Combat Path selection and persistent identity
 
-- Status: **Ready after BAL-004**
+- Status: **Completed**
 - Present each class's two starting builds as large **Combat Path** cards rather
   than narrow loadout buttons or a traditional branching skill tree.
 - Each card shows path name, concise fantasy, starting weapon/offhand/armour,
@@ -480,13 +488,21 @@ Baseline findings from 1,152 trials:
 - Use `assets/design-references/combat-path-cards-rogue-concept-v1.png` as the
   approved hierarchy and mood reference. Rebuild cards from modular UI components;
   do not embed the flattened concept image as the functional interface.
+- Figma synchronization now includes the reusable 16-variant Combat Path card set
+  (eight paths × default/selected), representative Channeler/Arcanist creation
+  choices, and a separate Origin Path/Current Style Inventory identity surface.
+- Production cards now expose fantasy, equipment, resource loop, progression, and
+  tradeoff in both visible and accessible copy, with a dedicated selection cue.
+  The persistent profile and Inventory show the equipment-derived progression track;
+  reversible gear swaps preserve Origin Path and trigger an input-transparent,
+  reduced-motion-safe `COMBAT STYLE CHANGED` banner.
 - Acceptance checks cover 1280×720, 1440×900, and larger displays; keyboard focus,
   hover, selected, pressed, and disabled states; long translated path copy; and a
   gear swap that changes Current Style and can be reversed safely.
 
 ### BAL-005 — Percentage ability scaling and dragon preparation
 
-- Status: **Ready after BAL-004**
+- Status: **Completed**
 - Replace oversized flat martial ability bonuses with bounded percentages of the
   relevant combat power plus small utility modifiers; keep enemy-health percentage
   damage out of ordinary player abilities.
@@ -644,7 +660,7 @@ Baseline findings from 1,152 trials:
 These are recorded here temporarily so the remaining plan has context. They should
 move into the first formal changelog entry under `TECH-001`.
 
-- Two Common starting loadouts per class with build-aware character creation
+- Two Common starting Combat Paths per class with build-aware character creation
 - Standard enemy Common/Uncommon drops, vendor specialization, and item selling
 - Weapon traits, offhands, two-handed Fighter rules, and class equipment limits
 - Level-based abilities, weapon proficiency, dynamic quick actions, and progression UI

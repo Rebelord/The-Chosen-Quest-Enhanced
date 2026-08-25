@@ -1,6 +1,6 @@
 # The Chosen Quest — Enhanced Edition
 
-Current private-testing build: **0.7.0-beta.2**. See [CHANGELOG.md](CHANGELOG.md) for
+Current private-testing build: **0.8.0-beta.1**. See [CHANGELOG.md](CHANGELOG.md) for
 tester-facing release notes.
 
 The game checks the official GitHub Releases channel in the background and displays
@@ -11,7 +11,7 @@ does not replace or execute files automatically.
 ## Download the beta
 
 Once published, testers can download the cross-platform package from the
-[Beta 0.7.0 update-test release](https://github.com/Rebelord/The-Chosen-Quest-Enhanced/releases/tag/v0.7.0-beta.2).
+[Beta 0.8.0 Combat Paths release](https://github.com/Rebelord/The-Chosen-Quest-Enhanced/releases/tag/v0.8.0-beta.1).
 The ZIP includes macOS, Windows, Linux, and Chromebook Linux launchers plus a
 plain-language setup guide. Java 8 or newer is required.
 
@@ -111,8 +111,9 @@ discovery and clue details. An enemy blocks movement until it is defeated or you
 flee.
 
 Create a Human, Dwarf, Elf, or Halfling hero and choose the Fighter, Mage, Rogue,
-or Hunter class. Each class now offers two starting loadouts that establish a
-play style while keeping all starting equipment at Common quality. Each combination
+or Hunter class. Each class now offers two Combat Paths that establish an Origin
+Path while equipped gear determines the hero's Current Style. All starting equipment
+remains Common quality. Each combination
 has different health, combat bonuses, gold, and magical ability. Standard enemies
 can occasionally drop class-compatible Common or Uncommon weapons, armour, or
 offhands while favoring a new item before repeating a known name. Shops focus
@@ -166,7 +167,8 @@ with tile density, remain clipped inside safe tile insets, and simplify into rea
 tokens at overview scale. A red `!` is
 a rumored but unidentified threat; violet borders mark a rumored relic search
 region. Save files persist all map knowledge, and older 5x5 Enhanced saves expand
-to schema 10 with known tiles preserved and new territory left uncharted.
+to schema 11 with known tiles preserved, new territory left uncharted, and legacy
+Combat Path labels migrated without replacing equipment.
 
 World generation now places creatures in compatible terrain: serpents stay near
 lakes, crypt threats remain in burial terrain, and forest or humanoid encounters
@@ -201,3 +203,5 @@ Run `./package-release.sh` to execute the complete verification suite and create
 cross-platform tester ZIP in `dist/`. The archive includes the runnable JAR,
 double-click launchers for macOS and Windows, a Linux/Chromebook launcher, setup
 instructions, release notes, and a SHA-256 checksum. Testers need Java 8 or newer.
+Release maintainers also need Python 3 with the packages in
+`requirements-release.txt` to regenerate the tester PDFs and invitation kit.

@@ -244,6 +244,7 @@ final class GameEngine {
         String heroClass;
         String gender;
         String starterKit;
+        String combatStyleNotice;
         int health = 50;
         int maxHealth = 50;
         int mana;
@@ -287,6 +288,7 @@ final class GameEngine {
         int enemyCombatClock;
         int consecutiveHeroActions;
         boolean secondWindUsed;
+        boolean openingShotAvailable;
         int enemyActionSequence;
         int combatTimelineRow = -1;
         int combatTimelineCol = -1;
@@ -310,7 +312,7 @@ final class GameEngine {
         int spiderNestCol = -1;
         int spiderNestRemaining;
         boolean spiderNestCleared;
-        int generationVersion = 10;
+        int generationVersion = 11;
     }
 
     private State state;
@@ -400,28 +402,119 @@ final class GameEngine {
     }
 
     static String[] starterKitsFor(String heroClass) {
-        if ("Mage".equals(heroClass)) return new String[] {"CHANNELER", "SPELLBLADE"};
-        if ("Rogue".equals(heroClass)) return new String[] {"DUELIST", "QUICK KNIVES"};
+        if ("Mage".equals(heroClass)) return new String[] {"CHANNELER", "ARCANIST"};
+        if ("Rogue".equals(heroClass)) return new String[] {"ASSASSIN", "SKIRMISHER"};
         if ("Hunter".equals(heroClass)) return new String[] {"RANGER", "MARKSMAN"};
-        return new String[] {"VANGUARD", "BREAKER"};
+        return new String[] {"KNIGHT", "BERSERKER"};
     }
 
     static String defaultStarterKit(String heroClass) { return starterKitsFor(heroClass)[0]; }
 
     static String starterKitDescription(String heroClass, String kit) {
-        if ("SPELLBLADE".equals(kit)) return "Wand, tome, and leather · focused magic";
-        if ("QUICK KNIVES".equals(kit)) return "Dual daggers and leather · fast setup";
+        if ("ARCANIST".equals(kit)) return "Wand, tome, and leather · focused spell power";
+        if ("ASSASSIN".equals(kit)) return "Single dagger and leather · stealth finisher";
+        if ("SKIRMISHER".equals(kit)) return "Dual daggers and leather · mobile pressure";
         if ("MARKSMAN".equals(kit)) return "Crossbow and leather · heavy opening shot";
-        if ("BREAKER".equals(kit)) return "Greatsword and leather · high-risk power";
+        if ("BERSERKER".equals(kit)) return "Greatsword and leather · high-risk power";
         if ("Mage".equals(heroClass)) return "Staff and cloth · reliable spellcasting";
-        if ("Rogue".equals(heroClass)) return "Short sword and leather · balanced skirmisher";
+        if ("Rogue".equals(heroClass)) return "Single dagger and leather · stealth finisher";
         if ("Hunter".equals(heroClass)) return "Long bow and leather · mobile ranged combat";
-        return "Long sword and chain · durable frontline";
+        return "Long sword, shield, and chain · guarded frontline";
+    }
+
+    static String combatPathFantasy(String kit) {
+        if ("BERSERKER".equals(kit)) return "High-risk powerhouse";
+        if ("CHANNELER".equals(kit)) return "Reliable spellcaster";
+        if ("ARCANIST".equals(kit)) return "Focused arcane specialist";
+        if ("ASSASSIN".equals(kit)) return "Patient stealth finisher";
+        if ("SKIRMISHER".equals(kit)) return "Evasive multi-hit duelist";
+        if ("RANGER".equals(kit)) return "Mobile ranged controller";
+        if ("MARKSMAN".equals(kit)) return "Precision opening striker";
+        return "Steadfast guardian";
+    }
+
+    static String combatPathResourceLoop(String heroClass, String kit) {
+        if ("Mage".equals(heroClass))
+            return "Spend Mana on spells; defend to recover it.";
+        if ("Rogue".equals(heroClass))
+            return "Build Momentum through pressure; spend it on decisive techniques.";
+        if ("Hunter".equals(heroClass))
+            return "Build Focus with Aim and accuracy; exploit marked targets.";
+        if ("KNIGHT".equals(kit))
+            return "Build Rage by trading blows and countering.";
+        return "Build Rage through pressure; spend it on heavy attacks.";
+    }
+
+    static String combatPathTrack(String kit) {
+        if ("BERSERKER".equals(kit)) return "CORE → HEAVY STRIKE → SECOND WIND";
+        if ("CHANNELER".equals(kit) || "ARCANIST".equals(kit))
+            return "MISSILE → FIREBALL → ICE SPIKE";
+        if ("ASSASSIN".equals(kit)) return "CORE → AMBUSH → VANISH / EXECUTE";
+        if ("SKIRMISHER".equals(kit)) return "CORE → TWIN STRIKE → EVASIVE / FLURRY";
+        if ("RANGER".equals(kit)) return "CORE → PINNING SHOT → VOLLEY / MARK";
+        if ("MARKSMAN".equals(kit)) return "OPENING SHOT → PINNING SHOT → MARK";
+        return "CORE → SHIELD COUNTER → SECOND WIND";
+    }
+
+    static String combatPathTradeoff(String kit) {
+        if ("BERSERKER".equals(kit)) return "More damage, less protection";
+        if ("CHANNELER".equals(kit)) return "Reliable output, modest focus power";
+        if ("ARCANIST".equals(kit)) return "Stronger focus, tighter gear dependence";
+        if ("ASSASSIN".equals(kit)) return "Patient burst, weaker sustained pressure";
+        if ("SKIRMISHER".equals(kit)) return "Fast pressure, higher Momentum demand";
+        if ("RANGER".equals(kit)) return "Flexible control, lighter opening damage";
+        if ("MARKSMAN".equals(kit)) return "Heavy opener, slower weapon tempo";
+        return "Strong defense, lower burst damage";
+    }
+
+    static String currentProgressionTrack(State state) {
+        if (state == null) return "NO PROGRESSION";
+        if ("Mage".equals(state.heroClass)) {
+            return abilityName(state, 1).toUpperCase() + " → " +
+                abilityName(state, 2).toUpperCase() + " → " +
+                abilityName(state, 3).toUpperCase();
+        }
+        return "CORE → " + abilityName(state, 1).toUpperCase() + " → " +
+            abilityName(state, 2).toUpperCase() + " / " +
+            abilityName(state, 3).toUpperCase();
     }
 
     private static String validStarterKit(String heroClass, String kit) {
+        if ("VANGUARD".equals(kit)) kit = "KNIGHT";
+        if ("BREAKER".equals(kit)) kit = "BERSERKER";
+        if ("SPELLBLADE".equals(kit)) kit = "ARCANIST";
+        if ("DUELIST".equals(kit)) kit = "ASSASSIN";
+        if ("QUICK KNIVES".equals(kit)) kit = "SKIRMISHER";
         for (String candidate : starterKitsFor(heroClass)) if (candidate.equals(kit)) return candidate;
         return defaultStarterKit(heroClass);
+    }
+
+    static String originPath(State state) {
+        return state == null ? "UNKNOWN" : validStarterKit(state.heroClass, state.starterKit);
+    }
+
+    static String currentCombatStyle(State state) {
+        if (state == null) return "UNARMED";
+        Item weapon = equippedWeapon(state);
+        Item offhand = equippedItem(state, state.equippedOffhand);
+        if ("Fighter".equals(state.heroClass)) {
+            if (isShield(offhand) && !isTwoHanded(weapon)) return "SHIELD GUARD";
+            return isTwoHanded(weapon) ? "HEAVY ASSAULT" : "VERSATILE DUELIST";
+        }
+        if ("Rogue".equals(state.heroClass)) {
+            return offhand != null && offhand.attack > 0 ? "SKIRMISHER" : "ASSASSIN";
+        }
+        if ("Hunter".equals(state.heroClass)) {
+            return weapon != null && weapon.name.toLowerCase().contains("crossbow")
+                ? "MARKSMAN" : "RANGER";
+        }
+        return offhand != null ? "ARCANIST" : "CHANNELER";
+    }
+
+    String consumeCombatStyleNotice() {
+        String notice = state.combatStyleNotice;
+        state.combatStyleNotice = null;
+        return notice;
     }
 
     private void initializeDiscovery() {
@@ -669,7 +762,7 @@ final class GameEngine {
         if ("Mage".equals(state.heroClass)) {
             state.maxMana += 30;
             state.baseAttack += 1;
-            if ("SPELLBLADE".equals(state.starterKit)) {
+            if ("ARCANIST".equals(state.starterKit)) {
                 addStartingItem(new Item("Apprentice Wand", "Weapon", 3, 0, 8, "Mage", false), true);
                 addStartingItem(new Item("Apprentice Tome", "Offhand", 1, 0, 8, "Mage", false), true);
                 addStartingItem(new Item("Leather Armour", "Armour", 0, 2, 15), true);
@@ -684,9 +777,8 @@ final class GameEngine {
             state.baseDefense += 1;
             state.gold += 20;
             state.maxMomentum = 100;
-            addStartingItem(new Item("QUICK KNIVES".equals(state.starterKit) ? "Dagger" : "Short Sword",
-                "Weapon", "QUICK KNIVES".equals(state.starterKit) ? 5 : 6, 0, 10), true);
-            if ("QUICK KNIVES".equals(state.starterKit)) {
+            addStartingItem(new Item("Dagger", "Weapon", 5, 0, 10), true);
+            if ("SKIRMISHER".equals(state.starterKit)) {
                 addStartingItem(new Item("Offhand Dagger", "Offhand", 2, 0, 7, "Rogue", false), true);
             }
             addStartingItem(new Item("Leather Armour", "Armour", 0, 2, 15), true);
@@ -701,11 +793,15 @@ final class GameEngine {
             state.maxHealth += 15;
             state.baseDefense += 2;
             state.maxRage = 100;
-            addStartingItem(new Item("BREAKER".equals(state.starterKit) ? "Greatsword" : "Long Sword",
-                "Weapon", "BREAKER".equals(state.starterKit) ? 9 : 7, 0, 15,
+            addStartingItem(new Item("BERSERKER".equals(state.starterKit) ? "Greatsword" : "Long Sword",
+                "Weapon", "BERSERKER".equals(state.starterKit) ? 9 : 7, 0, 15,
                 "Fighter", false), true);
-            addStartingItem(new Item("BREAKER".equals(state.starterKit) ? "Leather Armour" : "Chain Armour",
-                "Armour", 0, "BREAKER".equals(state.starterKit) ? 2 : 4, 35), true);
+            if ("KNIGHT".equals(state.starterKit)) {
+                addStartingItem(new Item("Iron Shield", "Offhand", 0, 2, 20,
+                    "Fighter", false), true);
+            }
+            addStartingItem(new Item("BERSERKER".equals(state.starterKit) ? "Leather Armour" : "Chain Armour",
+                "Armour", 0, "BERSERKER".equals(state.starterKit) ? 2 : 4, 35), true);
         }
         state.health = state.maxHealth;
         state.mana = state.maxMana;
@@ -748,6 +844,11 @@ final class GameEngine {
         int nextCol = state.col + colDelta;
         if (nextRow < 0 || nextRow >= SIZE || nextCol < 0 || nextCol >= SIZE) {
             add("You cannot travel beyond the edge of the realm.");
+            return;
+        }
+        if (nextRow == state.dragonLairRow && nextCol == state.dragonLairCol &&
+                !dragonSealReady()) {
+            add("The dragon seal remains closed. " + dragonSealStatus() + ".");
             return;
         }
         state.previousRow = state.row;
@@ -829,6 +930,9 @@ final class GameEngine {
         boolean stealthed = "STEALTH".equals(state.combatPreparation);
         boolean enraged = "RAGE".equals(state.combatPreparation);
         boolean marked = state.enemyMarked;
+        boolean openingShot = "Hunter".equals(state.heroClass) &&
+            "MARKSMAN".equals(originPath(state)) && state.openingShotAvailable;
+        state.openingShotAvailable = false;
         state.combatPreparation = null;
         if (enraged) {
             rawDamage += 5 + state.level;
@@ -842,6 +946,11 @@ final class GameEngine {
             rawDamage += 3;
             add("Hunter's Mark guides the shot.");
             state.combatStatus = "HUNTER'S MARK · TARGET TRACKED";
+        }
+        if (openingShot) {
+            rawDamage += scaledAbilityBonus(totalAttack(), 35, 4);
+            add("Marksman opening shot finds the target before it can settle.");
+            state.combatStatus = "MARKSMAN · OPENING SHOT";
         }
         rawDamage = Math.max(2, rawDamage);
         if (isBoss(enemy)) rawDamage += bossRelicDamageBonus();
@@ -1619,6 +1728,8 @@ final class GameEngine {
                 return;
             }
         }
+        boolean countering = "COUNTER".equals(state.combatPreparation) &&
+            isMeleeAction(action);
         int damage = Math.max(1, enemy.attack + random.nextInt(5) - 2 +
             action.damageModifier);
         if (state.defending) {
@@ -1635,6 +1746,7 @@ final class GameEngine {
             damage = Math.max(1, damage - bossRelicGuard());
         }
         state.defending = false;
+        if (countering) state.combatPreparation = null;
         int healthAfterHit = Math.max(0, state.health - damage);
         boolean secondWindTriggered = healthAfterHit == 0 &&
             "Fighter".equals(state.heroClass) && state.level >= 3 &&
@@ -1655,6 +1767,16 @@ final class GameEngine {
             add("Second Wind! Adrenaline keeps you at 1 health, fills Rage, and empowers your next attack.");
         } else {
             gainRage(Math.min(24, 8 + appliedDamage / 2), "damage");
+        }
+        if (countering && state.health > 0 && enemy.health > 0) {
+            int counterDamage = Math.max(1,
+                totalAttack() + scaledAbilityBonus(totalAttack(), 20, 2) -
+                    effectiveEnemyDefense(enemy));
+            enemy.health = Math.max(0, enemy.health - counterDamage);
+            gainRage(16, "shield counter");
+            add("Shield Counter answers the blow for " + counterDamage + " damage.");
+            state.combatStatus = "SHIELD COUNTER · " + counterDamage + " DAMAGE";
+            if (enemy.health == 0) defeatEnemy(enemy);
         }
         pendingEnemyTurnEvents.add(new EnemyTurnEvent(enemy.name, action.name,
             action.tempo.label, healthBefore, state.health, appliedDamage, false,
@@ -1685,6 +1807,8 @@ final class GameEngine {
         state.enemyCombatClock = 0;
         state.consecutiveHeroActions = 0;
         state.secondWindUsed = false;
+        state.openingShotAvailable = "Hunter".equals(state.heroClass) &&
+            "MARKSMAN".equals(originPath(state));
         state.rage = 0;
         state.momentum = 0;
         state.enemyActionSequence = 0;
@@ -1907,17 +2031,25 @@ final class GameEngine {
         }
         if (slot == 1) {
             if ("Fighter".equals(state.heroClass)) {
-                if (state.equippedOffhand != null && state.equippedOffhand.contains("Shield")) {
-                    return "Shield Bash";
+                if (isShield(equippedItem(state, state.equippedOffhand)) &&
+                        !usesTwoHandedWeapon(state)) {
+                    return "Shield Counter";
                 }
-                return usesTwoHandedWeapon(state) ? "Cleave" : "Power Strike";
+                return usesTwoHandedWeapon(state) ? "Heavy Strike" : "Power Strike";
             }
-            if ("Rogue".equals(state.heroClass)) return "Offhand Strike";
+            if ("Rogue".equals(state.heroClass)) return
+                "SKIRMISHER".equals(currentCombatStyle(state)) ? "Twin Strike" : "Ambush";
             return "Pinning Shot";
         }
-        if (slot == 2) return weaponTechniqueName(state);
+        if (slot == 2) {
+            if ("Rogue".equals(state.heroClass)) return
+                "SKIRMISHER".equals(currentCombatStyle(state))
+                    ? "Evasive Strike" : "Vanish";
+            return weaponTechniqueName(state);
+        }
         if ("Fighter".equals(state.heroClass)) return "Second Wind";
-        if ("Rogue".equals(state.heroClass)) return "Execute";
+        if ("Rogue".equals(state.heroClass)) return
+            "SKIRMISHER".equals(currentCombatStyle(state)) ? "Blade Flurry" : "Execute";
         return "Hunter's Mark";
     }
 
@@ -1977,9 +2109,11 @@ final class GameEngine {
     static String abilityTempoLabel(State state, int slot) {
         String name = abilityName(state, slot);
         if ("Second Wind".equals(name)) return "PASSIVE";
-        if ("Hunter's Mark".equals(name) ||
-                "Offhand Strike".equals(name)) return ActionTempo.FAST.label;
-        if ("Cleave".equals(name) || "Execute".equals(name) ||
+        if ("Hunter's Mark".equals(name) || "Twin Strike".equals(name) ||
+                "Evasive Strike".equals(name) || "Vanish".equals(name)) {
+            return ActionTempo.FAST.label;
+        }
+        if ("Heavy Strike".equals(name) || "Execute".equals(name) ||
                 "Ice Spike".equals(name) || "Fireball".equals(name)) {
             return ActionTempo.SLOW.label;
         }
@@ -2060,12 +2194,14 @@ final class GameEngine {
 
     private static String abilityEffect(State state, Enemy enemy, int slot) {
         String name = abilityName(state, slot);
-        if ("Shield Bash".equals(name)) return enemy != null && enemy.tier == 2
-            ? "Strike and enter Guard; bosses resist the stun"
-            : "Strike, enter Guard, and stun the target";
-        if ("Cleave".equals(name)) return "Heavy strike that ignores 2 defense";
+        if ("Shield Counter".equals(name))
+            return "Enter Guard; counter the next melee hit and gain Rage";
+        if ("Heavy Strike".equals(name)) return "Slow two-handed strike that ignores 2 defense";
         if ("Power Strike".equals(name)) return "A strong direct weapon strike";
-        if ("Offhand Strike".equals(name)) return "Fast strike amplified by your offhand";
+        if ("Twin Strike".equals(name)) return "Fast strike amplified by your offhand";
+        if ("Ambush".equals(name)) return "Strike harder from Stealth";
+        if ("Vanish".equals(name)) return "Re-enter Stealth without dealing damage";
+        if ("Evasive Strike".equals(name)) return "Fast strike that enters Guard";
         if ("Pinning Shot".equals(name))
             return "Ranged strike that prevents the target's next melee action";
         if ("Stunning Blow".equals(name)) return "Mastery strike that can stun non-bosses";
@@ -2101,7 +2237,6 @@ final class GameEngine {
             int minimum = "Fireball".equals(name) ? 21 : ("Ice Spike".equals(name) ? 25 : 13);
             int maximum = minimum + ("Magic Missile".equals(name) ? 4 : 6);
             int fixed = (state.level - 1) * 2 + arcaneEquipmentBonus(state);
-            if (enemy != null && enemy.tier == 2) fixed += relicDamageBonus(state);
             return (minimum + fixed) + "–" + (maximum + fixed) + " damage";
         }
         int raw = stateTotalAttack(state);
@@ -2123,7 +2258,6 @@ final class GameEngine {
             raw += vulnerable ? 11 : 3;
             pierce = 1;
         }
-        if (enemy != null && enemy.tier == 2) raw += relicDamageBonus(state);
         int armor = enemy == null ? 0 : Math.max(0, enemy.defense - pierce);
         return Math.max(1, raw - armor) + " damage";
     }
@@ -2153,14 +2287,6 @@ final class GameEngine {
         return null;
     }
 
-    private static int relicDamageBonus(State state) {
-        int count = 0;
-        if (state.relics != null) for (Relic relic : state.relics) if (relic.identified) count++;
-        int perRelic = ("Mage".equals(state.heroClass) || "Hunter".equals(state.heroClass))
-            ? 6 : ("Fighter".equals(state.heroClass) ? 5 : 4);
-        return count * perRelic;
-    }
-
     private static String weaponTechniqueName(State state) {
         String trait = weaponTraitName(equippedWeapon(state));
         if ("CONCUSSIVE".equals(trait)) return "Stunning Blow";
@@ -2168,7 +2294,7 @@ final class GameEngine {
         if ("BLEEDING EDGE".equals(trait)) return "Blade Flurry";
         if ("PRECISE".equals(trait)) return "Volley";
         if ("ARMOR PIERCING".equals(trait)) return "Piercing Bolt";
-        if ("BALANCED GUARD".equals(trait)) return "Riposte";
+        if ("BALANCED GUARD".equals(trait)) return "Guarded Riposte";
         return "Masterful Strike";
     }
 
@@ -2219,27 +2345,33 @@ final class GameEngine {
 
     private void useTacticalAbility(Enemy enemy) {
         String ability = abilityName(state, 1);
-        int raw = totalAttack() + 2;
+        int raw = totalAttack() + scaledAbilityBonus(totalAttack(), 25, 2);
         int pierce = 0;
         ActionTempo tempo = ActionTempo.NORMAL;
-        if ("Shield Bash".equals(ability)) {
-            state.enemyStunTurns = isBoss(enemy) ? 0 : 1;
+        if ("Shield Counter".equals(ability)) {
             state.defending = true;
-            state.combatStatus = "SHIELD BASH · " +
-                (state.enemyStunTurns > 0 ? "ENEMY STUNNED" : "GUARD ACTIVE");
-        } else if ("Cleave".equals(ability)) {
-            raw += 4;
+            state.combatPreparation = "COUNTER";
+            state.combatStatus = "SHIELD COUNTER · GUARD ACTIVE";
+        } else if ("Heavy Strike".equals(ability)) {
+            raw += scaledAbilityBonus(totalAttack(), 35, 3);
             pierce = 2;
             tempo = ActionTempo.SLOW;
-            state.combatStatus = "CLEAVE · ARMOR SUNDERED";
+            state.combatStatus = "HEAVY STRIKE · ARMOR SUNDERED";
         } else if ("Power Strike".equals(ability)) {
-            raw += 3;
+            raw += scaledAbilityBonus(totalAttack(), 25, 2);
             state.combatStatus = "POWER STRIKE · HEAVY HIT";
-        } else if ("Offhand Strike".equals(ability)) {
+        } else if ("Twin Strike".equals(ability)) {
             Item offhand = findItem(state.equippedOffhand);
             raw += offhand == null ? 1 : Math.max(2, offhand.attack);
             tempo = ActionTempo.FAST;
-            state.combatStatus = "OFFHAND STRIKE · FAST";
+            state.combatStatus = "TWIN STRIKE · FAST";
+        } else if ("Ambush".equals(ability)) {
+            if ("STEALTH".equals(state.combatPreparation)) {
+                raw += scaledAbilityBonus(totalAttack(), 45, 4);
+                state.combatPreparation = null;
+            }
+            tempo = ActionTempo.FAST;
+            state.combatStatus = "AMBUSH · OPENING PRESSURE";
         } else {
             raw += 2;
             state.enemyPinned = true;
@@ -2250,8 +2382,15 @@ final class GameEngine {
 
     private void useWeaponTechnique(Enemy enemy) {
         String ability = abilityName(state, 2);
+        if ("Vanish".equals(ability)) {
+            state.combatPreparation = "STEALTH";
+            state.combatStatus = "VANISH · STEALTH ACTIVE";
+            gainMomentum(10, "vanish");
+            completePlayerAction(enemy, ActionTempo.FAST);
+            return;
+        }
         String trait = weaponTraitName(findItem(state.equippedWeapon));
-        int raw = totalAttack() + 4;
+        int raw = totalAttack() + scaledAbilityBonus(totalAttack(), 30, 3);
         int pierce = 0;
         ActionTempo tempo = ActionTempo.NORMAL;
         if ("CONCUSSIVE".equals(trait)) {
@@ -2268,6 +2407,11 @@ final class GameEngine {
             state.defending = true;
         } else if ("PRECISE".equals(trait)) {
             raw += 3;
+        }
+        if ("Evasive Strike".equals(ability)) {
+            state.defending = true;
+            tempo = ActionTempo.FAST;
+            state.combatStatus = "EVASIVE STRIKE · GUARD ACTIVE";
         }
         if ("Volley".equals(ability)) {
             raw += 5 + state.level;
@@ -2293,11 +2437,24 @@ final class GameEngine {
             completePlayerAction(enemy, ActionTempo.FAST);
             return;
         }
+        if ("Blade Flurry".equals(ability)) {
+            Item offhand = findItem(state.equippedOffhand);
+            int offhandPower = offhand == null ? 1 : Math.max(2, offhand.attack);
+            int raw = totalAttack() + offhandPower +
+                scaledAbilityBonus(totalAttack(), 40, 4);
+            state.combatStatus = "BLADE FLURRY · DUAL FINISHER";
+            resolveAbilityDamage(enemy, ability, raw, 1, ActionTempo.FAST);
+            return;
+        }
         int threshold = Math.max(1, enemy.maxHealth * 35 / 100);
         int bonus = enemy.health <= threshold ? 11 : 3;
         state.combatStatus = enemy.health <= threshold
             ? "EXECUTE · VULNERABLE TARGET" : "EXECUTE · TARGET RESISTED";
         resolveAbilityDamage(enemy, ability, totalAttack() + bonus, 1, ActionTempo.SLOW);
+    }
+
+    private static int scaledAbilityBonus(int combatPower, int percent, int minimum) {
+        return Math.max(minimum, Math.max(1, combatPower) * percent / 100);
     }
 
     private void resolveAbilityDamage(Enemy enemy, String ability, int rawDamage,
@@ -2572,8 +2729,8 @@ final class GameEngine {
         add("Its power becomes " + reward.name + ", attuned to your " +
             state.heroClass + " training.");
         add("The " + reward.name + " is added to your inventory for you to equip.");
-        add("Identified relics grant class-attuned dragon damage and " +
-            "reduce dragon damage taken.");
+        add("Identified relic equipment prepares your hero and weakens the dragon seal (" +
+            identifiedRelicCount() + "/3).");
     }
 
     private Item relicReward(Relic relic, String heroClass) {
@@ -2629,6 +2786,7 @@ final class GameEngine {
             add(restriction);
             return;
         }
+        String previousStyle = currentCombatStyle(state);
         if ("Weapon".equals(item.type)) {
             state.equippedWeapon = item.name;
             if (isTwoHanded(item)) state.equippedOffhand = null;
@@ -2648,6 +2806,12 @@ final class GameEngine {
             state.equippedArmour = item.name;
         }
         add("You equip the " + item.name + ".");
+        String currentStyle = currentCombatStyle(state);
+        if (!previousStyle.equals(currentStyle)) {
+            state.combatStyleNotice = "COMBAT STYLE CHANGED · " + currentStyle +
+                " · " + abilityName(state, 1) + " / " + abilityName(state, 2);
+            add(state.combatStyleNotice);
+        }
     }
 
     static String equipmentRestriction(String heroClass, Item item) {
@@ -2710,6 +2874,11 @@ final class GameEngine {
             "Warhammer".equals(name);
     }
 
+    private static boolean isShield(Item item) {
+        return item != null && "Offhand".equals(item.type) &&
+            item.name.toLowerCase().contains("shield");
+    }
+
     private static boolean isRanged(Item item) {
         return named(item, "Long Bow", "Crossbow", "Hunting Crossbow", "Ranger Bow");
     }
@@ -2743,18 +2912,27 @@ final class GameEngine {
         return count;
     }
 
+    boolean dragonSealReady() {
+        return state.level >= 3 && identifiedRelicCount() >= 3;
+    }
+
+    String dragonSealStatus() {
+        return "Reach level 3 (" + state.level + "/3) and identify three elite relics (" +
+            identifiedRelicCount() + "/3)";
+    }
+
     /**
      * Identified relics are the authored bridge from elite encounters to dragons.
      * Every offensive action, including class abilities, receives the same
      * class-attuned bonus so tactical play is never worse than basic attacks.
      */
     private int bossRelicDamageBonus() {
-        return relicDamageBonus(state);
+        return 0;
     }
 
     /** Bounded protection rewards preparation without making three relics invulnerable. */
     private int bossRelicGuard() {
-        return Math.min(6, identifiedRelicCount() * 2);
+        return 0;
     }
 
     private Item findItem(String name) {
@@ -3054,6 +3232,12 @@ final class GameEngine {
             // progress and known routes are never replaced with a surprise foe.
             installMigratedSpiderNest();
             state.generationVersion = 10;
+        }
+        if (state.generationVersion < 11) {
+            // Path names changed, but equipment remains authoritative. Preserve
+            // every legacy item and migrate only the origin-path identity.
+            state.starterKit = validStarterKit(state.heroClass, state.starterKit);
+            state.generationVersion = 11;
         }
         if ("Mage".equals(state.heroClass)) {
             state.spells.clear();

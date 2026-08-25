@@ -1,7 +1,7 @@
 # The Chosen Quest Enhanced — Living Game Design Document
 
 Last reconciled with the playable build: **2026-07-31**  
-Current private-testing version: **0.7.0-beta.2**  
+Current private-testing version: **0.8.0-beta.1**
 Current save/world schema: **10**
 
 ## How to use this document
@@ -35,7 +35,7 @@ intended to overwrite or silently redefine the preserved source.
 
 1. **Readable tactics:** Players should understand what happened, why it happened,
    and what their available responses will do.
-2. **Distinct builds:** Race, class, loadout, equipment, and relic choices should
+2. **Distinct builds:** Race, class, Combat Path, equipment, and relic choices should
    produce different rhythms without creating obvious trap builds.
 3. **Preparation matters:** Shops help against elites; elite relic progression helps
    against dragons; rushing the final boss should remain dangerous.
@@ -58,7 +58,7 @@ intended to overwrite or silently redefine the preserved source.
 
 ## 2. Core game loop
 
-1. Create a named hero by choosing race, class, and one of two class loadouts.
+1. Create a named hero by choosing race, class, and one of two Combat Paths.
 2. Explore a generated 13×13 world through a scrolling, fog-aware map.
 3. Learn terrain, landmarks, rumors, relic regions, and known threats.
 4. Defeat standard enemies for experience, gold, and occasional field equipment.
@@ -66,8 +66,7 @@ intended to overwrite or silently redefine the preserved source.
    relics.
 6. Defeat elite enemies to recover unidentified relics.
 7. Bring each relic to its indicated specialist for identification and equipment.
-8. Approach a dragon lair with an appropriate level, equipment, consumables, and
-   identified relic support.
+8. Reach level 3 and identify all three elite relics to unseal the dragon lair.
 9. Defeat the dragon to complete the quest.
 
 Optional content, such as the Ashweb Nest, should offer bounded rewards and a
@@ -87,18 +86,22 @@ meaningful side objective without becoming mandatory or farmable.
 Race modifies the class rather than replacing it. Every race/class combination must
 remain viable, though strengths and difficulty may differ.
 
-### Classes and starting loadouts
+### Classes and Combat Paths
 
-| Class | Loadout A | Loadout B |
+| Class | Path A | Path B |
 |---|---|---|
-| Fighter | Vanguard — longsword, chain armour, shield-compatible durability | Breaker — greatsword, leather armour, high-risk power |
-| Mage | Channeler — staff and cloth, reliable spellcasting | Spellblade — wand, tome, and leather, focused magic |
-| Rogue | Duelist — short sword and leather, balanced skirmisher | Quick Knives — dual daggers and leather, fast setup |
+| Fighter | Knight — longsword, iron shield, and chain armour | Berserker — greatsword, leather armour, high-risk power |
+| Mage | Channeler — staff and cloth, reliable spellcasting | Arcanist — wand, tome, and leather, focused magic |
+| Rogue | Assassin — single dagger and leather, Stealth burst | Skirmisher — dual daggers and leather, evasive multi-hit pressure |
 | Hunter | Ranger — long bow and leather, mobile ranged combat | Marksman — crossbow and leather, heavier opening damage |
 
 All starting equipment is Common quality. Character creation previews current
 health, class resource, equipment, play style, racial traits, and the level-one
-through level-three ability path.
+through level-three ability path. Origin Path records the creation choice; Current
+Style derives from equipped weapon and offhand configuration and may change safely.
+Each path card exposes its fantasy, equipment, resource loop, progression, and
+tradeoff. A reversible style change preserves Origin Path and produces a short
+non-modal notice naming the newly available techniques.
 
 The offline fantasy-name generator follows the selected race and class style. Naming,
 gender/presentation, and portrait choice are cosmetic unless a future design change
@@ -174,10 +177,10 @@ Fighters are durable melee combatants who build Rage by engaging with danger.
 - Mastered-weapon technique: 50 Rage
 - Rage resets between encounters.
 
-Loadout behavior:
+Equipment-style behavior:
 
-- A shield supports Shield Bash and reliable defense.
-- A two-handed weapon replaces ordinary Defend with Battle Cry and enables Cleave.
+- A one-handed weapon and shield support Shield Counter and reliable defense.
+- A two-handed weapon replaces ordinary Defend with Battle Cry and enables Heavy Strike.
 - One-handed offense without a shield uses Power Strike.
 
 **Second Wind** is a level-three passive, not healing. Once per encounter, an
@@ -209,14 +212,14 @@ Rogues are fast skirmishers who build Momentum through pressure and avoidance.
 - Basic attack: +18 Momentum
 - Entering Stealth: +10 Momentum
 - Successful Stealth evasion: +24 Momentum
-- Offhand Strike: 30 Momentum
+- Twin Strike: 30 Momentum for Skirmishers
 - Mastered-weapon technique: 55 Momentum
 - Execute: 70 Momentum
 - Momentum resets between encounters.
 
-Stealth prepares a critical strike and creates an evasion opportunity. Dual daggers
-support Offhand Strike and faster action tempo. Execute is strongest against a target
-at or below 35% health.
+Assassin techniques are Ambush, Vanish, and Execute. Skirmisher techniques are Twin
+Strike, Evasive Strike, and Blade Flurry. Stealth prepares a critical strike and an
+evasion opportunity; Execute is strongest against a target at or below 35% health.
 
 ### Hunter — Focus, intent, and marked targets
 
@@ -246,6 +249,9 @@ Abilities:
 Volley should remain powerful but cannot be repeated without rebuilding Focus and
 reapplying Hunter's Mark.
 
+Marksman begins each encounter with one opening-shot bonus, making the path promise
+mechanically distinct from Ranger while preserving Hunter's Mark as deliberate setup.
+
 ## 7. Weapons, equipment, and traits
 
 Heroes have Weapon, Armour, and Offhand slots.
@@ -265,7 +271,7 @@ Current weapon-trait language:
 | Daggers | Bleeding Edge |
 | Bows | Precise weak-point attacks; Volley at mastery |
 | Crossbows | Armor Piercing; Piercing Bolt at mastery |
-| Swords | Balanced Guard; Riposte at mastery |
+| Swords | Balanced Guard; Guarded Riposte at mastery |
 | Magical focus weapons | Arcane Focus spell amplification |
 
 Traits must be visible in equipment comparison, combat status, and the combat log.
@@ -298,8 +304,9 @@ items are protected from accidental sale. Specialist resale bonuses may apply.
 
 Normal elite enemies carry unidentified relics. The discovery uses a prominent
 custom popup, chime, inventory entry, and specialist hint. Each relic must be taken
-to its named vendor for free identification. Identified relic equipment is the
-authored bridge from elite preparation to dragon viability.
+to its named vendor for free identification. Identified relic equipment prepares
+the hero while all three identified relics break the dragon seal. Relics no longer
+grant large flat boss damage or guard stacks.
 
 Shops should provide minor upgrades sufficient for standard and elite content, but
 should not replace relic preparation for bosses.

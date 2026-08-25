@@ -71,12 +71,13 @@ final class EncounterPanel extends JPanel {
         static PlayerAttackStyle forAbility(String heroClass, String ability) {
             if ("Shield Bash".equals(ability)) return SHIELD_BASH;
             if ("Stunning Blow".equals(ability)) return SHIELD_BASH;
-            if ("Cleave".equals(ability) || "Power Strike".equals(ability))
+            if ("Heavy Strike".equals(ability) || "Power Strike".equals(ability))
                 return HEAVY_STRIKE;
             if ("Armor Breaker".equals(ability) || "Piercing Bolt".equals(ability))
                 return HEAVY_STRIKE;
             if ("Offhand Strike".equals(ability)) return OFFHAND_STRIKE;
-            if ("Blade Flurry".equals(ability)) return OFFHAND_STRIKE;
+            if ("Blade Flurry".equals(ability) || "Twin Strike".equals(ability))
+                return OFFHAND_STRIKE;
             if ("Pinning Shot".equals(ability)) return PINNING_SHOT;
             if ("Volley".equals(ability)) return PINNING_SHOT;
             if ("Execute".equals(ability)) return EXECUTE;
@@ -433,12 +434,16 @@ final class EncounterPanel extends JPanel {
             BorderFactory.createMatteBorder(1, 0, 1, 0, profile.accent),
             BorderFactory.createEmptyBorder(14, 24, 12, 24)));
         commandConsole.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, profile.accent));
-        attack.setBorder(BorderFactory.createLineBorder(profile.accent));
-        defend.setBorder(BorderFactory.createLineBorder(profile.accent));
-        spellOne.setBorder(BorderFactory.createLineBorder(profile.accent));
-        spellTwo.setBorder(BorderFactory.createLineBorder(profile.accent));
-        spellThree.setBorder(BorderFactory.createLineBorder(profile.accent));
-        potion.setBorder(BorderFactory.createLineBorder(profile.accent));
+        Color heroAccent = state == null ? UiTheme.GOLD :
+            HeroVisualTheme.forBuild(state.race, state.heroClass).classAccent();
+        for (JButton action : new JButton[] {attack, defend, spellOne, spellTwo, spellThree}) {
+            action.setBorder(BorderFactory.createLineBorder(heroAccent));
+            action.putClientProperty("thechosenquest.button.accent", heroAccent);
+        }
+        potion.setBorder(BorderFactory.createLineBorder(UiTheme.GREEN));
+        potion.putClientProperty("thechosenquest.button.accent", UiTheme.GREEN);
+        flee.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER));
+        flee.putClientProperty("thechosenquest.button.accent", null);
 
         if (state != null) {
             String defenseLabel = "Defend";
@@ -540,31 +545,27 @@ final class EncounterPanel extends JPanel {
         String hint;
         int value;
         int maximum;
-        Color color;
+        Color color = HeroVisualTheme.forBuild(state.race, state.heroClass).resourceColor();
         if ("Mage".equals(state.heroClass)) {
             label = "MANA";
             hint = "Channel Ward restores Mana";
             value = state.mana;
             maximum = state.maxMana;
-            color = UiTheme.BLUE;
         } else if ("Rogue".equals(state.heroClass)) {
             label = "MOMENTUM";
             hint = "Attack, evade, or enter Stealth";
             value = state.momentum;
             maximum = state.maxMomentum;
-            color = new Color(158, 105, 206);
         } else if ("Hunter".equals(state.heroClass)) {
             label = "FOCUS";
             hint = "Aim, hit, or evade enemy attacks";
             value = state.focus;
             maximum = state.maxFocus;
-            color = new Color(91, 176, 99);
         } else {
             label = "RAGE";
             hint = "Attack or endure damage";
             value = state.rage;
             maximum = state.maxRage;
-            color = new Color(211, 70, 48);
         }
         resourceMeter = new StatusBar(color);
         resourceMeter.setMaximum(Math.max(1, maximum));
@@ -763,6 +764,15 @@ final class EncounterPanel extends JPanel {
 
     String resourceMeterHelpForTest() {
         return resourceMeter == null ? "" : resourceMeter.getToolTipText();
+    }
+
+    Color heroActionAccentForTest() {
+        Object accent = attack.getClientProperty("thechosenquest.button.accent");
+        return accent instanceof Color ? (Color) accent : null;
+    }
+
+    Color resourceColorForTest() {
+        return resourceMeter == null ? null : resourceMeter.getForeground();
     }
 
     String attackSpeedLabelForTest() {

@@ -80,10 +80,14 @@ final class LocationPanel extends JPanel {
         npcName.setForeground(UiTheme.TEXT);
         npcName.setFont(UiTheme.display(18));
         npcName.setAlignmentX(CENTER_ALIGNMENT);
+        npcName.setHorizontalAlignment(SwingConstants.CENTER);
+        npcName.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
         npcRail.add(npcName);
         npcRole.setForeground(new Color(202, 167, 110));
         npcRole.setFont(UiTheme.body(Font.PLAIN, 9));
         npcRole.setAlignmentX(CENTER_ALIGNMENT);
+        npcRole.setHorizontalAlignment(SwingConstants.CENTER);
+        npcRole.setMaximumSize(new Dimension(Integer.MAX_VALUE, 16));
         npcRail.add(npcRole);
         npcRail.add(Box.createVerticalStrut(15));
 
@@ -160,6 +164,7 @@ final class LocationPanel extends JPanel {
             ? new String[] {"ALL", "WEAPONS", "ARMOUR", "OFFHAND", "SELL", "SERVICES"}
             : new String[] {"ALL", "WEAPONS", "ARMOUR", "OFFHAND", "SELL", "SUPPLIES"});
         renderShopWares();
+        refreshNpcRail();
     }
 
     void showHaven(GameEngine.State state, GameEngine.TileType tile) {
@@ -188,6 +193,7 @@ final class LocationPanel extends JPanel {
         configureTabs(tavern
             ? new String[] {"ALL", "ROOMS", "MEALS", "RUMORS"}
             : new String[] {"ALL", "POTIONS", "INGREDIENTS", "ADVICE"});
+        refreshNpcRail();
         renderHavenWares();
     }
 
@@ -463,11 +469,30 @@ final class LocationPanel extends JPanel {
         return visibleWareCount;
     }
 
+    boolean textFitsForTest() {
+        return labelFits(npcName) && labelFits(npcRole) && wareRowsFit();
+    }
+
+    private boolean labelFits(JLabel label) {
+        return label.getFontMetrics(label.getFont()).stringWidth(label.getText()) <=
+            label.getWidth();
+    }
+
+    private boolean wareRowsFit() {
+        for (java.awt.Component component : wareCards.getComponents()) {
+            if (!(component instanceof JPanel)) continue;
+            JPanel row = (JPanel) component;
+            if (row.getHeight() < 96) return false;
+        }
+        return true;
+    }
+
     private JPanel wareRow(String name, String description, String meta, String iconResource) {
         JPanel row = new JPanel(new BorderLayout(14, 0));
         row.setBackground(new Color(30, 32, 43));
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 86));
-        row.setPreferredSize(new Dimension(600, 86));
+        row.setMinimumSize(new Dimension(200, 96));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 96));
+        row.setPreferredSize(new Dimension(600, 96));
         row.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(new Color(54, 48, 43)),
             BorderFactory.createEmptyBorder(10, 12, 10, 12)));
@@ -489,6 +514,11 @@ final class LocationPanel extends JPanel {
         value.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
         row.add(value, BorderLayout.SOUTH);
         return row;
+    }
+
+    private void refreshNpcRail() {
+        npcRail.revalidate();
+        npcRail.repaint();
     }
 
     private JButton compactButton(String text, boolean primary) {

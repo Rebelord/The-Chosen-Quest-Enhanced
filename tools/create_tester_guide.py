@@ -37,6 +37,7 @@ VERSION_MATCH = re.search(r'VERSION\s*=\s*"([^"]+)"', VERSION_SOURCE)
 if not VERSION_MATCH:
     raise RuntimeError("Unable to read AppVersion.VERSION")
 VERSION = VERSION_MATCH.group(1)
+PREVIOUS_VERSION = "0.7.0-beta.2"
 
 PARCHMENT = colors.HexColor("#F3E7CA")
 INK = colors.HexColor("#241A14")
@@ -100,30 +101,30 @@ def route_table(styles):
         ],
         [
             Paragraph("Fighter", styles["TableBody"]),
-            Paragraph("Rage, weapon loadout, level gates, passive Second Wind",
+            Paragraph("Knight/Berserker, Rage pacing, Shield Counter, Heavy Strike",
                       styles["TableBody"]),
-            Paragraph("Unlimited recovery, relic bypasses, or abilities appearing too early",
+            Paragraph("Path mismatch, unlimited recovery, or abilities appearing too early",
                       styles["TableBody"]),
         ],
         [
             Paragraph("Rogue", styles["TableBody"]),
-            Paragraph("Momentum, stealth preparation, quick attacks, fleeing",
+            Paragraph("Assassin/Skirmisher, Momentum, stealth, combos, fleeing",
                       styles["TableBody"]),
-            Paragraph("Momentum farming, unclear stealth feedback, unsafe flee destinations",
+            Paragraph("Style mismatch, Momentum farming, unclear stealth, unsafe fleeing",
                       styles["TableBody"]),
         ],
         [
             Paragraph("Hunter", styles["TableBody"]),
-            Paragraph("Focus, Take Aim, Hunter's Mark, Volley, Pinning Shot",
+            Paragraph("Ranger/Marksman, Focus, opening shot, Mark, Volley",
                       styles["TableBody"]),
-            Paragraph("Volley without Mark, excessive boss damage, or unclear Focus gains",
+            Paragraph("Style mismatch, Volley without Mark, or unclear Focus gains",
                       styles["TableBody"]),
         ],
         [
             Paragraph("Mage", styles["TableBody"]),
-            Paragraph("Mana, direct spell buttons, spell tempo, Channel Ward",
+            Paragraph("Channeler/Arcanist, Mana, direct spells, Channel Ward",
                       styles["TableBody"]),
-            Paragraph("Melee outperforming magic, confusing spell readiness, or bad mana pressure",
+            Paragraph("Style mismatch, confusing spell readiness, or bad mana pressure",
                       styles["TableBody"]),
         ],
         [
@@ -264,7 +265,7 @@ def build_pdf():
         "<b>2.</b> Install Java 8 or newer if the launcher cannot find Java.",
         "<b>3.</b> Use the launcher for your operating system, or run "
         "<font name='Courier'>java -jar TheChosenQuest-Enhanced.jar</font>.",
-        "<b>4.</b> Start a new hero, note the race, class, and loadout, then play naturally.",
+        "<b>4.</b> Start a hero, note the race, class, and Combat Path, then play naturally.",
         "<b>5.</b> Submit general impressions after the session and a separate bug report "
         "for reproducible defects.",
     ]:
@@ -274,7 +275,7 @@ def build_pdf():
         Paragraph("REQUIREMENTS & CONTROLS", styles["Section"]),
         Table([
             [
-                Paragraph("<b>Requirements</b><br/>Java 8+<br/>250 MB free space<br/>"
+                Paragraph("<b>Requirements</b><br/>Java 8+<br/>400 MB free space<br/>"
                           "1280 x 720 minimum", styles["BodyTCQ"]),
                 Paragraph("<b>Movement</b><br/>WASD or arrow keys<br/>M: full map<br/>"
                           "Escape: close overlay", styles["BodyTCQ"]),
@@ -321,7 +322,7 @@ def build_pdf():
     story.append(Paragraph("WHAT MAKES A USEFUL REPORT?", styles["Section"]))
     for text in [
         "Game version, operating system, and Java version.",
-        "Hero race, class, level, starting loadout, and important equipment.",
+        "Hero race, class, level, Origin Path, Current Style, and important equipment.",
         "What you expected, what happened, and whether it happened again.",
         "The exact action or location immediately before the problem.",
         "A screenshot, combat-log excerpt, or saved game when practical.",
@@ -334,11 +335,10 @@ def build_pdf():
         Paragraph("CURRENT BETA FOCUS", styles["Section"]),
         callout(
             "PLEASE WATCH THESE AREAS",
-            "Class-resource pacing; boss difficulty; rapid character switching; two fights "
-            "in sequence; map readability; large-screen image cropping; audio repetition; "
-            "shop and inventory comparisons; save/load behavior; and any action that can "
-            "be repeated for unlimited healing, gold, experience, or rewards. Keep this "
-            "baseline installed so the next beta can test the in-game update handoff.",
+            "Combat Path clarity; Origin Path and Current Style persistence; equipment-driven "
+            "style changes; relic Equip Now choices; finite vendor gear; boss preparation; "
+            "portrait framing; text clipping; reduced motion; and save/load behavior. Also "
+            "watch for actions that repeat healing, gold, experience, charges, or rewards.",
             GOLD, styles,
         ),
     ]))
@@ -354,30 +354,30 @@ def build_pdf():
     ))
     story.append(PageBreak())
     story.append(KeepTogether([
-        Paragraph("UPDATE FEATURE TEST", styles["Section"]),
+        Paragraph("UPDATE & SAVE MIGRATION TEST", styles["Section"]),
         callout(
-            "KEEP THIS BUILD INSTALLED",
-            f"First, open Settings and choose <b>Check Updates</b>; v{VERSION} should "
-            "report as current. When the next beta is announced, launch this older copy "
-            "while online and verify the styled notice, View Changes, Remind Me Later, "
-            "and official Download handoff. An offline launch must remain quiet and fully "
-            "playable. The game must never overwrite files or saves during this phase.",
+            f"START WITH v{PREVIOUS_VERSION}",
+            f"If you retained v{PREVIOUS_VERSION}, launch it online and verify that it "
+            f"discovers v{VERSION}. Test View Changes, Remind Me Later, and the official "
+            "Download handoff. Extract the new build separately, load the older save, and "
+            "confirm equipment, Origin Path, and Current Style. The updater must never "
+            "overwrite game files or save data.",
             GREEN, styles,
         ),
     ]))
     story.append(Spacer(1, 8))
     story.append(Paragraph("TWO-BUILD TEST SEQUENCE", styles["Section"]))
     for text in [
-        f"<b>Baseline:</b> Install v{VERSION}, open Settings, and confirm the manual "
-        "check reports this version as current.",
-        "<b>Preserve:</b> Keep the extracted baseline folder unchanged after the "
-        "normal playtest.",
-        "<b>Discover:</b> After the next beta is published, launch the older baseline "
-        "while online and wait for the non-blocking notice.",
+        f"<b>Discover:</b> Launch v{PREVIOUS_VERSION} online and confirm the non-blocking "
+        f"notice identifies v{VERSION}.",
         "<b>Inspect:</b> Verify View Changes, Remind Me Later, and a later manual "
         "recheck before choosing Download.",
         "<b>Handoff:</b> Download must open the exact official GitHub release; it must "
         "not silently replace the game or touch save data.",
+        f"<b>Migrate:</b> Extract v{VERSION} separately and load a v{PREVIOUS_VERSION} "
+        "save; equipment and hero identity must remain coherent.",
+        f"<b>Current:</b> In v{VERSION}, Check Updates must report this version as current. "
+        "Keep the folder for the next update test.",
         "<b>Offline:</b> Launch once without internet access. Startup and gameplay "
         "must remain normal with no system error dialog.",
     ]:
@@ -385,9 +385,9 @@ def build_pdf():
     story.append(Spacer(1, 5))
     story.append(callout(
         "WHAT TO RECORD",
-        "Installed version, discovered version, operating system, Java version, "
-        "whether the notice appeared after startup, which actions worked, the exact "
-        "release page opened, and any repeated or missing notification behavior.",
+        "Installed and discovered versions, operating system, Java version, whether the "
+        "notice appeared, which actions worked, the release page opened, save-migration "
+        "result, Origin Path, Current Style, and repeated or missing notifications.",
         GOLD, styles,
     ))
     story.append(Spacer(1, 8))
@@ -395,16 +395,18 @@ def build_pdf():
     result_rows = [
         [Paragraph("<b>Check</b>", styles["TableHead"]),
          Paragraph("<b>Expected result</b>", styles["TableHead"])],
-        [Paragraph("Manual baseline check", styles["TableBody"]),
-         Paragraph(f"v{VERSION} reports as current", styles["TableBody"])],
-        [Paragraph("Older build startup", styles["TableBody"]),
-         Paragraph("Gameplay opens normally; notice does not block startup", styles["TableBody"])],
+        [Paragraph("Older build discovery", styles["TableBody"]),
+         Paragraph(f"v{PREVIOUS_VERSION} offers v{VERSION} without blocking startup", styles["TableBody"])],
         [Paragraph("Available version", styles["TableBody"]),
          Paragraph("Notice identifies the exact newer beta", styles["TableBody"])],
         [Paragraph("View / Remind", styles["TableBody"]),
          Paragraph("Release details open; reminder closes without file changes", styles["TableBody"])],
         [Paragraph("Download", styles["TableBody"]),
          Paragraph("Official GitHub release and matching ZIP open", styles["TableBody"])],
+        [Paragraph("Save migration", styles["TableBody"]),
+         Paragraph("Equipment and hero path/style identity remain coherent", styles["TableBody"])],
+        [Paragraph("Current-version check", styles["TableBody"]),
+         Paragraph(f"v{VERSION} reports as current", styles["TableBody"])],
         [Paragraph("Offline launch", styles["TableBody"]),
          Paragraph("No system error; game remains fully playable", styles["TableBody"])],
     ]

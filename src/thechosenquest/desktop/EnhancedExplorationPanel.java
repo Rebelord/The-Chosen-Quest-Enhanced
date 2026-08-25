@@ -92,6 +92,7 @@ final class EnhancedExplorationPanel extends JPanel {
     private JButton eastTravelButton;
     private JButton zoomOutButton;
     private JButton zoomInButton;
+    private JButton inventoryAction;
     private double sceneAspectRatio = 16d / 7d;
 
     private static final String STORY = "story";
@@ -307,7 +308,7 @@ final class EnhancedExplorationPanel extends JPanel {
         heroIdentity.setForeground(UiTheme.TEXT);
         heroIdentity.setFont(UiTheme.body(Font.BOLD, 12));
         heroIdentity.setAlignmentX(LEFT_ALIGNMENT);
-        heroIdentity.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
+        heroIdentity.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
         rail.add(heroIdentity);
         heroStatus.setText("Exploring");
         heroStatus.setForeground(UiTheme.GREEN);
@@ -356,16 +357,16 @@ final class EnhancedExplorationPanel extends JPanel {
         rail.add(heroStats);
         rail.add(Box.createVerticalGlue());
 
-        JButton inventory = UiTheme.button("INVENTORY", false);
-        inventory.setAlignmentX(LEFT_ALIGNMENT);
-        inventory.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
-        inventory.addActionListener(new ActionListener() {
+        inventoryAction = UiTheme.button("INVENTORY", false);
+        inventoryAction.setAlignmentX(LEFT_ALIGNMENT);
+        inventoryAction.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        inventoryAction.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) {
                 listener.onSound(SoundManager.Cue.UI_CONFIRM);
                 listener.onInventory();
             }
         });
-        rail.add(inventory);
+        rail.add(inventoryAction);
         return rail;
     }
 
@@ -806,27 +807,41 @@ final class EnhancedExplorationPanel extends JPanel {
     void refresh() {
         GameEngine.State state = engine.getState();
         String coordinate = Character.toString((char) ('A' + state.row)) + (state.col + 1);
-        String identity = "Level " + state.level + " " + state.race + " " + state.heroClass;
+        HeroVisualTheme heroTheme = HeroVisualTheme.forBuild(state.race, state.heroClass);
+        String identity = "<html>Level " + state.level + " " + state.race + " " +
+            state.heroClass + "<br><font size='2'>Origin " + GameEngine.originPath(state) +
+            " · Current " + GameEngine.currentCombatStyle(state) +
+            "<br>" + GameEngine.currentProgressionTrack(state) + "</font></html>";
         heroPortrait.setResourceAsync(
             CharacterArt.portrait(state.race, state.heroClass, state.gender));
         heroPortrait.setBorder(new FantasyPortraitBorder(state.race, state.heroClass));
         heroName.setText(state.playerName);
+        heroName.setForeground(heroTheme.metalAccent());
         heroIdentity.setText(identity);
+        heroIdentity.setToolTipText("Origin " + GameEngine.originPath(state) +
+            "; Current Style " + GameEngine.currentCombatStyle(state) +
+            "; Progression " + GameEngine.currentProgressionTrack(state));
+        heroIdentity.getAccessibleContext().setAccessibleDescription(
+            heroIdentity.getToolTipText());
+        heroIdentity.setForeground(heroTheme.raceAccent());
+        heroRail.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 0, 0, 1, heroTheme.metalAccent()),
+            BorderFactory.createEmptyBorder(16, 16, 16, 16)));
         setMeter(health, state.health, state.maxHealth, "HEALTH");
         if ("Mage".equals(state.heroClass)) {
-            mana.setForeground(UiTheme.BLUE);
+            mana.setForeground(heroTheme.resourceColor());
             setMeter(mana, state.mana, Math.max(1, state.maxMana), "MANA");
             mana.setVisible(true);
         } else if ("Fighter".equals(state.heroClass)) {
-            mana.setForeground(new Color(194, 67, 44));
+            mana.setForeground(heroTheme.resourceColor());
             setMeter(mana, state.rage, Math.max(1, state.maxRage), "RAGE");
             mana.setVisible(true);
         } else if ("Rogue".equals(state.heroClass)) {
-            mana.setForeground(new Color(139, 92, 183));
+            mana.setForeground(heroTheme.resourceColor());
             setMeter(mana, state.momentum, Math.max(1, state.maxMomentum), "MOMENTUM");
             mana.setVisible(true);
         } else if ("Hunter".equals(state.heroClass)) {
-            mana.setForeground(new Color(91, 164, 91));
+            mana.setForeground(heroTheme.resourceColor());
             setMeter(mana, state.focus, Math.max(1, state.maxFocus), "FOCUS");
             mana.setVisible(true);
         } else {
@@ -903,12 +918,18 @@ final class EnhancedExplorationPanel extends JPanel {
             secondaryAction.setText("CONTINUE JOURNEY");
             tertiaryAction.setText("USE POTION");
         }
+        Color heroActionAccent = enemy == null ? null : heroTheme.classAccent();
+        primaryAction.putClientProperty("thechosenquest.button.accent", heroActionAccent);
+        tertiaryAction.putClientProperty("thechosenquest.button.accent", heroActionAccent);
+        inventoryAction.putClientProperty("thechosenquest.button.accent",
+            heroTheme.classAccent());
         normalizeActionButton(primaryAction);
         normalizeActionButton(tertiaryAction);
         normalizeActionButton(secondaryAction);
         // Spells now live directly on numbered combat actions; keeping a
         // separate spellbook selector would imply an unnecessary modal step.
         spellbookAction.setVisible(false);
+        inventoryAction.repaint();
         revalidate();
         repaint();
     }
